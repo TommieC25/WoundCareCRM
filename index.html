@@ -1126,7 +1126,7 @@
         document.addEventListener('DOMContentLoaded', () => {
             initializeData();
             renderPhysicianList();
-            document.getElementById('contactDate').valueAsDate = new Date();
+            document.getElementById('contactDate').value = new Date().toISOString().split('T')[0];
         });
 
         // Initialize data - load from localStorage or use initial data
@@ -1428,7 +1428,7 @@
 
         function openContactModal() {
             document.getElementById('contactForm').reset();
-            document.getElementById('contactDate').valueAsDate = new Date();
+            document.getElementById('contactDate').value = new Date().toISOString().split('T')[0];
             document.getElementById('contactModal').classList.add('active');
         }
 
