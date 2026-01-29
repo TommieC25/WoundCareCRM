@@ -1126,8 +1126,8 @@
         document.addEventListener('DOMContentLoaded', () => {
             initializeData();
             renderPhysicianList();
-            const today = new Date();
-document.getElementById('contactDate').value = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+            document.getElementById('contactDate').value = new Date().toISOString().split('T')[0];
+        });
 
         // Initialize data - load from localStorage or use initial data
         function initializeData() {
@@ -1428,8 +1428,7 @@ document.getElementById('contactDate').value = `${today.getFullYear()}-${String(
 
         function openContactModal() {
             document.getElementById('contactForm').reset();
-            const today = new Date();
-document.getElementById('contactDate').value = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
+            document.getElementById('contactDate').value = new Date().toISOString().split('T')[0];
             document.getElementById('contactModal').classList.add('active');
         }
 
