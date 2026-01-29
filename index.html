@@ -1472,7 +1472,7 @@
         function deleteContact(index) {
             if (confirm('Delete this contact note?')) {
                 currentPhysician.contactLog.splice(index, 1);
-                savePhysicians();
+                saveAllPhysicians();
                 renderProfile();
             }
         }
