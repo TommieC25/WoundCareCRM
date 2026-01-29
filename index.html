@@ -1436,9 +1436,12 @@
             document.getElementById('contactModal').classList.remove('active');
         }
 
-        const contact = {
+        function saveContact(e) {
+            e.preventDefault();
+            if (!currentPhysician.contactLog) currentPhysician.contactLog = [];
+            
+            const contact = {
                 date: document.getElementById('contactDate').value,
-                author: document.getElementById('authorName').value,
                 notes: document.getElementById('contactNotes').value,
                 timestamp: Date.now()
             };
