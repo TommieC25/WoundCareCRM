@@ -1441,10 +1441,11 @@
             if (!currentPhysician.contactLog) currentPhysician.contactLog = [];
             
             const contact = {
-                date: document.getElementById('contactDate').value,
-                notes: document.getElementById('contactNotes').value,
-                timestamp: Date.now()
-            };
+    date: document.getElementById('contactDate').value,
+    author: document.getElementById('authorName').value,
+    notes: document.getElementById('contactNotes').value,
+    timestamp: Date.now()
+};
             
             currentPhysician.contactLog.unshift(contact);
             currentPhysician.lastContact = contact.date;
