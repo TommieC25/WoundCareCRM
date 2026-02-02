@@ -630,6 +630,98 @@
             font-style: italic;
         }
 
+        /* Location Cards */
+        .locations-grid {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .location-card {
+            background: #f9f9f9;
+            border-radius: 10px;
+            padding: 1rem;
+            border-left: 4px solid #0a4d3c;
+        }
+
+        .location-card.primary {
+            border-left-color: #f97316;
+        }
+
+        .location-card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.75rem;
+        }
+
+        .location-label {
+            font-weight: 600;
+            color: #0a4d3c;
+            font-size: 0.95rem;
+        }
+
+        .location-badge {
+            font-size: 0.65rem;
+            padding: 0.2rem 0.5rem;
+            background: #f97316;
+            color: white;
+            border-radius: 4px;
+            text-transform: uppercase;
+            font-weight: 600;
+        }
+
+        .location-actions {
+            display: flex;
+            gap: 0.25rem;
+        }
+
+        .location-details {
+            display: grid;
+            gap: 0.5rem;
+        }
+
+        .location-detail {
+            display: flex;
+            align-items: flex-start;
+            gap: 0.5rem;
+            font-size: 0.85rem;
+        }
+
+        .location-detail-icon {
+            flex-shrink: 0;
+            width: 20px;
+            text-align: center;
+        }
+
+        .location-detail-value {
+            color: #333;
+        }
+
+        .location-detail-value a {
+            color: #0a4d3c;
+            text-decoration: none;
+        }
+
+        .add-location-btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            padding: 1rem;
+            background: rgba(10, 77, 60, 0.05);
+            border: 2px dashed #0a4d3c;
+            border-radius: 10px;
+            color: #0a4d3c;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .add-location-btn:hover {
+            background: rgba(10, 77, 60, 0.1);
+        }
+
         /* Sync indicator */
         .sync-indicator {
             display: inline-block;
@@ -746,30 +838,6 @@
                             <input type="text" id="practiceName" required>
                         </div>
                         <div>
-                            <label>Address</label>
-                            <input type="text" id="address">
-                        </div>
-                        <div class="form-row">
-                            <div>
-                                <label>City</label>
-                                <input type="text" id="city">
-                            </div>
-                            <div>
-                                <label>ZIP</label>
-                                <input type="text" id="zip">
-                            </div>
-                        </div>
-                        <div class="form-row">
-                            <div>
-                                <label>Phone</label>
-                                <input type="tel" id="phone">
-                            </div>
-                            <div>
-                                <label>Fax</label>
-                                <input type="tel" id="fax">
-                            </div>
-                        </div>
-                        <div>
                             <label>Email</label>
                             <input type="email" id="physicianEmail">
                         </div>
@@ -809,8 +877,88 @@
                             <label>Candidate Patient Volume</label>
                             <input type="text" id="patientVolume">
                         </div>
+                        <div>
+                            <label>General Notes</label>
+                            <textarea id="physicianGeneralNotes" rows="3"></textarea>
+                        </div>
                     </div>
                     <button type="submit" class="btn-primary" id="physicianSaveBtn" style="margin-top: 1.5rem;">Save Physician</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Location Modal -->
+    <div class="modal" id="locationModal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2 id="locationModalTitle">Add Location</h2>
+                <button class="close-btn" onclick="closeLocationModal()">&times;</button>
+            </div>
+            <div class="modal-body">
+                <form id="locationForm" onsubmit="saveLocation(event)">
+                    <div class="form-grid">
+                        <div class="form-row">
+                            <div>
+                                <label>Location Label *</label>
+                                <input type="text" id="locationLabel" placeholder="e.g., Main Office, Key Biscayne" required>
+                            </div>
+                            <div>
+                                <label>Primary Location?</label>
+                                <select id="locationIsPrimary">
+                                    <option value="false">No</option>
+                                    <option value="true">Yes - Main Office</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div>
+                            <label>Street Address</label>
+                            <input type="text" id="locationAddress">
+                        </div>
+                        <div class="form-row">
+                            <div>
+                                <label>City</label>
+                                <input type="text" id="locationCity">
+                            </div>
+                            <div>
+                                <label>ZIP</label>
+                                <input type="text" id="locationZip">
+                            </div>
+                        </div>
+                        <div class="form-row">
+                            <div>
+                                <label>Phone</label>
+                                <input type="tel" id="locationPhone">
+                            </div>
+                            <div>
+                                <label>Fax</label>
+                                <input type="tel" id="locationFax">
+                            </div>
+                        </div>
+                        <div>
+                            <label>Office Email</label>
+                            <input type="email" id="locationEmail">
+                        </div>
+                        <div>
+                            <label>Office Hours</label>
+                            <input type="text" id="locationHours" placeholder="e.g., Mon-Fri 9AM-5PM">
+                        </div>
+                        <div>
+                            <label>Office Staff Names</label>
+                            <input type="text" id="locationStaff">
+                        </div>
+                        <div class="form-row">
+                            <div>
+                                <label>Main Receptionist</label>
+                                <input type="text" id="locationReceptionist">
+                            </div>
+                            <div>
+                                <label>Best Days to Visit</label>
+                                <input type="text" id="locationBestDays">
+                            </div>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn-primary" id="locationSaveBtn" style="margin-top: 1.5rem;">Save Location</button>
                 </form>
             </div>
         </div>
@@ -847,46 +995,6 @@
         </div>
     </div>
 
-    <!-- Practice Details Modal -->
-    <div class="modal" id="practiceModal">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2>Edit Practice Details</h2>
-                <button class="close-btn" onclick="closePracticeModal()">&times;</button>
-            </div>
-            <div class="modal-body">
-                <form id="practiceForm" onsubmit="savePracticeDetails(event)">
-                    <div class="form-grid">
-                        <div>
-                            <label>Practice Email</label>
-                            <input type="email" id="practiceEmail">
-                        </div>
-                        <div>
-                            <label>Office Hours</label>
-                            <input type="text" id="officeHours" placeholder="e.g., Mon-Fri 9AM-5PM">
-                        </div>
-                        <div>
-                            <label>Office Staff Names</label>
-                            <input type="text" id="officeStaff">
-                        </div>
-                        <div>
-                            <label>Main Receptionist</label>
-                            <input type="text" id="receptionistName">
-                        </div>
-                        <div>
-                            <label>Best Days to Visit</label>
-                            <input type="text" id="bestDays">
-                        </div>
-                        <div>
-                            <label>General Notes</label>
-                            <textarea id="generalNotes" rows="4"></textarea>
-                        </div>
-                    </div>
-                    <button type="submit" class="btn-primary" id="practiceSaveBtn" style="margin-top: 1rem;">Save Changes</button>
-                </form>
-            </div>
-        </div>
-    </div>
 
     <script>
         // Supabase Configuration
@@ -900,9 +1008,11 @@
         // State
         let physicians = [];
         let contactLogs = {};
+        let physicianAddresses = {};  // Keyed by physician_id
         let currentPhysician = null;
         let editMode = false;
         let editingContactId = null;
+        let editingLocationId = null;
 
         // Initial physician data for import
         const INITIAL_PHYSICIANS = [
@@ -988,6 +1098,10 @@
                 if (error) throw error;
 
                 physicians = data || [];
+
+                // Also load all addresses for sidebar display
+                await loadAllAddresses();
+
                 renderPhysicianList();
                 updateSyncIndicators('synced');
                 updateConnectionStatus('connected');
@@ -1004,6 +1118,30 @@
             }
         }
 
+        // Load all addresses for sidebar display
+        async function loadAllAddresses() {
+            try {
+                const { data, error } = await db
+                    .from('physician_addresses')
+                    .select('*')
+                    .order('is_primary', { ascending: false })
+                    .order('label', { ascending: true });
+
+                if (error) throw error;
+
+                // Group addresses by physician_id
+                physicianAddresses = {};
+                (data || []).forEach(addr => {
+                    if (!physicianAddresses[addr.physician_id]) {
+                        physicianAddresses[addr.physician_id] = [];
+                    }
+                    physicianAddresses[addr.physician_id].push(addr);
+                });
+            } catch (error) {
+                console.error('Error loading addresses:', error);
+            }
+        }
+
         // Load contact logs for a physician
         async function loadContactLogs(physicianId) {
             try {
@@ -1017,6 +1155,24 @@
                 contactLogs[physicianId] = data || [];
             } catch (error) {
                 console.error('Error loading contact logs:', error);
+            }
+        }
+
+        // Load addresses for a physician
+        async function loadAddresses(physicianId) {
+            try {
+                const { data, error } = await db
+                    .from('physician_addresses')
+                    .select('*')
+                    .eq('physician_id', physicianId)
+                    .order('is_primary', { ascending: false })
+                    .order('label', { ascending: true });
+
+                if (error) throw error;
+                physicianAddresses[physicianId] = data || [];
+            } catch (error) {
+                console.error('Error loading addresses:', error);
+                physicianAddresses[physicianId] = [];
             }
         }
 
@@ -1037,6 +1193,15 @@
                 .on('postgres_changes', { event: '*', schema: 'public', table: 'contact_logs' }, (payload) => {
                     console.log('Contact log change:', payload);
                     handleContactLogChange(payload);
+                })
+                .subscribe();
+
+            // Subscribe to physician_addresses changes
+            db
+                .channel('addresses-changes')
+                .on('postgres_changes', { event: '*', schema: 'public', table: 'physician_addresses' }, (payload) => {
+                    console.log('Address change:', payload);
+                    handleAddressChange(payload);
                 })
                 .subscribe();
         }
@@ -1089,7 +1254,20 @@
             });
         }
 
-        // Import initial data
+        function handleAddressChange(payload) {
+            const physicianId = payload.new?.physician_id || payload.old?.physician_id;
+
+            // Always reload all addresses to update sidebar
+            loadAllAddresses().then(() => {
+                renderPhysicianList();
+                // If the change affects the current physician, reload their profile
+                if (currentPhysician && physicianId === currentPhysician.id) {
+                    renderProfile();
+                }
+            });
+        }
+
+        // Import initial data with new multi-address structure
         async function importInitialData() {
             const btn = document.getElementById('importBtn');
             btn.disabled = true;
@@ -1098,19 +1276,90 @@
             try {
                 updateSyncIndicators('syncing');
 
-                const { data, error } = await db
+                // Group physicians by name to consolidate duplicates
+                const physicianMap = new Map();
+
+                INITIAL_PHYSICIANS.forEach(p => {
+                    const key = `${p.first_name.toLowerCase().trim()}|${p.last_name.toLowerCase().trim()}`;
+
+                    if (!physicianMap.has(key)) {
+                        // Create physician record (without address fields)
+                        physicianMap.set(key, {
+                            physician: {
+                                first_name: p.first_name,
+                                last_name: p.last_name,
+                                practice_name: p.practice_name,
+                                email: p.email || null,
+                                priority: p.priority,
+                                um_connection: p.um_connection,
+                                patient_volume: p.mohs_volume || p.patient_volume,
+                                specialty: p.specialty || null,
+                                general_notes: p.general_notes
+                            },
+                            addresses: []
+                        });
+                    }
+
+                    // Add address to this physician
+                    const entry = physicianMap.get(key);
+                    if (p.address && p.address !== '[Research needed]') {
+                        entry.addresses.push({
+                            label: p.city || 'Office',
+                            address: p.address,
+                            city: p.city,
+                            zip: p.zip,
+                            phone: p.phone,
+                            fax: p.fax,
+                            practice_email: p.practice_email || null,
+                            office_hours: p.office_hours || null,
+                            office_staff: p.office_staff || null,
+                            receptionist_name: p.receptionist_name || null,
+                            best_days: p.best_days || null,
+                            is_primary: entry.addresses.length === 0  // First address is primary
+                        });
+                    }
+                });
+
+                // Insert consolidated physicians
+                const physicianData = Array.from(physicianMap.values()).map(e => e.physician);
+                const { data: insertedPhysicians, error: physError } = await db
                     .from('physicians')
-                    .insert(INITIAL_PHYSICIANS)
+                    .insert(physicianData)
                     .select();
 
-                if (error) throw error;
+                if (physError) throw physError;
 
-                physicians = data;
+                // Create address records with physician IDs
+                const addressData = [];
+                const keys = Array.from(physicianMap.keys());
+
+                insertedPhysicians.forEach((physician, index) => {
+                    const entry = physicianMap.get(keys[index]);
+                    entry.addresses.forEach(addr => {
+                        addressData.push({
+                            ...addr,
+                            physician_id: physician.id
+                        });
+                    });
+                });
+
+                if (addressData.length > 0) {
+                    const { error: addrError } = await db
+                        .from('physician_addresses')
+                        .insert(addressData);
+
+                    if (addrError) throw addrError;
+                }
+
+                physicians = insertedPhysicians;
                 physicians.sort((a, b) => a.last_name.localeCompare(b.last_name));
+
+                // Reload addresses
+                await loadAllAddresses();
                 renderPhysicianList();
 
                 document.getElementById('importSection').style.display = 'none';
-                showToast(`Successfully imported ${data.length} physicians!`, 'success');
+                showToast(`Successfully imported ${insertedPhysicians.length} physicians with ${addressData.length} locations!`, 'success');
                 updateSyncIndicators('synced');
             } catch (error) {
                 console.error('Import error:', error);
@@ -1158,15 +1407,22 @@
                 return;
             }
 
-            list.innerHTML = filtered.map(p => `
+            list.innerHTML = filtered.map(p => {
+                const addresses = physicianAddresses[p.id] || [];
+                const primaryAddr = addresses.find(a => a.is_primary) || addresses[0];
+                const locationCount = addresses.length;
+                const cityDisplay = primaryAddr ? primaryAddr.city : (p.city || '');
+
+                return `
                 <li class="physician-item ${currentPhysician?.id === p.id ? 'active' : ''}"
                     onclick="viewPhysician('${p.id}')">
                     <div class="name">Dr. ${p.first_name} ${p.last_name}</div>
                     <div class="practice">${p.practice_name}</div>
-                    <div class="tier">${p.priority}</div>
-                    ${p.city ? `<span class="city-badge">${p.city}</span>` : ''}
+                    <div class="tier">${p.priority || 'No tier'}</div>
+                    ${cityDisplay ? `<span class="city-badge">${cityDisplay}</span>` : ''}
+                    ${locationCount > 1 ? `<span class="city-badge">+${locationCount - 1} more</span>` : ''}
                 </li>
-            `).join('');
+            `}).join('');
 
             updatePhysicianCount();
         }
@@ -1175,7 +1431,10 @@
             currentPhysician = physicians.find(p => p.id === id);
             if (!currentPhysician) return;
 
-            await loadContactLogs(id);
+            await Promise.all([
+                loadContactLogs(id),
+                loadAddresses(id)
+            ]);
             renderPhysicianList();
             renderProfile();
 
@@ -1187,6 +1446,7 @@
         function renderProfile() {
             const p = currentPhysician;
             const logs = contactLogs[p.id] || [];
+            const addresses = physicianAddresses[p.id] || [];
 
             document.getElementById('mainContent').innerHTML = `
                 <div class="profile-header">
@@ -1195,7 +1455,7 @@
                     <div class="profile-meta">
                         <div class="meta-item">
                             <div class="meta-label">Priority</div>
-                            <div class="meta-value">${p.priority}</div>
+                            <div class="meta-value">${p.priority || 'Not set'}</div>
                         </div>
                         <div class="meta-item">
                             <div class="meta-label">Specialty</div>
@@ -1213,102 +1473,107 @@
                             <div class="meta-label">Last Contact</div>
                             <div class="meta-value">${p.last_contact || 'Never'}</div>
                         </div>
+                        <div class="meta-item">
+                            <div class="meta-label">Locations</div>
+                            <div class="meta-value">${addresses.length} location${addresses.length !== 1 ? 's' : ''}</div>
+                        </div>
                     </div>
                 </div>
 
                 <div class="section">
                     <div class="section-header">
-                        <h3>Contact Info</h3>
+                        <h3>Physician Profile</h3>
                         <div>
                             <button class="edit-btn" onclick="editPhysicianInfo()">Edit</button>
                             <button class="delete-btn" onclick="deletePhysician()">Delete</button>
                         </div>
                     </div>
                     <div class="contact-grid">
-                        ${p.address ? `
-                        <div class="contact-item">
-                            <div class="contact-icon">📍</div>
-                            <div class="contact-item-content">
-                                <div class="contact-item-label">Address</div>
-                                <div class="contact-item-value">${p.address}${p.city ? ', ' + p.city : ''}${p.zip ? ' ' + p.zip : ''}</div>
-                            </div>
-                        </div>` : ''}
-                        ${p.phone ? `
-                        <div class="contact-item">
-                            <div class="contact-icon">📞</div>
-                            <div class="contact-item-content">
-                                <div class="contact-item-label">Phone</div>
-                                <div class="contact-item-value"><a href="tel:${p.phone.replace(/\D/g,'')}">${p.phone}</a></div>
-                            </div>
-                        </div>` : ''}
-                        ${p.fax ? `
-                        <div class="contact-item">
-                            <div class="contact-icon">📠</div>
-                            <div class="contact-item-content">
-                                <div class="contact-item-label">Fax</div>
-                                <div class="contact-item-value">${p.fax}</div>
-                            </div>
-                        </div>` : ''}
                         ${p.email ? `
                         <div class="contact-item">
                             <div class="contact-icon">✉️</div>
                             <div class="contact-item-content">
-                                <div class="contact-item-label">Email</div>
+                                <div class="contact-item-label">Physician Email</div>
                                 <div class="contact-item-value"><a href="mailto:${p.email}">${p.email}</a></div>
                             </div>
                         </div>` : ''}
+                        ${p.general_notes ? `
+                        <div class="contact-item">
+                            <div class="contact-icon">📝</div>
+                            <div class="contact-item-content">
+                                <div class="contact-item-label">General Notes</div>
+                                <div class="contact-item-value">${p.general_notes}</div>
+                            </div>
+                        </div>` : ''}
+                        ${!p.email && !p.general_notes ? '<div class="empty-notice">Click Edit to add email and notes</div>' : ''}
                     </div>
                 </div>
 
                 <div class="section">
                     <div class="section-header">
-                        <h3>Practice Details</h3>
-                        <button class="edit-btn" onclick="editPracticeDetails()">Edit</button>
+                        <h3>Practice Locations</h3>
+                        <button class="edit-btn" onclick="openLocationModal()">+ Add Location</button>
                     </div>
-                    ${!p.office_hours && !p.office_staff && !p.receptionist_name && !p.best_days && !p.general_notes ?
-                        '<div class="empty-notice">Click Edit to add office hours, staff names, and other details</div>' :
-                        `<div class="contact-grid">
-                            ${p.office_hours ? `
-                            <div class="contact-item">
-                                <div class="contact-icon">🕐</div>
-                                <div class="contact-item-content">
-                                    <div class="contact-item-label">Office Hours</div>
-                                    <div class="contact-item-value">${p.office_hours}</div>
+                    ${addresses.length === 0 ?
+                        '<div class="empty-notice">No locations yet. Click + Add Location to add a practice address.</div>' :
+                        '<div class="locations-grid">' +
+                        addresses.map(addr => `
+                            <div class="location-card ${addr.is_primary ? 'primary' : ''}">
+                                <div class="location-card-header">
+                                    <div class="location-label">
+                                        ${addr.label || 'Office'}
+                                        ${addr.is_primary ? '<span class="location-badge">Primary</span>' : ''}
+                                    </div>
+                                    <div class="location-actions">
+                                        <button class="icon-btn" onclick="editLocation('${addr.id}')" title="Edit">✏️</button>
+                                        <button class="icon-btn" onclick="deleteLocation('${addr.id}')" title="Delete">🗑️</button>
+                                    </div>
                                 </div>
-                            </div>` : ''}
-                            ${p.office_staff ? `
-                            <div class="contact-item">
-                                <div class="contact-icon">👥</div>
-                                <div class="contact-item-content">
-                                    <div class="contact-item-label">Office Staff</div>
-                                    <div class="contact-item-value">${p.office_staff}</div>
+                                <div class="location-details">
+                                    ${addr.address ? `
+                                    <div class="location-detail">
+                                        <span class="location-detail-icon">📍</span>
+                                        <span class="location-detail-value">${addr.address}${addr.city ? ', ' + addr.city : ''}${addr.zip ? ' ' + addr.zip : ''}</span>
+                                    </div>` : ''}
+                                    ${addr.phone ? `
+                                    <div class="location-detail">
+                                        <span class="location-detail-icon">📞</span>
+                                        <span class="location-detail-value"><a href="tel:${addr.phone.replace(/\D/g,'')}">${addr.phone}</a></span>
+                                    </div>` : ''}
+                                    ${addr.fax ? `
+                                    <div class="location-detail">
+                                        <span class="location-detail-icon">📠</span>
+                                        <span class="location-detail-value">${addr.fax}</span>
+                                    </div>` : ''}
+                                    ${addr.practice_email ? `
+                                    <div class="location-detail">
+                                        <span class="location-detail-icon">✉️</span>
+                                        <span class="location-detail-value"><a href="mailto:${addr.practice_email}">${addr.practice_email}</a></span>
+                                    </div>` : ''}
+                                    ${addr.office_hours ? `
+                                    <div class="location-detail">
+                                        <span class="location-detail-icon">🕐</span>
+                                        <span class="location-detail-value">${addr.office_hours}</span>
+                                    </div>` : ''}
+                                    ${addr.office_staff ? `
+                                    <div class="location-detail">
+                                        <span class="location-detail-icon">👥</span>
+                                        <span class="location-detail-value">${addr.office_staff}</span>
+                                    </div>` : ''}
+                                    ${addr.receptionist_name ? `
+                                    <div class="location-detail">
+                                        <span class="location-detail-icon">👤</span>
+                                        <span class="location-detail-value">${addr.receptionist_name}</span>
+                                    </div>` : ''}
+                                    ${addr.best_days ? `
+                                    <div class="location-detail">
+                                        <span class="location-detail-icon">📅</span>
+                                        <span class="location-detail-value">${addr.best_days}</span>
+                                    </div>` : ''}
                                 </div>
-                            </div>` : ''}
-                            ${p.receptionist_name ? `
-                            <div class="contact-item">
-                                <div class="contact-icon">👤</div>
-                                <div class="contact-item-content">
-                                    <div class="contact-item-label">Main Receptionist</div>
-                                    <div class="contact-item-value">${p.receptionist_name}</div>
-                                </div>
-                            </div>` : ''}
-                            ${p.best_days ? `
-                            <div class="contact-item">
-                                <div class="contact-icon">📅</div>
-                                <div class="contact-item-content">
-                                    <div class="contact-item-label">Best Visit Days</div>
-                                    <div class="contact-item-value">${p.best_days}</div>
-                                </div>
-                            </div>` : ''}
-                            ${p.general_notes ? `
-                            <div class="contact-item">
-                                <div class="contact-icon">📝</div>
-                                <div class="contact-item-content">
-                                    <div class="contact-item-label">Notes</div>
-                                    <div class="contact-item-value">${p.general_notes}</div>
-                                </div>
-                            </div>` : ''}
-                        </div>`
+                            </div>
+                        `).join('') +
+                        '</div>'
                     }
                 </div>
 
@@ -1361,16 +1626,12 @@
             document.getElementById('firstName').value = p.first_name;
             document.getElementById('lastName').value = p.last_name;
             document.getElementById('practiceName').value = p.practice_name;
-            document.getElementById('address').value = p.address || '';
-            document.getElementById('city').value = p.city || '';
-            document.getElementById('zip').value = p.zip || '';
-            document.getElementById('phone').value = p.phone || '';
-            document.getElementById('fax').value = p.fax || '';
             document.getElementById('physicianEmail').value = p.email || '';
             document.getElementById('priority').value = p.priority || '';
             document.getElementById('specialty').value = p.specialty || '';
             document.getElementById('umConnection').value = p.um_connection || '';
             document.getElementById('patientVolume').value = p.patient_volume || p.mohs_volume || '';
+            document.getElementById('physicianGeneralNotes').value = p.general_notes || '';
             document.getElementById('physicianSaveBtn').textContent = 'Save Physician';
             document.getElementById('physicianSaveBtn').className = 'btn-primary';
             document.getElementById('physicianModal').classList.add('active');
@@ -1389,16 +1650,12 @@
                 first_name: document.getElementById('firstName').value,
                 last_name: document.getElementById('lastName').value,
                 practice_name: document.getElementById('practiceName').value,
-                address: document.getElementById('address').value,
-                city: document.getElementById('city').value,
-                zip: document.getElementById('zip').value,
-                phone: document.getElementById('phone').value,
-                fax: document.getElementById('fax').value,
                 email: document.getElementById('physicianEmail').value,
                 priority: document.getElementById('priority').value,
                 specialty: document.getElementById('specialty').value,
                 um_connection: document.getElementById('umConnection').value,
-                patient_volume: document.getElementById('patientVolume').value
+                patient_volume: document.getElementById('patientVolume').value,
+                general_notes: document.getElementById('physicianGeneralNotes').value
             };
 
             try {
@@ -1474,70 +1731,6 @@
             } catch (error) {
                 console.error('Delete error:', error);
                 showToast('Error deleting: ' + error.message, 'error');
-                updateSyncIndicators('error');
-            }
-        }
-
-        function editPracticeDetails() {
-            const p = currentPhysician;
-            document.getElementById('practiceEmail').value = p.practice_email || '';
-            document.getElementById('officeHours').value = p.office_hours || '';
-            document.getElementById('officeStaff').value = p.office_staff || '';
-            document.getElementById('receptionistName').value = p.receptionist_name || '';
-            document.getElementById('bestDays').value = p.best_days || '';
-            document.getElementById('generalNotes').value = p.general_notes || '';
-            document.getElementById('practiceSaveBtn').textContent = 'Save Changes';
-            document.getElementById('practiceSaveBtn').className = 'btn-primary';
-            document.getElementById('practiceModal').classList.add('active');
-        }
-
-        function closePracticeModal() {
-            document.getElementById('practiceModal').classList.remove('active');
-        }
-
-        async function savePracticeDetails(e) {
-            e.preventDefault();
-
-            const btn = document.getElementById('practiceSaveBtn');
-            if (btn.classList.contains('saving')) return; // Prevent double-tap
-
-            btn.textContent = 'Saving...';
-            btn.classList.add('saving');
-
-            const data = {
-                practice_email: document.getElementById('practiceEmail').value,
-                office_hours: document.getElementById('officeHours').value,
-                office_staff: document.getElementById('officeStaff').value,
-                receptionist_name: document.getElementById('receptionistName').value,
-                best_days: document.getElementById('bestDays').value,
-                general_notes: document.getElementById('generalNotes').value
-            };
-
-            try {
-                updateSyncIndicators('syncing');
-
-                const { error } = await db
-                    .from('physicians')
-                    .update(data)
-                    .eq('id', currentPhysician.id);
-
-                if (error) throw error;
-
-                Object.assign(currentPhysician, data);
-
-                btn.textContent = 'Saved!';
-                btn.classList.remove('saving');
-                btn.classList.add('saved');
-
-                renderProfile();
-                showToast('Practice details updated', 'success');
-                setTimeout(() => closePracticeModal(), 500);
-                updateSyncIndicators('synced');
-            } catch (error) {
-                console.error('Save error:', error);
-                showToast('Error saving: ' + error.message, 'error');
-                btn.textContent = 'Save Changes';
-                btn.classList.remove('saving');
                 updateSyncIndicators('error');
             }
         }
@@ -1646,6 +1839,142 @@
                 await loadContactLogs(currentPhysician.id);
                 renderProfile();
                 showToast('Note deleted', 'success');
+                updateSyncIndicators('synced');
+            } catch (error) {
+                console.error('Delete error:', error);
+                showToast('Error deleting: ' + error.message, 'error');
+                updateSyncIndicators('error');
+            }
+        }
+
+        // Location Modal Functions
+        function openLocationModal() {
+            editingLocationId = null;
+            document.getElementById('locationForm').reset();
+            document.getElementById('locationModalTitle').textContent = 'Add Location';
+            document.getElementById('locationIsPrimary').value = 'false';
+            document.getElementById('locationSaveBtn').textContent = 'Save Location';
+            document.getElementById('locationSaveBtn').className = 'btn-primary';
+            document.getElementById('locationModal').classList.add('active');
+        }
+
+        function closeLocationModal() {
+            document.getElementById('locationModal').classList.remove('active');
+        }
+
+        async function editLocation(locationId) {
+            const addresses = physicianAddresses[currentPhysician.id] || [];
+            const addr = addresses.find(a => a.id === locationId);
+            if (!addr) return;
+
+            editingLocationId = locationId;
+            document.getElementById('locationModalTitle').textContent = 'Edit Location';
+            document.getElementById('locationLabel').value = addr.label || '';
+            document.getElementById('locationIsPrimary').value = addr.is_primary ? 'true' : 'false';
+            document.getElementById('locationAddress').value = addr.address || '';
+            document.getElementById('locationCity').value = addr.city || '';
+            document.getElementById('locationZip').value = addr.zip || '';
+            document.getElementById('locationPhone').value = addr.phone || '';
+            document.getElementById('locationFax').value = addr.fax || '';
+            document.getElementById('locationEmail').value = addr.practice_email || '';
+            document.getElementById('locationHours').value = addr.office_hours || '';
+            document.getElementById('locationStaff').value = addr.office_staff || '';
+            document.getElementById('locationReceptionist').value = addr.receptionist_name || '';
+            document.getElementById('locationBestDays').value = addr.best_days || '';
+            document.getElementById('locationSaveBtn').textContent = 'Save Location';
+            document.getElementById('locationSaveBtn').className = 'btn-primary';
+            document.getElementById('locationModal').classList.add('active');
+        }
+
+        async function saveLocation(e) {
+            e.preventDefault();
+
+            const btn = document.getElementById('locationSaveBtn');
+            if (btn.classList.contains('saving')) return;
+
+            btn.textContent = 'Saving...';
+            btn.classList.add('saving');
+
+            const isPrimary = document.getElementById('locationIsPrimary').value === 'true';
+
+            const data = {
+                physician_id: currentPhysician.id,
+                label: document.getElementById('locationLabel').value,
+                is_primary: isPrimary,
+                address: document.getElementById('locationAddress').value,
+                city: document.getElementById('locationCity').value,
+                zip: document.getElementById('locationZip').value,
+                phone: document.getElementById('locationPhone').value,
+                fax: document.getElementById('locationFax').value,
+                practice_email: document.getElementById('locationEmail').value,
+                office_hours: document.getElementById('locationHours').value,
+                office_staff: document.getElementById('locationStaff').value,
+                receptionist_name: document.getElementById('locationReceptionist').value,
+                best_days: document.getElementById('locationBestDays').value
+            };
+
+            try {
+                updateSyncIndicators('syncing');
+
+                // If setting as primary, first unset any existing primary
+                if (isPrimary) {
+                    await db
+                        .from('physician_addresses')
+                        .update({ is_primary: false })
+                        .eq('physician_id', currentPhysician.id)
+                        .eq('is_primary', true);
+                }
+
+                if (editingLocationId) {
+                    const { error } = await db
+                        .from('physician_addresses')
+                        .update(data)
+                        .eq('id', editingLocationId);
+
+                    if (error) throw error;
+                    showToast('Location updated', 'success');
+                } else {
+                    const { error } = await db
+                        .from('physician_addresses')
+                        .insert(data);
+
+                    if (error) throw error;
+                    showToast('Location added', 'success');
+                }
+
+                btn.textContent = 'Saved!';
+                btn.classList.remove('saving');
+                btn.classList.add('saved');
+
+                await loadAddresses(currentPhysician.id);
+                renderProfile();
+                setTimeout(() => closeLocationModal(), 500);
+                updateSyncIndicators('synced');
+            } catch (error) {
+                console.error('Save error:', error);
+                showToast('Error saving: ' + error.message, 'error');
+                btn.textContent = 'Save Location';
+                btn.classList.remove('saving');
+                updateSyncIndicators('error');
+            }
+        }
+
+        async function deleteLocation(locationId) {
+            if (!confirm('Delete this location?')) return;
+
+            try {
+                updateSyncIndicators('syncing');
+
+                const { error } = await db
+                    .from('physician_addresses')
+                    .delete()
+                    .eq('id', locationId);
+
+                if (error) throw error;
+
+                await loadAddresses(currentPhysician.id);
+                renderProfile();
+                showToast('Location deleted', 'success');
                 updateSyncIndicators('synced');
             } catch (error) {
                 console.error('Delete error:', error);
