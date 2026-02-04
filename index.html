@@ -915,6 +915,81 @@
         .view-tab.active {
             background: #f97316;
         }
+
+        /* Admin Controls */
+        .admin-btn {
+            background: rgba(255,255,255,0.1);
+            border: 1px solid rgba(255,255,255,0.2);
+            color: white;
+            padding: 0.4rem 0.75rem;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            cursor: pointer;
+            margin-top: 0.5rem;
+            transition: all 0.2s;
+        }
+
+        .admin-btn:hover {
+            background: rgba(255,255,255,0.2);
+        }
+
+        .admin-panel {
+            background: #1a1a2e;
+            border: 1px solid #333;
+            border-radius: 8px;
+            padding: 1rem;
+            margin-top: 1rem;
+            display: none;
+        }
+
+        .admin-panel.show {
+            display: block;
+        }
+
+        .admin-panel h4 {
+            color: #f97316;
+            margin-bottom: 0.75rem;
+            font-size: 0.9rem;
+        }
+
+        .admin-panel p {
+            color: #aaa;
+            font-size: 0.8rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .btn-danger {
+            background: #dc2626;
+            color: white;
+            border: none;
+            padding: 0.6rem 1rem;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            cursor: pointer;
+            width: 100%;
+            margin-bottom: 0.5rem;
+            transition: all 0.2s;
+        }
+
+        .btn-danger:hover {
+            background: #b91c1c;
+        }
+
+        .btn-warning {
+            background: #f59e0b;
+            color: white;
+            border: none;
+            padding: 0.6rem 1rem;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            cursor: pointer;
+            width: 100%;
+            transition: all 0.2s;
+        }
+
+        .btn-warning:hover {
+            background: #d97706;
+        }
     </style>
 </head>
 <body>
@@ -935,6 +1010,13 @@
                 <h1>Territory CRM <span id="desktopSyncIndicator" class="sync-indicator synced"></span></h1>
                 <div class="subtitle">Miami Dermatology</div>
                 <div class="count" id="physicianCount">Loading...</div>
+                <button class="admin-btn" onclick="toggleAdminPanel()">Admin Settings</button>
+                <div class="admin-panel" id="adminPanel">
+                    <h4>Database Management</h4>
+                    <p>Clear all data and re-import from initial dataset.</p>
+                    <button class="btn-danger" onclick="clearDatabase()">Clear All Data</button>
+                    <button class="btn-warning" onclick="showImportSection()">Show Import Button</button>
+                </div>
             </div>
 
             <!-- View Tabs -->
@@ -2805,6 +2887,104 @@
             } catch (error) {
                 console.error('Delete error:', error);
                 showToast('Error deleting: ' + error.message, 'error');
+                updateSyncIndicators('error');
+            }
+        }
+
+        // Admin Panel Functions
+        function toggleAdminPanel() {
+            const panel = document.getElementById('adminPanel');
+            panel.classList.toggle('show');
+        }
+
+        function showImportSection() {
+            const importSection = document.getElementById('importSection');
+            if (importSection) {
+                importSection.style.display = 'block';
+            }
+            // Also show the empty state if a profile is being viewed
+            document.getElementById('mainContent').innerHTML = `
+                <div class="empty-state">
+                    <h2>Welcome to Territory CRM</h2>
+                    <p>Select a physician from the list to view their profile</p>
+                    <div class="import-section" id="importSection" style="max-width: 400px; margin: 2rem auto;">
+                        <h4>First Time Setup</h4>
+                        <p>Click below to import your physicians into Supabase.</p>
+                        <button class="btn-import" id="importBtn" onclick="importInitialData()">Import Physicians</button>
+                    </div>
+                </div>
+            `;
+            showToast('Import section is now visible', 'info');
+            toggleAdminPanel();
+        }
+
+        async function clearDatabase() {
+            const confirmMsg = 'Are you sure you want to DELETE ALL DATA?\n\nThis will remove:\n- All physicians\n- All practices\n- All locations\n- All contact logs\n\nThis cannot be undone!';
+
+            if (!confirm(confirmMsg)) return;
+
+            // Double confirmation for safety
+            if (!confirm('FINAL WARNING: Click OK to permanently delete all data.')) return;
+
+            try {
+                updateSyncIndicators('syncing');
+                showToast('Clearing database...', 'info');
+
+                // Delete in order to respect foreign key constraints
+                // 1. Delete contact logs
+                const { error: logsError } = await db
+                    .from('contact_logs')
+                    .delete()
+                    .neq('id', '00000000-0000-0000-0000-000000000000'); // Delete all rows
+                if (logsError) throw logsError;
+
+                // 2. Delete physician location assignments
+                const { error: assignError } = await db
+                    .from('physician_location_assignments')
+                    .delete()
+                    .neq('id', '00000000-0000-0000-0000-000000000000');
+                if (assignError) throw assignError;
+
+                // 3. Delete physicians
+                const { error: physError } = await db
+                    .from('physicians')
+                    .delete()
+                    .neq('id', '00000000-0000-0000-0000-000000000000');
+                if (physError) throw physError;
+
+                // 4. Delete practice locations
+                const { error: locError } = await db
+                    .from('practice_locations')
+                    .delete()
+                    .neq('id', '00000000-0000-0000-0000-000000000000');
+                if (locError) throw locError;
+
+                // 5. Delete practices
+                const { error: practError } = await db
+                    .from('practices')
+                    .delete()
+                    .neq('id', '00000000-0000-0000-0000-000000000000');
+                if (practError) throw practError;
+
+                // Clear local state
+                physicians = [];
+                practices = [];
+                practiceLocations = [];
+                physicianAssignments = {};
+                contactLogs = {};
+                currentPhysician = null;
+                currentPractice = null;
+
+                // Refresh UI
+                renderList();
+                showImportSection();
+
+                updateSyncIndicators('synced');
+                showToast('Database cleared successfully! You can now re-import data.', 'success');
+
+            } catch (error) {
+                console.error('Clear database error:', error);
+                showToast('Error clearing database: ' + error.message, 'error');
                 updateSyncIndicators('error');
             }
         }
