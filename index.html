@@ -1282,6 +1282,10 @@
                                 <label>Date *</label>
                                 <input type="date" id="contactDate" required>
                             </div>
+                            <div>
+                                <label>Time *</label>
+                                <input type="time" id="contactTime" required>
+                            </div>
                         </div>
                         <div>
                             <label>Notes *</label>
@@ -1517,7 +1521,10 @@ const INITIAL_PHYSICIANS = [
             const yyyy = today.getFullYear();
             const mm = String(today.getMonth() + 1).padStart(2, '0');
             const dd = String(today.getDate()).padStart(2, '0');
+            const hh = String(today.getHours()).padStart(2, '0');
+            const min = String(today.getMinutes()).padStart(2, '0');
             document.getElementById('contactDate').value = `${yyyy}-${mm}-${dd}`;
+            document.getElementById('contactTime').value = `${hh}:${min}`;
         }
 
         // Toast notifications
@@ -2291,7 +2298,7 @@ const INITIAL_PHYSICIANS = [
                             <div class="contact-entry">
                                 <div class="contact-entry-header">
                                     <div>
-                                        <span class="contact-entry-date">${e.contact_date}${e.author ? ' - ' + e.author : ''}</span>
+                                        <span class="contact-entry-date">${e.contact_date}${e.contact_time ? ' ' + e.contact_time : ''}${e.author ? ' - ' + e.author : ''}</span>
                                         <span class="contact-entry-timestamp">${formatTimestamp(e.created_at)}</span>
                                     </div>
                                     <div class="contact-entry-actions">
@@ -3043,6 +3050,7 @@ const INITIAL_PHYSICIANS = [
             const data = {
                 physician_id: currentPhysician.id,
                 contact_date: document.getElementById('contactDate').value,
+                contact_time: document.getElementById('contactTime').value,
                 author: document.getElementById('authorName').value,
                 notes: document.getElementById('contactNotes').value
             };
@@ -3099,6 +3107,7 @@ const INITIAL_PHYSICIANS = [
             editingContactId = logId;
             document.getElementById('contactModalTitle').textContent = 'Edit Contact Note';
             document.getElementById('contactDate').value = log.contact_date;
+            document.getElementById('contactTime').value = log.contact_time || '';
             document.getElementById('authorName').value = log.author || '';
             document.getElementById('contactNotes').value = log.notes;
             document.getElementById('contactModal').classList.add('active');
