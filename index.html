@@ -1721,18 +1721,18 @@ const INITIAL_PHYSICIANS = [
                 // Insert practices one by one to handle duplicates gracefully
                 const insertedPractices = [];
                 for (const name of practiceNames) {
-                    // First try to find existing practice
-                    const { data: existing } = await db.from('practices').select('*').eq('name', name).single();
+                    // First try to find existing practice - use maybeSingle() to avoid error on empty result
+                    const { data: existing } = await db.from('practices').select('*').eq('name', name).maybeSingle();
                     if (existing) {
                         insertedPractices.push(existing);
                     } else {
-                        const { data: newPractice, error: err } = await db.from('practices').insert({ name }).select().single();
+                        const { data: newPractice, error: err } = await db.from('practices').insert({ name }).select().maybeSingle();
                         if (err) {
                             console.log('Practice insert error for', name, err);
                             // Try to fetch it anyway (might have been created by another process)
-                            const { data: retry } = await db.from('practices').select('*').eq('name', name).single();
+                            const { data: retry } = await db.from('practices').select('*').eq('name', name).maybeSingle();
                             if (retry) insertedPractices.push(retry);
-                        } else {
+                        } else if (newPractice) {
                             insertedPractices.push(newPractice);
                         }
                     }
@@ -1785,25 +1785,25 @@ const INITIAL_PHYSICIANS = [
                 const physicianData = Array.from(physicianMap.values()).map(e => e.physician);
                 const insertedPhysicians = [];
                 for (const phys of physicianData) {
-                    // Check if physician already exists
+                    // Check if physician already exists - use maybeSingle() to avoid error on empty result
                     const { data: existing } = await db.from('physicians')
                         .select('*')
                         .ilike('first_name', phys.first_name)
                         .ilike('last_name', phys.last_name)
-                        .single();
+                        .maybeSingle();
                     if (existing) {
                         insertedPhysicians.push(existing);
                     } else {
-                        const { data: newPhys, error: err } = await db.from('physicians').insert(phys).select().single();
+                        const { data: newPhys, error: err } = await db.from('physicians').insert(phys).select().maybeSingle();
                         if (err) {
                             console.log('Physician insert error for', phys.first_name, phys.last_name, err);
                             const { data: retry } = await db.from('physicians')
                                 .select('*')
                                 .ilike('first_name', phys.first_name)
                                 .ilike('last_name', phys.last_name)
-                                .single();
+                                .maybeSingle();
                             if (retry) insertedPhysicians.push(retry);
-                        } else {
+                        } else if (newPhys) {
                             insertedPhysicians.push(newPhys);
                         }
                     }
@@ -1835,20 +1835,20 @@ const INITIAL_PHYSICIANS = [
                         .select('*')
                         .eq('practice_id', loc.practice_id)
                         .eq('address', loc.address)
-                        .single();
+                        .maybeSingle();
                     if (existing) {
                         insertedLocations.push(existing);
                     } else {
-                        const { data: newLoc, error: err } = await db.from('practice_locations').insert(loc).select().single();
+                        const { data: newLoc, error: err } = await db.from('practice_locations').insert(loc).select().maybeSingle();
                         if (err) {
                             console.log('Location insert error', err);
                             const { data: retry } = await db.from('practice_locations')
                                 .select('*')
                                 .eq('practice_id', loc.practice_id)
                                 .eq('address', loc.address)
-                                .single();
+                                .maybeSingle();
                             if (retry) insertedLocations.push(retry);
-                        } else {
+                        } else if (newLoc) {
                             insertedLocations.push(newLoc);
                         }
                     }
@@ -1888,7 +1888,7 @@ const INITIAL_PHYSICIANS = [
                         .select('*')
                         .eq('physician_id', assign.physician_id)
                         .eq('practice_location_id', assign.practice_location_id)
-                        .single();
+                        .maybeSingle();
                     if (!existing) {
                         const { error: err } = await db.from('physician_location_assignments').insert(assign);
                         if (!err) assignmentCount++;
