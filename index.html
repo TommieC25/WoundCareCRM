@@ -1015,7 +1015,7 @@
                     <h4>Database Management</h4>
                     <p>Clear all data and re-import from initial dataset.</p>
                     <button class="btn-danger" onclick="clearDatabase()">Clear All Data</button>
-                    <button class="btn-warning" onclick="showImportSection()">Show Import Button</button>
+                    <button class="btn-warning" onclick="importInitialData()">Clear & Import Fresh</button>
                 </div>
             </div>
 
@@ -1675,10 +1675,23 @@ const INITIAL_PHYSICIANS = [
         async function importInitialData() {
             const btn = document.getElementById('importBtn');
             btn.disabled = true;
-            btn.textContent = 'Importing...';
+            btn.textContent = 'Clearing old data...';
 
             try {
                 updateSyncIndicators('syncing');
+
+                // FIRST: Clear all existing data to avoid duplicates
+                console.log('Clearing existing data...');
+
+                // Delete in order (foreign key constraints)
+                await db.from('contact_logs').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+                await db.from('physician_location_assignments').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+                await db.from('physicians').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+                await db.from('practice_locations').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+                await db.from('practices').delete().neq('id', '00000000-0000-0000-0000-000000000000');
+
+                console.log('Old data cleared, now importing fresh...');
+                btn.textContent = 'Importing...';
 
                 // Step 1: Create unique practices
                 const practiceNames = [...new Set(INITIAL_PHYSICIANS.map(p => p.practice_name))];
