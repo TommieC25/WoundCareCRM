@@ -1,0 +1,167 @@
+Physician First Name,Physician Last Name,Specialty,Facility (full name),Address,City,State,Zip,Phone Number,County,Source,UM Connection,Tier,Rationale
+Michael,Adler,Podiatry,Adler Foot & Ankle,1380 NE Miami Gardens Dr Ste 235,North Miami Beach,FL,33179.0,305-935-3999,Miami-Dade,Perplexity,,3,DFU/post-op podiatry wound flow
+Charlton,Adler,Podiatry,Adler Foot & Ankle,1380 NE Miami Gardens Dr,North Miami,FL,33179.0,(305) 935-3990,Miami-Dade,Validated List,,3,DFU/post-op podiatry wound flow
+David,Roth,Dermatology,Advanced Dermatology & Cosmetic Surgery,1190 NE 163rd St,North Miami Beach,FL,33162.0,305-944-4000,Miami-Dade,Perplexity,,5,High procedure dermatology wounds
+William,Jones,Dermatology,Advanced Dermatology of Palm Beach County,3401 PGA Blvd Ste 200,Palm Beach Gardens,FL,33410.0,561-622-7600,Palm Beach,Perplexity,,5,High procedure dermatology wounds
+Mark,Nestor,Dermatology,Advanced Dermatology,1190 NE 163rd St,North Miami,FL,33162.0,(305) 944-4000,Miami-Dade,Validated List,,5,High procedure dermatology wounds
+Samantha,Fisher,Dermatology,Advanced Dermatology,3401 PGA Blvd,Palm Beach Gardens,FL,33410.0,(561) 622-7600,Palm Beach,Validated List,,5,High procedure dermatology wounds
+Neil,Strauss,Podiatry,Advanced Foot Care,1350 NE 125th St,Miami,FL,33161.0,(305) 899-3660,Miami-Dade,Validated List,,3,DFU/post-op podiatry wound flow
+Robert,Jones,Podiatry,Advanced Footcare Centers,1350 NE 125th St Ste 101,Miami,FL,33161.0,305-899-3668,Miami-Dade,Perplexity,,2,DFU/post-op podiatry wound flow
+James,Brown,Podiatry,Ankle & Foot Care Specialists of South Florida,4001 Hollywood Blvd Ste 205,Hollywood,FL,33021.0,954-987-9200,Broward,Perplexity,,2,DFU/post-op podiatry wound flow
+Robert,Baker,Orthopedic Surgery,Atlantis Orthopaedics,101 JFK Dr Ste 300,Atlantis,FL,33462.0,561-967-6000,Palm Beach,Perplexity,,5,Wound-adjacent specialty with post-op/complex wound potential
+Rommel,Francisco,Orthopedic Surgery,Atlantis Orthopedics,101 JFK Dr S,Atlantis,FL,33462.0,(561) 967-6000,Palm Beach,Validated List,,5,Wound-adjacent specialty with post-op/complex wound potential
+Trish,Stephens,Wound Care / Hyperbaric Medicine,Aventura Hospital Medical Center – Wound Healing Center,20900 Biscayne Blvd,Aventura,FL,20900.0,305-682-7000,Miami-Dade,ChatGPT_Validated,,1,Dedicated wound/HBOT program; Hospital/system referral volume
+Maria,Garcia,Wound Care,Aventura Hospital Medical Center – Wound Healing Center,20900 Biscayne Blvd,Aventura,FL,33180.0,305-682-7000,Miami-Dade,Perplexity,,1,Dedicated wound/HBOT program; Hospital/system referral volume
+Trish,Stephens,Wound Care,Aventura Hospital,20900 Biscayne Blvd,Aventura,FL,33180.0,(305) 682-7000,Miami-Dade,Validated List,,2,Dedicated wound/HBOT program; Hospital/system referral volume
+Carlos,Rodriguez,Wound Care,Baptist Health Homestead Hospital – Wound Care,975 Baptist Way,Homestead,FL,33033.0,786-243-8000,Miami-Dade,Perplexity,,1,Dedicated wound/HBOT program; Hospital/system referral volume
+Subhadeep,Paul,Wound Care,Baptist Health Homestead,975 Baptist Way,Homestead,FL,33033.0,(786) 243-8000,Miami-Dade,Validated List,,2,Dedicated wound/HBOT program; Hospital/system referral volume
+Carlos,Palacio,Wound Care,Baptist Hospital of Miami Wound Care,8900 N Kendall Dr,Miami,FL,33176.0,786-596-2000,Miami-Dade,Perplexity,,1,Dedicated wound/HBOT program; Hospital/system referral volume
+Juan,Bravo,Wound Care,Baptist Hospital,8900 N Kendall Dr,Miami,FL,33176.0,(786) 596-2000,Miami-Dade,Validated List,,2,Dedicated wound/HBOT program; Hospital/system referral volume
+Devorah,Shagalov,Dermatology,Biscayne Dermatology,"2800 Biscayne Blvd, Suite 1010",Miami,FL,33137.0,(786) 607-4544,Miami-Dade,Original 14,,5,High procedure dermatology wounds
+,,Podiatry,Boca Foot Care,21015 Powerline Rd Ste B-8,Boca Raton,FL,21015.0,561-338-9100,Palm Beach,ChatGPT_ToInvestigate,,3,DFU/post-op podiatry wound flow
+Richard,Taylor,Podiatry,Boca Foot Care,21015 Powerline Rd Ste B-8,Boca Raton,FL,33433.0,561-338-9100,Palm Beach,Perplexity,,3,DFU/post-op podiatry wound flow
+Michael,Cohen,Orthopedic Surgery (Foot & Ankle),Boca Raton Orthopaedic Group,21644 State Rd 7,Boca Raton,FL,21644.0,561-394-6200,Palm Beach,ChatGPT_Validated,,4,Wound-adjacent specialty with post-op/complex wound potential
+William,Brown,Orthopedic Surgery,Boca Raton Orthopaedic Group,21644 State Rd 7,Boca Raton,FL,33428.0,561-394-6200,Palm Beach,Perplexity,,4,Wound-adjacent specialty with post-op/complex wound potential
+Michael,Cohen,Orthopedic Surgery,Boca Raton Orthopedics,21644 State Rd 7,Boca Raton,FL,33428.0,(561) 394-6200,Palm Beach,Validated List,,5,Wound-adjacent specialty with post-op/complex wound potential
+Richard,Scott,Dermatology,Broward Dermatology Associates,3000 Coral Hills Dr Ste 265,Coral Springs,FL,33065.0,954-752-2633,Broward,Perplexity,,4,High procedure dermatology wounds
+Juan,Bravo,Wound Care,Broward Health Center for Wound Care & Hyperbaric Medicine,3000 Coral Hills Dr,Coral Springs,FL,33065.0,954-344-3228,Broward,Perplexity,,1,Dedicated wound/HBOT program; Hospital/system referral volume
+David,Lorber,Wound Care,Broward Health Imperial Point Wound Care,6401 N Federal Hwy,Fort Lauderdale,FL,33308.0,954-776-8500,Broward,Perplexity,,1,Dedicated wound/HBOT program; Hospital/system referral volume
+Mark,Johnson,Wound Care,Broward Health North – Wound Care Center,201 E Sample Rd,Deerfield Beach,FL,33064.0,954-786-5300,Broward,Perplexity,,1,Dedicated wound/HBOT program; Hospital/system referral volume
+Colette,D'Altilio,Wound Care,Broward Health,201 E Sample Rd,Deerfield Beach,FL,33064.0,(954) 786-5300,Broward,Validated List,,2,Dedicated wound/HBOT program; Hospital/system referral volume
+Juan,Bravo,Wound Care,Broward Health,3000 Coral Hills Dr,Coral Springs,FL,33065.0,(954) 344-3220,Broward,Validated List,,2,Dedicated wound/HBOT program; Hospital/system referral volume
+Brian,Sigal,Wound Care,Broward Health,6401 N Federal Hwy,Fort Lauderdale,FL,33308.0,(954) 776-8500,Broward,Validated List,,2,Dedicated wound/HBOT program; Hospital/system referral volume
+Robert,Miller,Vascular Surgery,Broward Vascular Institute,1212 SE 2nd Ave,Fort Lauderdale,FL,33316.0,954-764-5551,Broward,Perplexity,,3,PAD/CLI-linked chronic wounds
+Thomas,Wilson,Vascular Surgery,Cardiovascular Associates of Palm Beach,1210 S Old Dixie Hwy,Atlantis,FL,33462.0,561-968-7111,Palm Beach,Perplexity,,3,PAD/CLI-linked chronic wounds
+Christopher,Hawk,Vascular Surgery,Cardiovascular Institute,1210 S Old Dixie Hwy,Atlantis,FL,33462.0,(561) 968-7110,Palm Beach,Validated List,,3,PAD/CLI-linked chronic wounds
+James,Martin,Dermatology,Center for Dermatology & Skin Surgery,1645 Palm Beach Lakes Blvd Ste 1200,West Palm Beach,FL,33401.0,561-686-8080,Palm Beach,Perplexity,,4,High procedure dermatology wounds
+T.J.,Giuffrida,Dermatology,Center for Dermatology,1645 Palm Beach Lakes Blvd,West Palm Beach,FL,33401.0,(561) 686-8080,Palm Beach,Validated List,,4,High procedure dermatology wounds
+Daniel,Smith,Podiatry,Certified Foot & Ankle Specialists,850 Ives Dairy Rd Ste T-12,Miami,FL,33179.0,305-682-9090,Miami-Dade,Perplexity,,2,DFU/post-op podiatry wound flow
+Kyle,Kinmon,Podiatry,Certified Foot & Ankle,850 Ives Dairy Rd,Miami,FL,33179.0,(305) 682-9090,Miami-Dade,Validated List,,3,DFU/post-op podiatry wound flow
+William,Thompson,Dermatology,Delray Dermatology + Cosmetic Center,5130 Linton Blvd Ste A2,Delray Beach,FL,33484.0,561-499-9900,Palm Beach,Perplexity,,4,High procedure dermatology wounds
+Francesca,Lewis,Dermatology,Delray Dermatology,5130 Linton Blvd,Delray Beach,FL,33484.0,(561) 499-9900,Palm Beach,Validated List,,5,High procedure dermatology wounds
+James,White,Wound Care,Delray Medical Center – Wound Treatment Center,5352 Linton Blvd,Delray Beach,FL,33484.0,561-498-4440,Palm Beach,Perplexity,,1,Dedicated wound/HBOT program; Hospital/system referral volume
+Andrew,Klapper,Wound Care,Delray Medical Center,5352 Linton Blvd,Delray Beach,FL,33484.0,(561) 498-4440,Palm Beach,Validated List,,1,Dedicated wound/HBOT program; Hospital/system referral volume
+Michael,White,Dermatology,Dermatology & Skin Care Associates of South Florida,901 N Flamingo Rd Ste 102,Pembroke Pines,FL,33028.0,954-437-8080,Broward,Perplexity,,4,High procedure dermatology wounds
+T.J.,Giuffrida,Dermatology,Dermatology and Skin Cancer Center,3275 Ponce de Leon Blvd,Coral Gables,FL,33134.0,(305) 461-2000,Miami-Dade,Original 14,,4,High procedure dermatology wounds
+Jon,Ward,Dermatology,Dermatology Associates,2400 N Federal Hwy,Fort Lauderdale,FL,33305.0,(954) 566-7110,Broward,Validated List,,4,High procedure dermatology wounds
+Sarah,Taylor,Dermatology/Mohs,Dermatology Specialists of South Florida,2400 N Federal Hwy Ste 300,Fort Lauderdale,FL,33305.0,954-566-7111,Broward,Perplexity,,4,High procedure dermatology wounds
+James,Davis,Podiatry,Elite Foot & Ankle Specialists,1645 Palm Beach Lakes Blvd Ste 900,West Palm Beach,FL,33401.0,561-684-5050,Palm Beach,Perplexity,,2,DFU/post-op podiatry wound flow
+Francisco,Kerdel,Dermatology,Florida Academic Dermatology Center,"475 Biltmore Way, Suite 207",Coral Gables,FL,33134.0,(305) 324-2110,Miami-Dade,Original 14,,4,High procedure dermatology wounds
+Francisco,Kerdel,Dermatology,Florida Academic Dermatology Center,"836 Ponce De Leon Blvd, Suite 204",Coral Gables,FL,33134.0,(305) 324-2110,Miami-Dade,Original 14,,4,High procedure dermatology wounds
+Carlos,Matos,Podiatry,Florida Foot & Ankle Specialists,8200 NW 27th St Ste 108,Doral,FL,33122.0,786-662-3893,Miami-Dade,Perplexity,,2,DFU/post-op podiatry wound flow
+Elbys,Era,Podiatry,Florida Foot & Ankle,8200 NW 27th St,Doral,FL,33122.0,(786) 662-3890,Miami-Dade,Validated List,,3,DFU/post-op podiatry wound flow
+David,Harris,Wound Care,Florida Medical Center – Wound Care & Hyperbaric Medicine,5000 W Oakland Park Blvd,Lauderdale Lakes,FL,33313.0,954-735-6000,Broward,Perplexity,,1,Dedicated wound/HBOT program; Hospital/system referral volume
+Edward,Dauer,Wound Care,Florida Medical Center,5000 W Oakland Park Blvd,Lauderdale Lakes,FL,33313.0,(954) 735-6000,Broward,Validated List,,1,Dedicated wound/HBOT program; Hospital/system referral volume
+Michael,Brown,Podiatry,Foot & Ankle Associates of South Florida,1000 W State Rd 84 Ste 120,Fort Lauderdale,FL,33315.0,954-472-3668,Broward,Perplexity,,2,DFU/post-op podiatry wound flow
+Iliya,Beylin,Podiatry,Foot & Ankle Specialists,1000 W State Rd 84,Fort Lauderdale,FL,33315.0,(954) 472-3660,Broward,Validated List,,2,DFU/post-op podiatry wound flow
+Lisa,Chen,Dermatology,Forefront Dermatology,6280 Sunset Dr Ste 402,South Miami,FL,33143.0,305-665-0222,Miami-Dade,Perplexity,,5,High procedure dermatology wounds
+Tamara,Lior,Dermatology,Forefront Dermatology,6280 Sunset Dr,South Miami,FL,33143.0,(305) 665-0220,Miami-Dade,Validated List,,5,High procedure dermatology wounds
+Thomas,Martin,Wound Care,Good Samaritan Medical Center – Wound Care,1309 N Flagler Dr,West Palm Beach,FL,33401.0,561-650-2000,Palm Beach,Perplexity,,1,Dedicated wound/HBOT program; Hospital/system referral volume
+Neil,Piwovar,Wound Care,Good Samaritan,1309 N Flagler Dr,West Palm Beach,FL,33401.0,(561) 650-2000,Palm Beach,Validated List,,2,Dedicated wound/HBOT program
+Martin,Zaiac,Dermatology,Greater Miami Skin & Laser Center,"4308 Alton Road, Suite 750",Miami Beach,FL,33140.0,(305) 532-4478,Miami-Dade,Original 14,,4,High procedure dermatology wounds
+Martin,Zaiac,Dermatology,Greater Miami Skin & Laser Center,[Research needed],Hallandale Beach,FL,,(305) 532-4478,,Original 14,,4,High procedure dermatology wounds
+Martin,Zaiac,Dermatology,Greater Miami Skin & Laser Center,[Research needed],Key West,FL,,(305) 532-4478,,Original 14,,4,High procedure dermatology wounds
+Robert,Williams,Wound Care,HCA Florida JFK North Hospital – Wound Care,2201 45th St,West Palm Beach,FL,33407.0,561-840-4500,Palm Beach,Perplexity,,1,Dedicated wound/HBOT program; Hospital/system referral volume
+Thomas,Wilson,Wound Care,HCA Florida Mercy Hospital Wound Care,3663 S Miami Ave,Miami,FL,33133.0,305-285-2181,Miami-Dade,Perplexity,,1,Dedicated wound/HBOT program; Hospital/system referral volume
+Lisa,Roberts,Wound Care,HCA Florida Northwest Hospital – Wound Care,2801 N State Rd 7,Margate,FL,33063.0,954-974-0400,Broward,Perplexity,,1,Dedicated wound/HBOT program; Hospital/system referral volume
+David,Johnson,Wound Care,HCA Florida University Hospital – Wound Care,7201 N University Dr,Davie,FL,33328.0,954-475-4400,Broward,Perplexity,,1,Dedicated wound/HBOT program; Hospital/system referral volume
+Michael,Smith,Wound Care/Hyperbaric,HCA Florida Woodmont Hospital – Wound Care & Hyperbaric Medicine,7201 N University Dr,Tamarac,FL,33321.0,954-721-2200,Broward,Perplexity,,1,Dedicated wound/HBOT program; Hospital/system referral volume
+Shaun,Isaac,Wound Care,HCA Florida,2201 45th St,West Palm Beach,FL,33407.0,(561) 840-4500,Palm Beach,Validated List,,2,Dedicated wound/HBOT program; Hospital/system referral volume
+Robert,Snyder,Wound Care,HCA Florida,2801 N State Rd 7,Margate,FL,33063.0,(954) 974-0400,Broward,Validated List,,2,Dedicated wound/HBOT program; Hospital/system referral volume
+Kyle,Eldredge,Wound Care,HCA Florida,3663 S Miami Ave,Miami,FL,33133.0,(305) 285-2180,Miami-Dade,Validated List,,2,Dedicated wound/HBOT program; Hospital/system referral volume
+Steven,Vanni,Wound Care,HCA Florida,7201 N University Dr,Davie,FL,33328.0,(954) 475-4400,Broward,Validated List,,2,Dedicated wound/HBOT program; Hospital/system referral volume
+Safia,Ali,Wound Care,HCA Florida,7201 N University Dr,Tamarac,FL,33321.0,(954) 721-2200,Broward,Validated List,,2,Dedicated wound/HBOT program; Hospital/system referral volume
+Kyle,Eldredge,Wound Care / Hyperbaric Medicine,HCA Kendall Hyperbaric Wound Center,11750 SW 40th St,Miami,FL,11750.0,305-222-6763,Miami-Dade,ChatGPT_Validated,,1,Dedicated wound/HBOT program; Hospital/system referral volume
+Robert,Jimenez,Wound Care/Hyperbaric,HCA Kendall Hyperbaric Wound Center,11750 SW 40th St,Miami,FL,33175.0,305-222-6763,Miami-Dade,Perplexity,,1,Dedicated wound/HBOT program; Hospital/system referral volume
+Kyle,Eldredge,Wound Care,HCA Kendall,11750 SW 40th St,Miami,FL,33175.0,(305) 222-6760,Miami-Dade,Validated List,,2,Dedicated wound/HBOT program; Hospital/system referral volume
+Lisa,Anderson,Dermatology,Hollywood Dermatology & Cosmetic Surgery,3850 Hollywood Blvd Ste 101,Hollywood,FL,33021.0,954-922-3707,Broward,Perplexity,,5,High procedure dermatology wounds
+Julian,Moore,Dermatology,Hollywood Dermatology,3850 Hollywood Blvd,Hollywood,FL,33021.0,(954) 922-3700,Broward,Validated List,,5,High procedure dermatology wounds
+Jory,Fine,Wound Care,Holy Cross Health Wound Healing & Hyperbarics (Healogics),1000 NE 56th St,Fort Lauderdale,FL,33334.0,954-202-4877,Broward,Perplexity,,1,Dedicated wound/HBOT program
+Cornelius,Scannell,Wound Care,Holy Cross Hospital,1000 NE 56th St,Fort Lauderdale,FL,33334.0,(954) 202-4870,Broward,Validated List,,2,Dedicated wound/HBOT program; Hospital/system referral volume
+Stephen,Davis,Wound Care,Jackson Health System Wound Care,1400 NW 12th Ave,Miami,FL,33136.0,305-243-6704,Miami-Dade,Perplexity,,1,Dedicated wound/HBOT program; Hospital/system referral volume
+Robert,Kirsner,Wound Care,Jackson Health,1400 NW 12th Ave,Miami,FL,33136.0,(305) 243-6700,Miami-Dade,Validated List,Possible,2,Dedicated wound/HBOT program; Hospital/system referral volume
+William,Anderson,Wound Care,Jupiter Medical Center – Wound Care,1210 S Old Dixie Hwy,Jupiter,FL,33458.0,561-263-2234,Palm Beach,Perplexity,,1,Dedicated wound/HBOT program; Hospital/system referral volume
+Roni,Sehayik,Wound Care,Jupiter Medical Center,1210 S Old Dixie Hwy,Jupiter,FL,33458.0,(561) 263-2230,Palm Beach,Validated List,,1,Dedicated wound/HBOT program; Hospital/system referral volume
+Susana,Leal-Khouri,Dermatology,Khouri Dermatology,"103400 Overseas Highway, Suite 237",Key Largo,FL,33037.0,(305) 361-8200,,Original 14,,5,High procedure dermatology wounds
+Susana,Leal-Khouri,Dermatology,Khouri Dermatology,"2750 SW 37th Avenue, Suite 1",Miami,FL,33133.0,(305) 361-8200,Miami-Dade,Original 14,,5,High procedure dermatology wounds
+Susana,Leal-Khouri,Dermatology,Khouri Dermatology,"580 Crandon Blvd, Suite 101",Key Biscayne,FL,33149.0,(305) 361-8200,,Original 14,,5,High procedure dermatology wounds
+Blane,Shatkin,Wound Care/Plastic Surgery,Memorial Center for Wound Healing & Hyperbaric Medicine,7800 Sheridan St,Pembroke Pines,FL,33024.0,954-883-8014,Broward,Perplexity,,1,Dedicated wound/HBOT program; Hospital/system referral volume
+Blane,Shatkin,Wound Care,Memorial Center,7800 Sheridan St,Pembroke Pines,FL,33024.0,(954) 883-8010,Broward,Validated List,,1,Dedicated wound/HBOT program; Hospital/system referral volume
+Richard,Thompson,Wound Care/Hyperbaric,Memorial Hospital West – Wound Care & Hyperbaric Medicine,703 N Flamingo Rd,Pembroke Pines,FL,33028.0,954-844-6870,Broward,Perplexity,,1,Dedicated wound/HBOT program; Hospital/system referral volume
+Blane,Shatkin,Wound Care,Memorial Hospital,703 N Flamingo Rd,Pembroke Pines,FL,33028.0,(954) 844-6870,Broward,Validated List,,2,Dedicated wound/HBOT program; Hospital/system referral volume
+Carlos,Lopez,Vascular Surgery,Miami Cardiac & Vascular Institute (Baptist Health),8900 N Kendall Dr,Miami,FL,33176.0,786-596-2000,Miami-Dade,Perplexity,,2,Hospital/system referral volume; PAD/CLI-linked chronic wounds
+Barry,Katzen,Vascular Surgery,Miami Cardiac & Vascular,8900 N Kendall Dr,Miami,FL,33176.0,(786) 596-2000,Miami-Dade,Validated List,,3,PAD/CLI-linked chronic wounds
+Maria,Garcia,Dermatology,Miami Center for Dermatology,4308 Alton Rd,Miami Beach,FL,33140.0,305-532-4060,Miami-Dade,Perplexity,,4,High procedure dermatology wounds
+Deborah,Longwill,Dermatology (Surgical / Mohs),Miami Center for Dermatology,4308 Alton Rd,Miami,FL,33140.0,305-532-4060,Miami-Dade,ChatGPT_Validated,,4,High procedure dermatology wounds
+Deborah,Longwill,Dermatology,Miami Center for Dermatology,4308 Alton Rd,Miami,FL,33140.0,(305) 532-4060,Miami-Dade,Validated List,,4,High procedure dermatology wounds
+Maria,Garcia,Podiatry,Miami Foot & Ankle Specialists,8950 N Kendall Dr Ste 304,Miami,FL,33176.0,305-274-3668,Miami-Dade,Perplexity,,2,DFU/post-op podiatry wound flow
+Daniel,Lee,Plastic Surgery,Miami Plastic Surgery Institute,8900 N Kendall Dr Ste 304E,Miami,FL,33176.0,305-270-7777,Miami-Dade,Perplexity,,5,Wound-adjacent specialty with post-op/complex wound potential
+Marcelo,Ghersi,Plastic Surgery,Miami Plastic Surgery,8900 N Kendall Dr,Miami,FL,33176.0,(305) 270-7770,Miami-Dade,Validated List,,5,Wound-adjacent specialty with post-op/complex wound potential
+James,Jones,Vascular Surgery,Miami Vascular Specialists,8940 N Kendall Dr Ste 706E,Miami,FL,33176.0,305-273-7773,Miami-Dade,Perplexity,,3,PAD/CLI-linked chronic wounds
+Harib,Ezaldein,Dermatology,Mohs-Guy.com / Luminary Dermatology,"4770 Biscayne Blvd, Suite 900",Miami,FL,33137.0,(786) 664-7489,Miami-Dade,Original 14,,5,High procedure dermatology wounds
+Harib,Ezaldein,Dermatology,Mohs-Guy.com / Luminary Dermatology,"6705 SW 57th Ave, Suite 314",South Miami,FL,33143.0,(305) 361-8200,Miami-Dade,Original 14,,5,High procedure dermatology wounds
+Harib,Ezaldein,Dermatology,Mohs-Guy.com / Luminary Dermatology,"925 NE 30th Terrace, Suite 308",Homestead,FL,33033.0,(786) 670-9799,Miami-Dade,Original 14,,5,High procedure dermatology wounds
+Robert,Zeher,Vascular Surgery,Mount Sinai Medical Center Vascular Surgery,4300 Alton Rd,Miami Beach,FL,33140.0,305-674-2273,Miami-Dade,Perplexity,,2,Hospital/system referral volume; PAD/CLI-linked chronic wounds
+Jonathan,Iglesias,Vascular Surgery,Mount Sinai Medical Center,4300 Alton Rd,Miami Beach,FL,33140.0,(305) 674-2270,Miami-Dade,Validated List,,2,Hospital/system referral volume; PAD/CLI-linked chronic wounds
+Carlos,Lopez,Dermatology,North Miami Dermatology,125 NW 15th St,North Miami,FL,33168.0,305-754-9600,Miami-Dade,Perplexity,,5,High procedure dermatology wounds
+Carlos,Rodriguez,Wound Care,North Shore Medical Center – Wound Care,1100 NW 95th St,Miami,FL,33150.0,305-835-6000,Miami-Dade,Perplexity,,1,Dedicated wound/HBOT program; Hospital/system referral volume
+Imaze,Davis,Wound Care,North Shore Medical Center,1100 NW 95th St,Miami,FL,33150.0,(305) 835-6000,Miami-Dade,Validated List,,1,Dedicated wound/HBOT program; Hospital/system referral volume
+Joshua,Fox,Dermatology,Orah Dermatology,"12550 Biscayne Blvd, Suite 304",North Miami,FL,33181.0,(305) 239-9191,Miami-Dade,Original 14,,5,High procedure dermatology wounds
+Joshua,Fox,Dermatology,Orah Dermatology,7700 SW 104th Street,Miami,FL,33156.0,(305) 239-9191,Miami-Dade,Original 14,,5,High procedure dermatology wounds
+James,Carter,Orthopedic Surgery,Orthopedic Center of Palm Beach County (Foot & Ankle),101 JFK Dr,Atlantis,FL,33462.0,561-967-6500,Palm Beach,Perplexity,,4,Wound-adjacent specialty with post-op/complex wound potential
+Steven,Mann,Orthopedic Surgery,Orthopedic Center,101 JFK Dr,Atlantis,FL,33462.0,(561) 967-6500,Palm Beach,Validated List,,4,Wound-adjacent specialty with post-op/complex wound potential
+Sarah,Thomas,Vascular Surgery,Palm Beach Cardiovascular Clinic,1701 6th Ave S Ste 210,Lake Worth,FL,33460.0,561-585-5555,Palm Beach,Perplexity,,3,PAD/CLI-linked chronic wounds
+David,Martin,Dermatology,Palm Beach Dermatology Group,600 Village Square Xing Ste 201,Palm Beach Gardens,FL,33410.0,561-627-6979,Palm Beach,Perplexity,,4,High procedure dermatology wounds
+Adam,Plotkin,Dermatology,Palm Beach Dermatology,600 Village Square Crossing,Palm Beach Gardens,FL,33410.0,(561) 627-6970,Palm Beach,Validated List,,5,High procedure dermatology wounds
+Karen,Lee,Podiatry,Palm Beach Foot & Ankle,6609 W Woolbright Rd Ste 418,Boynton Beach,FL,33437.0,561-244-4980,Palm Beach,Perplexity,,3,DFU/post-op podiatry wound flow
+Hisham,Ashry,Podiatry,Palm Beach Foot & Ankle,6609 W Woolbright Rd,Boynton Beach,FL,33437.0,(561) 244-4980,Palm Beach,Validated List,,3,DFU/post-op podiatry wound flow
+Michael,Scoma,Wound Care,Palm Beach Health Network Wound Care,901 45th St,West Palm Beach,FL,33407.0,561-844-6300,Palm Beach,Perplexity,,1,Dedicated wound/HBOT program
+Thomas,Harris,Orthopedic Surgery,Palm Beach Orthopaedic Institute – Foot & Ankle,901 45th St Ste 202,West Palm Beach,FL,33407.0,561-844-5255,Palm Beach,Perplexity,,4,Wound-adjacent specialty with post-op/complex wound potential
+Kenneth,Gerszberg,Orthopedic Surgery,Palm Beach Orthopedics,901 45th St S,West Palm Beach,FL,33407.0,(561) 844-5250,Palm Beach,Validated List,,5,Wound-adjacent specialty with post-op/complex wound potential
+William,Wilson,Podiatry,Palm Beach Podiatry Group,1411 N Flagler Dr Ste 880,West Palm Beach,FL,33401.0,561-833-6777,Palm Beach,Perplexity,,2,DFU/post-op podiatry wound flow
+Adelheid,Reinoso,Wound Care,Palm Beach Regional,901 45th St,West Palm Beach,FL,33407.0,(561) 844-6300,Palm Beach,Validated List,,2,Dedicated wound/HBOT program
+David,Lewis,Vascular Surgery,Palm Beach Vascular Specialists,1645 Palm Beach Lakes Blvd Ste 1200,West Palm Beach,FL,33401.0,561-684-5200,Palm Beach,Perplexity,,3,PAD/CLI-linked chronic wounds
+Michael,Rogoff,Vascular Surgery,Palm Beach Vascular,1645 Palm Beach Lakes Blvd,West Palm Beach,FL,33401.0,(561) 684-5200,Palm Beach,Validated List,,3,PAD/CLI-linked chronic wounds
+Julio,Sanguily,Vascular Surgery,Palm Vascular Centers,1210 S Old Dixie Hwy,Jupiter,FL,33458.0,561-694-7700,Palm Beach,Perplexity,,3,PAD/CLI-linked chronic wounds
+Robert,Beasley,Vascular Surgery,Palm Vascular,1210 S Old Dixie Hwy,Jupiter,FL,33458.0,(561) 694-7700,Palm Beach,Validated List,,3,PAD/CLI-linked chronic wounds
+Ary,Krau,Plastic Surgery,Plastic Surgery Associates,6280 Sunset Dr,South Miami,FL,33143.0,(305) 665-0220,Miami-Dade,Validated List,,5,Wound-adjacent specialty with post-op/complex wound potential
+Patricia,Miller,Plastic Surgery,Plastic Surgery Institute of Miami,6280 Sunset Dr Ste 402,South Miami,FL,33143.0,305-665-0222,Miami-Dade,Perplexity,,5,Wound-adjacent specialty with post-op/complex wound potential
+Alysa,Herman,Dermatology,Private Practice - Mohs Surgery,"135 San Lorenzo Avenue, Suite 700",Coral Gables,FL,33146.0,(305) 444-4979,Miami-Dade,Original 14,,5,High procedure dermatology wounds
+Sarah,Cohen,Dermatology/Mohs,Skin & Cancer Associates (WestDerm),4308 Alton Rd,Miami Beach,FL,33140.0,305-532-4060,Miami-Dade,Perplexity,,4,High procedure dermatology wounds
+Daniel,Rivlin,Dermatology,Skin & Cancer Associates,4308 Alton Rd,Miami Beach,FL,33140.0,(305) 532-4060,Miami-Dade,Validated List,,4,High procedure dermatology wounds
+Daniel,Rivlin,Dermatology,Skin and Cancer Associates,601 North Federal Highway,Hallandale Beach,FL,33009.0,(954) 454-1066,,Original 14,,4,High procedure dermatology wounds
+Daniel,Rivlin,Dermatology,Skin and Cancer Associates,7800 SW 87th Ave,Miami,FL,33173.0,(305) 274-0221,Miami-Dade,Original 14,,4,High procedure dermatology wounds
+Joely,Kaufman,Dermatology,Skin Associates,901 N Flamingo Rd,Pembroke Pines,FL,33028.0,(954) 437-8080,Broward,Validated List,,4,High procedure dermatology wounds
+Frank,Kerdel,Dermatology,Skin Center of South Miami,[Research needed],South Miami,FL,,[Research needed],Miami-Dade,Original 14,,4,High procedure dermatology wounds
+Sarah,Green,Orthopedic Surgery,South Broward Orthopedics,3990 Sheridan St Ste 200,Hollywood,FL,33021.0,954-961-8400,Broward,Perplexity,,5,Wound-adjacent specialty with post-op/complex wound potential
+Christopher,Wong,Orthopedic Surgery,South Broward Orthopedics,3990 Sheridan St,Hollywood,FL,33021.0,(954) 961-8400,Broward,Validated List,,5,Wound-adjacent specialty with post-op/complex wound potential
+Jonathan,Cutler,Podiatry,South Florida Foot & Ankle Centers,11412 Okeechobee Blvd,Royal Palm Beach,FL,11412.0,561-793-6170,Palm Beach,ChatGPT_Validated,,2,DFU/post-op podiatry wound flow
+Robert,Klein,Podiatry,South Florida Foot & Ankle Centers,11412 Okeechobee Blvd,Royal Palm Beach,FL,33411.0,561-793-6170,Palm Beach,Perplexity,,2,DFU/post-op podiatry wound flow
+Jonathan,Cutler,Podiatry,South Florida Foot & Ankle,11412 Okeechobee Blvd,Royal Palm Beach,FL,33411.0,(561) 793-6170,Palm Beach,Validated List,,3,DFU/post-op podiatry wound flow
+,,Podiatry,South Florida Foot Care,11356 W State Rd 84,Davie,FL,11356.0,954-424-1800,Broward,ChatGPT_ToInvestigate,,3,DFU/post-op podiatry wound flow
+Thomas,Davis,Podiatry,South Florida Foot Care,11356 W State Rd 84,Davie,FL,33325.0,954-424-1800,Broward,Perplexity,,3,DFU/post-op podiatry wound flow
+James,Adams,Orthopedic Surgery,South Florida Orthopedics & Sports Medicine,2601 SW 37th Ave Ste 302,Miami,FL,33133.0,305-444-1110,Miami-Dade,Perplexity,,5,Wound-adjacent specialty with post-op/complex wound potential
+Richard,Miller,Vascular Surgery,South Florida Vascular Associates,4801 N Federal Hwy Ste A,Fort Lauderdale,FL,33308.0,954-771-2551,Broward,Perplexity,,3,PAD/CLI-linked chronic wounds
+William,Julien,Vascular Surgery,South Florida Vascular,4801 N Federal Hwy,Fort Lauderdale,FL,33308.0,(954) 771-2550,Broward,Validated List,,3,PAD/CLI-linked chronic wounds
+,,Vascular Surgery / Endovascular,Southeast Vascular Associates,21644 State Rd 7 Ste 100,Boca Raton,FL,21644.0,561-394-6266,Palm Beach,ChatGPT_ToInvestigate,,3,PAD/CLI-linked chronic wounds
+David,Anderson,Vascular Surgery,Southeast Vascular Associates,21644 State Rd 7 Ste 100,Boca Raton,FL,33428.0,561-394-6266,Palm Beach,Perplexity,,3,PAD/CLI-linked chronic wounds
+Robert,Green,Wound Care/Hyperbaric,St. Mary's Medical Center – Wound Care & Hyperbarics,901 45th St,West Palm Beach,FL,33407.0,561-844-6300,Palm Beach,Perplexity,,1,Dedicated wound/HBOT program; Hospital/system referral volume
+Megan,Kwasniak,Wound Care,St. Mary's Medical Center,901 45th St,West Palm Beach,FL,33407.0,(561) 844-6300,Palm Beach,Validated List,,1,Dedicated wound/HBOT program; Hospital/system referral volume
+Richard,Garcia,General Surgery,Surgical Specialists of Broward & Palm Beach,4800 N Federal Hwy,Fort Lauderdale,FL,33308.0,954-574-0252,Broward,Perplexity,,4,Wound-adjacent specialty with post-op/complex wound potential
+Romane,Joseph,General Surgery,Surgical Specialists,4800 N Federal Hwy,Fort Lauderdale,FL,33308.0,(954) 574-0250,Broward,Validated List,,4,Wound-adjacent specialty with post-op/complex wound potential
+,,Podiatry,Total Foot & Ankle Care,21015 Powerline Rd Ste B-5,Boca Raton,FL,21015.0,561-488-5555,Palm Beach,ChatGPT_ToInvestigate,,3,DFU/post-op podiatry wound flow
+David,Williams,Podiatry,Total Foot & Ankle Care,21015 Powerline Rd Ste B-5,Boca Raton,FL,33433.0,561-488-5555,Palm Beach,Perplexity,,3,DFU/post-op podiatry wound flow
+Keyvan,Nouri,Dermatology,UM / Sylvester Comprehensive Cancer Center,"1475 NW 12th Avenue, Mohs Unit",Miami,FL,33136.0,(305) 243-4000,Miami-Dade,Original 14,Yes (facility),4,High procedure dermatology wounds
+Maria,Lopez,Wound Care,University of Miami Dermatology Wound Care Program,1475 NW 12th Ave,Miami,FL,33136.0,305-243-6704,Miami-Dade,Perplexity,Yes (facility),1,Dedicated wound/HBOT program
+Jennifer,Rosen,Dermatology,University of Miami Health System,1475 NW 12th Avenue,Miami,FL,33136.0,(305) 243-4000,Miami-Dade,Original 14,Yes (facility),2,Hospital/system referral volume; High procedure dermatology wounds
+Robert,Kirsner,Wound Care,University of Miami,1475 NW 12th Ave,Miami,FL,33136.0,(305) 243-6700,Miami-Dade,Validated List,Yes (facility),2,Dedicated wound/HBOT program
+Albert,Espinal,Vascular Surgery,Vascular & Interventional Specialists of Florida,9175 SW 87th Ave Bldg C,Miami,FL,33176.0,305-230-4664,Miami-Dade,Perplexity,,3,PAD/CLI-linked chronic wounds
+Oscar,Sosa,Vascular Surgery,Vascular & Interventional,9175 SW 87th Ave,Miami,FL,33176.0,(305) 230-4660,Miami-Dade,Validated List,,3,PAD/CLI-linked chronic wounds
+Robert,Clark,Vascular Surgery,Vascular Institute of South Florida,3850 Hollywood Blvd Ste 301,Hollywood,FL,33021.0,954-981-2288,Broward,Perplexity,,3,PAD/CLI-linked chronic wounds
+Oscar,Sosa,Vascular Surgery,Vascular Institute,3850 Hollywood Blvd,Hollywood,FL,33021.0,(954) 981-2280,Broward,Validated List,,3,PAD/CLI-linked chronic wounds
+Lisa,Moore,Vascular Surgery,Vascular Specialists of Broward,201 N University Dr Ste 301,Plantation,FL,33324.0,954-472-1200,Broward,Perplexity,,3,PAD/CLI-linked chronic wounds
+David,Abner,Wound Care,Wellington Regional Medical Center Wound Care,1397 Medical Park Blvd,Wellington,FL,33414.0,561-753-2680,Palm Beach,Perplexity,,1,Dedicated wound/HBOT program; Hospital/system referral volume
+Thomas,Scott,Wound Care,Wellington Regional,1397 Medical Center Way,Wellington,FL,33414.0,(561) 753-2680,Palm Beach,Validated List,,2,Dedicated wound/HBOT program
+Eric,Lullove,Wound Care / Hyperbaric Medicine,West Boca Medical Center – Wound Care,21644 State Rd 7,Boca Raton,FL,21644.0,561-488-8000,Palm Beach,ChatGPT_Validated,,1,Dedicated wound/HBOT program; Hospital/system referral volume
+Lisa,Martinez,Wound Care,West Boca Medical Center – Wound Care,21644 State Rd 7,Boca Raton,FL,33428.0,561-488-8000,Palm Beach,Perplexity,,1,Dedicated wound/HBOT program; Hospital/system referral volume
+Eric,Lullove,Wound Care,West Boca Medical Center,21644 State Rd 7,Boca Raton,FL,33428.0,(561) 488-8000,Palm Beach,Validated List,,1,Dedicated wound/HBOT program; Hospital/system referral volume
