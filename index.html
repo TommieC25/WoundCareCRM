@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <title>Territory CRM - Miami Dermatology</title>
+    <title>Territory CRM - Miami Wound Care</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -1008,7 +1008,7 @@
         <aside class="sidebar" id="sidebar">
             <div class="sidebar-header">
                 <h1>Territory CRM <span id="desktopSyncIndicator" class="sync-indicator synced"></span></h1>
-                <div class="subtitle">Miami Dermatology</div>
+                <div class="subtitle">Miami Wound Care</div>
                 <div class="count" id="physicianCount">Loading...</div>
                 <button class="admin-btn" onclick="toggleAdminPanel()">Admin Settings</button>
                 <div class="admin-panel" id="adminPanel">
@@ -1721,18 +1721,18 @@ const INITIAL_PHYSICIANS = [
                 // Insert practices one by one to handle duplicates gracefully
                 const insertedPractices = [];
                 for (const name of practiceNames) {
-                    // First try to find existing practice
-                    const { data: existing } = await db.from('practices').select('*').eq('name', name).single();
+                    // First try to find existing practice - use maybeSingle() to avoid error on empty result
+                    const { data: existing } = await db.from('practices').select('*').eq('name', name).maybeSingle();
                     if (existing) {
                         insertedPractices.push(existing);
                     } else {
-                        const { data: newPractice, error: err } = await db.from('practices').insert({ name }).select().single();
+                        const { data: newPractice, error: err } = await db.from('practices').insert({ name }).select().maybeSingle();
                         if (err) {
                             console.log('Practice insert error for', name, err);
                             // Try to fetch it anyway (might have been created by another process)
-                            const { data: retry } = await db.from('practices').select('*').eq('name', name).single();
+                            const { data: retry } = await db.from('practices').select('*').eq('name', name).maybeSingle();
                             if (retry) insertedPractices.push(retry);
-                        } else {
+                        } else if (newPractice) {
                             insertedPractices.push(newPractice);
                         }
                     }
@@ -1781,16 +1781,36 @@ const INITIAL_PHYSICIANS = [
                     }
                 });
 
-                // Step 3: Insert physicians
+                // Step 3: Insert physicians (find-or-create pattern)
                 const physicianData = Array.from(physicianMap.values()).map(e => e.physician);
-                const { data: insertedPhysicians, error: physError } = await db
-                    .from('physicians')
-                    .insert(physicianData)
-                    .select();
+                const insertedPhysicians = [];
+                for (const phys of physicianData) {
+                    // Check if physician already exists - use maybeSingle() to avoid error on empty result
+                    const { data: existing } = await db.from('physicians')
+                        .select('*')
+                        .ilike('first_name', phys.first_name)
+                        .ilike('last_name', phys.last_name)
+                        .maybeSingle();
+                    if (existing) {
+                        insertedPhysicians.push(existing);
+                    } else {
+                        const { data: newPhys, error: err } = await db.from('physicians').insert(phys).select().maybeSingle();
+                        if (err) {
+                            console.log('Physician insert error for', phys.first_name, phys.last_name, err);
+                            const { data: retry } = await db.from('physicians')
+                                .select('*')
+                                .ilike('first_name', phys.first_name)
+                                .ilike('last_name', phys.last_name)
+                                .maybeSingle();
+                            if (retry) insertedPhysicians.push(retry);
+                        } else if (newPhys) {
+                            insertedPhysicians.push(newPhys);
+                        }
+                    }
+                }
+                console.log('Created/found', insertedPhysicians.length, 'physicians');
 
-                if (physError) throw physError;
-
-                // Step 4: Create unique practice_locations
+                // Step 4: Create unique practice_locations (find-or-create pattern)
                 const locationSet = new Map();
                 Array.from(physicianMap.values()).forEach(entry => {
                     entry.locations.forEach(loc => {
@@ -1809,12 +1829,31 @@ const INITIAL_PHYSICIANS = [
                     });
                 });
 
-                const { data: insertedLocations, error: locError } = await db
-                    .from('practice_locations')
-                    .insert(Array.from(locationSet.values()))
-                    .select();
-
-                if (locError) throw locError;
+                const insertedLocations = [];
+                for (const loc of Array.from(locationSet.values())) {
+                    const { data: existing } = await db.from('practice_locations')
+                        .select('*')
+                        .eq('practice_id', loc.practice_id)
+                        .eq('address', loc.address)
+                        .maybeSingle();
+                    if (existing) {
+                        insertedLocations.push(existing);
+                    } else {
+                        const { data: newLoc, error: err } = await db.from('practice_locations').insert(loc).select().maybeSingle();
+                        if (err) {
+                            console.log('Location insert error', err);
+                            const { data: retry } = await db.from('practice_locations')
+                                .select('*')
+                                .eq('practice_id', loc.practice_id)
+                                .eq('address', loc.address)
+                                .maybeSingle();
+                            if (retry) insertedLocations.push(retry);
+                        } else if (newLoc) {
+                            insertedLocations.push(newLoc);
+                        }
+                    }
+                }
+                console.log('Created/found', insertedLocations.length, 'locations');
 
                 // Create location lookup map
                 const locationMap = {};
@@ -1842,13 +1881,22 @@ const INITIAL_PHYSICIANS = [
                     });
                 });
 
-                if (assignments.length > 0) {
-                    const { error: assignError } = await db
-                        .from('physician_location_assignments')
-                        .insert(assignments);
-
-                    if (assignError) throw assignError;
+                // Insert assignments (skip duplicates)
+                let assignmentCount = 0;
+                for (const assign of assignments) {
+                    const { data: existing } = await db.from('physician_location_assignments')
+                        .select('*')
+                        .eq('physician_id', assign.physician_id)
+                        .eq('practice_location_id', assign.practice_location_id)
+                        .maybeSingle();
+                    if (!existing) {
+                        const { error: err } = await db.from('physician_location_assignments').insert(assign);
+                        if (!err) assignmentCount++;
+                    } else {
+                        assignmentCount++;
+                    }
                 }
+                console.log('Created/found', assignmentCount, 'assignments');
 
                 await loadAllData();
                 document.getElementById('importSection').style.display = 'none';
