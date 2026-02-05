@@ -1715,14 +1715,30 @@ const INITIAL_PHYSICIANS = [
                 console.log('Old data cleared, now importing fresh...');
                 btn.textContent = 'Importing...';
 
-                // Step 1: Create unique practices
+                // Step 1: Create unique practices (use upsert to handle any existing data)
                 const practiceNames = [...new Set(INITIAL_PHYSICIANS.map(p => p.practice_name))];
-                const { data: insertedPractices, error: practError } = await db
-                    .from('practices')
-                    .insert(practiceNames.map(name => ({ name })))
-                    .select();
 
-                if (practError) throw practError;
+                // Insert practices one by one to handle duplicates gracefully
+                const insertedPractices = [];
+                for (const name of practiceNames) {
+                    // First try to find existing practice
+                    const { data: existing } = await db.from('practices').select('*').eq('name', name).single();
+                    if (existing) {
+                        insertedPractices.push(existing);
+                    } else {
+                        const { data: newPractice, error: err } = await db.from('practices').insert({ name }).select().single();
+                        if (err) {
+                            console.log('Practice insert error for', name, err);
+                            // Try to fetch it anyway (might have been created by another process)
+                            const { data: retry } = await db.from('practices').select('*').eq('name', name).single();
+                            if (retry) insertedPractices.push(retry);
+                        } else {
+                            insertedPractices.push(newPractice);
+                        }
+                    }
+                }
+
+                console.log('Created/found', insertedPractices.length, 'practices');
 
                 // Create practice name -> id map
                 const practiceMap = {};
