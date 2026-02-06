@@ -780,8 +780,75 @@
 
         .selector-option input[type="checkbox"],
         .selector-option input[type="radio"] {
-            width: auto;
+            width: 18px;
+            height: 18px;
             margin: 0;
+            accent-color: #0ea5e9;
+            cursor: pointer;
+        }
+
+        .selector-option input[type="checkbox"]:checked {
+            background-color: #0ea5e9;
+        }
+
+        /* Custom filled checkbox styling */
+        .selector-option input[type="checkbox"] {
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            appearance: none;
+            border: 2px solid #0ea5e9;
+            border-radius: 3px;
+            background: white;
+            position: relative;
+        }
+
+        .selector-option input[type="checkbox"]:checked {
+            background-color: #0ea5e9;
+            border-color: #0ea5e9;
+        }
+
+        .selector-option input[type="checkbox"]:checked::after {
+            content: '✓';
+            position: absolute;
+            color: white;
+            font-size: 14px;
+            font-weight: bold;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+        }
+
+        /* Import Progress Bar */
+        .import-progress {
+            display: none;
+            margin-top: 1rem;
+        }
+
+        .import-progress.active {
+            display: block;
+        }
+
+        .progress-bar-container {
+            width: 100%;
+            height: 8px;
+            background: #e5e5e5;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-bottom: 0.5rem;
+        }
+
+        .progress-bar-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #0ea5e9, #38bdf8);
+            border-radius: 4px;
+            transition: width 0.3s ease;
+            width: 0%;
+        }
+
+        .progress-text {
+            font-size: 0.8rem;
+            color: #666;
+            text-align: center;
         }
 
         .selector-option-label {
@@ -1056,9 +1123,15 @@
                 <h2>Welcome to Territory CRM</h2>
                 <p>Select a physician from the list to view their profile</p>
                 <div class="import-section" id="importSection" style="max-width: 400px; margin: 2rem auto; display: none;">
-                    <h4>First Time Setup</h4>
-                    <p>Click below to import your physicians into Supabase.</p>
+                    <h4>Import Data</h4>
+                    <p>Click below to import physicians into the database.</p>
                     <button class="btn-import" id="importBtn" onclick="importInitialData()">Import Physicians</button>
+                    <div class="import-progress" id="importProgress">
+                        <div class="progress-bar-container">
+                            <div class="progress-bar-fill" id="progressBarFill"></div>
+                        </div>
+                        <div class="progress-text" id="progressText">Starting...</div>
+                    </div>
                 </div>
             </div>
         </main>
@@ -1690,11 +1763,22 @@ const INITIAL_PHYSICIANS = [
                 .subscribe();
         }
 
+        // Progress bar helper function
+        function updateImportProgress(percent, text) {
+            const progressDiv = document.getElementById('importProgress');
+            const fillBar = document.getElementById('progressBarFill');
+            const progressText = document.getElementById('progressText');
+            if (progressDiv) progressDiv.classList.add('active');
+            if (fillBar) fillBar.style.width = percent + '%';
+            if (progressText) progressText.textContent = text;
+        }
+
         // Import initial data with practices architecture
         async function importInitialData() {
             const btn = document.getElementById('importBtn');
             btn.disabled = true;
-            btn.textContent = 'Clearing old data...';
+            btn.textContent = 'Importing...';
+            updateImportProgress(0, 'Clearing old data...');
 
             try {
                 updateSyncIndicators('syncing');
@@ -1732,7 +1816,7 @@ const INITIAL_PHYSICIANS = [
                 }
 
                 console.log('Old data cleared, now importing fresh...');
-                btn.textContent = 'Importing...';
+                updateImportProgress(10, 'Creating practices...');
 
                 // Step 1: Create unique practices (use upsert to handle any existing data)
                 const practiceNames = [...new Set(INITIAL_PHYSICIANS.map(p => p.practice_name))];
@@ -1758,6 +1842,7 @@ const INITIAL_PHYSICIANS = [
                 }
 
                 console.log('Created/found', insertedPractices.length, 'practices');
+                updateImportProgress(25, 'Preparing physician data...');
 
                 // Create practice name -> id map
                 const practiceMap = {};
@@ -1801,9 +1886,13 @@ const INITIAL_PHYSICIANS = [
                 });
 
                 // Step 3: Insert physicians (find-or-create pattern)
+                updateImportProgress(30, 'Importing physicians...');
                 const physicianData = Array.from(physicianMap.values()).map(e => e.physician);
                 const insertedPhysicians = [];
-                for (const phys of physicianData) {
+                for (let i = 0; i < physicianData.length; i++) {
+                    const phys = physicianData[i];
+                    const pct = 30 + Math.round((i / physicianData.length) * 20);
+                    updateImportProgress(pct, `Importing physician ${i + 1} of ${physicianData.length}...`);
                     // Check if physician already exists - use maybeSingle() to avoid error on empty result
                     const { data: existing } = await db.from('physicians')
                         .select('*')
@@ -1828,6 +1917,7 @@ const INITIAL_PHYSICIANS = [
                     }
                 }
                 console.log('Created/found', insertedPhysicians.length, 'physicians');
+                updateImportProgress(50, 'Creating practice locations...');
 
                 // Step 4: Create unique practice_locations (find-or-create pattern)
                 const locationSet = new Map();
@@ -1873,6 +1963,7 @@ const INITIAL_PHYSICIANS = [
                     }
                 }
                 console.log('Created/found', insertedLocations.length, 'locations');
+                updateImportProgress(75, 'Creating assignments...');
 
                 // Create location lookup map
                 const locationMap = {};
@@ -1916,8 +2007,17 @@ const INITIAL_PHYSICIANS = [
                     }
                 }
                 console.log('Created/found', assignmentCount, 'assignments');
+                updateImportProgress(95, 'Finishing up...');
 
                 await loadAllData();
+                updateImportProgress(100, 'Complete!');
+
+                // Hide progress bar after brief delay
+                setTimeout(() => {
+                    const progressDiv = document.getElementById('importProgress');
+                    if (progressDiv) progressDiv.classList.remove('active');
+                }, 1000);
+
                 document.getElementById('importSection').style.display = 'none';
                 showToast(`Imported ${insertedPhysicians.length} physicians, ${insertedPractices.length} practices, ${insertedLocations.length} locations!`, 'success');
                 updateSyncIndicators('synced');
@@ -1927,6 +2027,9 @@ const INITIAL_PHYSICIANS = [
                 btn.disabled = false;
                 btn.textContent = 'Import Physicians';
                 updateSyncIndicators('error');
+                // Hide progress bar on error
+                const progressDiv = document.getElementById('importProgress');
+                if (progressDiv) progressDiv.classList.remove('active');
             }
         }
 
@@ -2119,9 +2222,15 @@ const INITIAL_PHYSICIANS = [
                     <p>Select a ${currentView === 'physicians' ? 'physician' : 'practice'} from the list to view details</p>
                     ${physicians.length === 0 ? `
                     <div class="import-section" id="importSection" style="max-width: 400px; margin: 2rem auto;">
-                        <h4>First Time Setup</h4>
+                        <h4>Import Data</h4>
                         <p>Click below to import your physicians into Supabase.</p>
                         <button class="btn-import" id="importBtn" onclick="importInitialData()">Import Physicians</button>
+                        <div class="import-progress" id="importProgress">
+                            <div class="progress-bar-container">
+                                <div class="progress-bar-fill" id="progressBarFill"></div>
+                            </div>
+                            <div class="progress-text" id="progressText">Starting...</div>
+                        </div>
                     </div>` : ''}
                 </div>
             `;
@@ -3105,13 +3214,17 @@ const INITIAL_PHYSICIANS = [
             btn.textContent = 'Saving...';
             btn.classList.add('saving');
 
+            const timeValue = document.getElementById('contactTime').value;
+            const notesValue = document.getElementById('contactNotes').value;
+
+            // Store time in notes for now (contact_time column not yet in Supabase)
+            const notesWithTime = timeValue ? `[${timeValue}] ${notesValue}` : notesValue;
+
             const data = {
                 physician_id: currentPhysician.id,
-                practice_location_id: document.getElementById('contactLocation').value || null,
                 contact_date: document.getElementById('contactDate').value,
-                contact_time: document.getElementById('contactTime').value,
                 author: document.getElementById('authorName').value,
-                notes: document.getElementById('contactNotes').value
+                notes: notesWithTime
             };
 
             try {
@@ -3215,9 +3328,15 @@ const INITIAL_PHYSICIANS = [
                     <h2>Welcome to Territory CRM</h2>
                     <p>Select a physician from the list to view their profile</p>
                     <div class="import-section" id="importSection" style="max-width: 400px; margin: 2rem auto;">
-                        <h4>First Time Setup</h4>
+                        <h4>Import Data</h4>
                         <p>Click below to import your physicians into Supabase.</p>
                         <button class="btn-import" id="importBtn" onclick="importInitialData()">Import Physicians</button>
+                        <div class="import-progress" id="importProgress">
+                            <div class="progress-bar-container">
+                                <div class="progress-bar-fill" id="progressBarFill"></div>
+                            </div>
+                            <div class="progress-text" id="progressText">Starting...</div>
+                        </div>
                     </div>
                 </div>
             `;
