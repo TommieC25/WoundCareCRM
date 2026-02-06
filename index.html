@@ -3214,13 +3214,17 @@ const INITIAL_PHYSICIANS = [
             btn.textContent = 'Saving...';
             btn.classList.add('saving');
 
+            const timeValue = document.getElementById('contactTime').value;
+            const notesValue = document.getElementById('contactNotes').value;
+
+            // Store time in notes for now (contact_time column not yet in Supabase)
+            const notesWithTime = timeValue ? `[${timeValue}] ${notesValue}` : notesValue;
+
             const data = {
                 physician_id: currentPhysician.id,
-                practice_location_id: document.getElementById('contactLocation').value || null,
                 contact_date: document.getElementById('contactDate').value,
-                contact_time: document.getElementById('contactTime').value,
                 author: document.getElementById('authorName').value,
-                notes: document.getElementById('contactNotes').value
+                notes: notesWithTime
             };
 
             try {
