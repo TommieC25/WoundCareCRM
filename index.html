@@ -928,10 +928,102 @@
         .sync-indicator.synced { background: #10b981; }
         .sync-indicator.syncing { background: #f59e0b; animation: pulse 0.5s infinite; }
         .sync-indicator.error { background: #ef4444; }
+        .sync-indicator.offline { background: #6b7280; }
+        .sync-indicator.pending { background: #f59e0b; }
 
         @keyframes pulse {
             0%, 100% { opacity: 1; }
             50% { opacity: 0.5; }
+        }
+
+        /* Offline Status Bar - Persistent and Visible */
+        .offline-status-bar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            padding: 0.75rem 1rem;
+            font-size: 0.85rem;
+            font-weight: 600;
+            z-index: 250;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            transition: all 0.3s ease;
+            transform: translateY(100%);
+        }
+
+        .offline-status-bar.visible {
+            transform: translateY(0);
+        }
+
+        .offline-status-bar.offline {
+            background: linear-gradient(135deg, #ef4444, #dc2626);
+            color: white;
+        }
+
+        .offline-status-bar.pending {
+            background: linear-gradient(135deg, #f59e0b, #d97706);
+            color: white;
+        }
+
+        .offline-status-bar.syncing {
+            background: linear-gradient(135deg, #3b82f6, #2563eb);
+            color: white;
+        }
+
+        .offline-status-bar.synced {
+            background: linear-gradient(135deg, #10b981, #059669);
+            color: white;
+        }
+
+        .offline-status-bar .status-icon {
+            font-size: 1.1rem;
+            margin-right: 0.5rem;
+        }
+
+        .offline-status-bar .pending-count {
+            background: rgba(255,255,255,0.2);
+            padding: 0.25rem 0.75rem;
+            border-radius: 1rem;
+            font-size: 0.75rem;
+        }
+
+        .offline-status-bar .sync-btn {
+            background: rgba(255,255,255,0.2);
+            border: none;
+            color: white;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            font-weight: 600;
+            cursor: pointer;
+            font-size: 0.8rem;
+        }
+
+        .offline-status-bar .sync-btn:hover {
+            background: rgba(255,255,255,0.3);
+        }
+
+        .offline-status-bar .sync-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .offline-status-bar .status-left {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .offline-status-bar .status-right {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        /* Adjust toast container to not overlap with status bar */
+        .toast-container {
+            bottom: 4rem;
         }
 
         /* Toast notifications */
@@ -1069,6 +1161,20 @@
 <body>
     <div id="connectionStatus" class="connection-status hidden">Connecting...</div>
     <div id="toastContainer" class="toast-container"></div>
+
+    <!-- Offline Status Bar - Shows pending changes and sync status -->
+    <div id="offlineStatusBar" class="offline-status-bar">
+        <div class="status-left">
+            <span class="status-icon">●</span>
+            <span id="offlineStatusText">Connected</span>
+            <span id="pendingCountBadge" class="pending-count" style="display: none;">0 pending</span>
+        </div>
+        <div class="status-right">
+            <button id="syncNowBtn" class="sync-btn" onclick="OfflineManager.syncNow()" style="display: none;">
+                Sync Now
+            </button>
+        </div>
+    </div>
 
     <div class="app">
         <!-- Mobile Header -->
@@ -1407,6 +1513,438 @@
         const { createClient } = window.supabase;
         const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+        // ============================================================
+        // OFFLINE-FIRST MANAGER
+        // Saves all data locally first, then syncs to cloud when online
+        // This prevents data loss when WiFi is unavailable
+        // ============================================================
+        const OfflineManager = {
+            // Storage keys
+            STORAGE_KEYS: {
+                PHYSICIANS: 'crm_physicians',
+                PRACTICES: 'crm_practices',
+                LOCATIONS: 'crm_practice_locations',
+                ASSIGNMENTS: 'crm_assignments',
+                CONTACT_LOGS: 'crm_contact_logs',
+                SYNC_QUEUE: 'crm_sync_queue',
+                LAST_SYNC: 'crm_last_sync'
+            },
+
+            // Current state
+            isOnline: navigator.onLine,
+            isSyncing: false,
+            syncInterval: null,
+
+            // Initialize offline manager
+            init() {
+                // Listen for online/offline events
+                window.addEventListener('online', () => this.handleOnline());
+                window.addEventListener('offline', () => this.handleOffline());
+
+                // Check initial state
+                this.isOnline = navigator.onLine;
+                this.updateStatusBar();
+
+                // Start background sync check every 30 seconds
+                this.syncInterval = setInterval(() => this.checkAndSync(), 30000);
+
+                // Try to sync any pending changes on load
+                setTimeout(() => this.checkAndSync(), 2000);
+
+                console.log('[OfflineManager] Initialized. Online:', this.isOnline);
+            },
+
+            // Handle coming online
+            handleOnline() {
+                console.log('[OfflineManager] Network: Online');
+                this.isOnline = true;
+                this.updateStatusBar();
+                showToast('Back online! Syncing changes...', 'success');
+                this.checkAndSync();
+            },
+
+            // Handle going offline
+            handleOffline() {
+                console.log('[OfflineManager] Network: Offline');
+                this.isOnline = false;
+                this.updateStatusBar();
+                showToast('Offline - Changes will be saved locally', 'info');
+            },
+
+            // Get sync queue from localStorage
+            getSyncQueue() {
+                try {
+                    const queue = localStorage.getItem(this.STORAGE_KEYS.SYNC_QUEUE);
+                    return queue ? JSON.parse(queue) : [];
+                } catch (e) {
+                    console.error('[OfflineManager] Error reading sync queue:', e);
+                    return [];
+                }
+            },
+
+            // Save sync queue to localStorage
+            saveSyncQueue(queue) {
+                try {
+                    localStorage.setItem(this.STORAGE_KEYS.SYNC_QUEUE, JSON.stringify(queue));
+                } catch (e) {
+                    console.error('[OfflineManager] Error saving sync queue:', e);
+                }
+            },
+
+            // Add item to sync queue
+            addToSyncQueue(operation) {
+                const queue = this.getSyncQueue();
+                operation.id = Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+                operation.timestamp = new Date().toISOString();
+                operation.retryCount = 0;
+                queue.push(operation);
+                this.saveSyncQueue(queue);
+                console.log('[OfflineManager] Added to sync queue:', operation.type, operation.table);
+                this.updateStatusBar();
+                return operation.id;
+            },
+
+            // Remove item from sync queue
+            removeFromSyncQueue(operationId) {
+                const queue = this.getSyncQueue();
+                const newQueue = queue.filter(op => op.id !== operationId);
+                this.saveSyncQueue(newQueue);
+                this.updateStatusBar();
+            },
+
+            // Save data locally (cache for offline use)
+            saveLocal(key, data) {
+                try {
+                    localStorage.setItem(key, JSON.stringify({
+                        data: data,
+                        timestamp: new Date().toISOString()
+                    }));
+                    console.log('[OfflineManager] Saved locally:', key);
+                } catch (e) {
+                    console.error('[OfflineManager] Error saving local:', e);
+                }
+            },
+
+            // Get data from local storage
+            getLocal(key) {
+                try {
+                    const stored = localStorage.getItem(key);
+                    if (stored) {
+                        return JSON.parse(stored).data;
+                    }
+                    return null;
+                } catch (e) {
+                    console.error('[OfflineManager] Error getting local:', e);
+                    return null;
+                }
+            },
+
+            // Save contact log with offline support
+            async saveContactLog(data, isEdit = false, editId = null) {
+                // Generate a temporary local ID if this is a new record
+                const localId = isEdit ? editId : 'local_' + Date.now();
+                const localData = { ...data, local_id: localId, synced: false };
+
+                // Save to local contact logs cache immediately
+                this.saveContactLogLocally(localData, isEdit, editId);
+
+                // Add to sync queue
+                const operation = {
+                    type: isEdit ? 'UPDATE' : 'INSERT',
+                    table: 'contact_logs',
+                    data: data,
+                    localId: localId,
+                    editId: editId
+                };
+                const queueId = this.addToSyncQueue(operation);
+
+                // Try to sync immediately if online
+                if (this.isOnline) {
+                    return await this.syncOperation(operation, queueId);
+                } else {
+                    showToast('Saved locally - will sync when online', 'info');
+                    return { success: true, local: true, localId: localId };
+                }
+            },
+
+            // Save contact log to local cache
+            saveContactLogLocally(data, isEdit, editId) {
+                const physicianId = data.physician_id;
+                const key = `${this.STORAGE_KEYS.CONTACT_LOGS}_${physicianId}`;
+                let logs = this.getLocal(key) || [];
+
+                if (isEdit && editId) {
+                    // Update existing log
+                    logs = logs.map(log =>
+                        (log.id === editId || log.local_id === editId) ? { ...log, ...data } : log
+                    );
+                } else {
+                    // Add new log
+                    logs.unshift(data);
+                }
+
+                this.saveLocal(key, logs);
+            },
+
+            // Save physician with offline support
+            async savePhysician(data, isEdit = false, editId = null) {
+                const localId = isEdit ? editId : 'local_' + Date.now();
+                const localData = { ...data, local_id: localId, synced: false };
+
+                // Save to local physicians cache
+                this.savePhysicianLocally(localData, isEdit, editId);
+
+                // Add to sync queue
+                const operation = {
+                    type: isEdit ? 'UPDATE' : 'INSERT',
+                    table: 'physicians',
+                    data: data,
+                    localId: localId,
+                    editId: editId
+                };
+                const queueId = this.addToSyncQueue(operation);
+
+                // Try to sync immediately if online
+                if (this.isOnline) {
+                    return await this.syncOperation(operation, queueId);
+                } else {
+                    showToast('Saved locally - will sync when online', 'info');
+                    return { success: true, local: true, localId: localId };
+                }
+            },
+
+            // Save physician to local cache
+            savePhysicianLocally(data, isEdit, editId) {
+                let physicians = this.getLocal(this.STORAGE_KEYS.PHYSICIANS) || [];
+
+                if (isEdit && editId) {
+                    physicians = physicians.map(p =>
+                        (p.id === editId || p.local_id === editId) ? { ...p, ...data } : p
+                    );
+                } else {
+                    physicians.push(data);
+                }
+
+                this.saveLocal(this.STORAGE_KEYS.PHYSICIANS, physicians);
+            },
+
+            // Sync a single operation
+            async syncOperation(operation, queueId) {
+                try {
+                    let result;
+
+                    if (operation.table === 'contact_logs') {
+                        if (operation.type === 'INSERT') {
+                            const { data, error } = await db
+                                .from('contact_logs')
+                                .insert(operation.data)
+                                .select()
+                                .single();
+
+                            if (error) throw error;
+                            result = data;
+
+                            // Also update last_contact on physician
+                            await db
+                                .from('physicians')
+                                .update({ last_contact: operation.data.contact_date })
+                                .eq('id', operation.data.physician_id);
+                        } else if (operation.type === 'UPDATE') {
+                            const { data, error } = await db
+                                .from('contact_logs')
+                                .update(operation.data)
+                                .eq('id', operation.editId)
+                                .select()
+                                .single();
+
+                            if (error) throw error;
+                            result = data;
+                        }
+                    } else if (operation.table === 'physicians') {
+                        if (operation.type === 'INSERT') {
+                            const { data, error } = await db
+                                .from('physicians')
+                                .insert(operation.data)
+                                .select()
+                                .single();
+
+                            if (error) throw error;
+                            result = data;
+                        } else if (operation.type === 'UPDATE') {
+                            const { data, error } = await db
+                                .from('physicians')
+                                .update(operation.data)
+                                .eq('id', operation.editId)
+                                .select()
+                                .single();
+
+                            if (error) throw error;
+                            result = data;
+                        }
+                    }
+
+                    // Remove from sync queue on success
+                    this.removeFromSyncQueue(queueId);
+                    console.log('[OfflineManager] Synced:', operation.type, operation.table);
+
+                    return { success: true, local: false, data: result };
+                } catch (error) {
+                    console.error('[OfflineManager] Sync failed:', error);
+
+                    // Increment retry count
+                    const queue = this.getSyncQueue();
+                    const op = queue.find(o => o.id === queueId);
+                    if (op) {
+                        op.retryCount = (op.retryCount || 0) + 1;
+                        op.lastError = error.message;
+                        this.saveSyncQueue(queue);
+                    }
+
+                    return { success: false, local: true, error: error.message };
+                }
+            },
+
+            // Check and sync all pending operations
+            async checkAndSync() {
+                if (!this.isOnline || this.isSyncing) {
+                    return;
+                }
+
+                const queue = this.getSyncQueue();
+                if (queue.length === 0) {
+                    this.updateStatusBar();
+                    return;
+                }
+
+                console.log('[OfflineManager] Starting sync of', queue.length, 'pending operations');
+                this.isSyncing = true;
+                this.updateStatusBar();
+
+                let synced = 0;
+                let failed = 0;
+
+                for (const operation of queue) {
+                    // Skip if too many retries
+                    if (operation.retryCount >= 5) {
+                        console.warn('[OfflineManager] Skipping operation (max retries):', operation.id);
+                        failed++;
+                        continue;
+                    }
+
+                    const result = await this.syncOperation(operation, operation.id);
+                    if (result.success && !result.local) {
+                        synced++;
+                    } else {
+                        failed++;
+                    }
+
+                    // Small delay between operations
+                    await new Promise(resolve => setTimeout(resolve, 100));
+                }
+
+                this.isSyncing = false;
+                this.updateStatusBar();
+
+                if (synced > 0) {
+                    showToast(`Synced ${synced} change${synced > 1 ? 's' : ''}`, 'success');
+                    // Refresh data from server
+                    await loadAllData();
+                }
+
+                if (failed > 0 && synced === 0) {
+                    showToast(`${failed} change${failed > 1 ? 's' : ''} pending sync`, 'info');
+                }
+            },
+
+            // Force sync now (user-triggered)
+            async syncNow() {
+                if (!this.isOnline) {
+                    showToast('Cannot sync - no internet connection', 'error');
+                    return;
+                }
+                await this.checkAndSync();
+            },
+
+            // Update the status bar UI
+            updateStatusBar() {
+                const statusBar = document.getElementById('offlineStatusBar');
+                const statusText = document.getElementById('offlineStatusText');
+                const pendingBadge = document.getElementById('pendingCountBadge');
+                const syncBtn = document.getElementById('syncNowBtn');
+                const statusIcon = statusBar.querySelector('.status-icon');
+
+                const queue = this.getSyncQueue();
+                const pendingCount = queue.length;
+
+                // Remove all state classes
+                statusBar.classList.remove('offline', 'pending', 'syncing', 'synced', 'visible');
+
+                if (!this.isOnline) {
+                    // Offline
+                    statusBar.classList.add('offline', 'visible');
+                    statusIcon.textContent = '⚠';
+                    statusText.textContent = 'Offline - Changes saved locally';
+                    pendingBadge.style.display = pendingCount > 0 ? 'inline' : 'none';
+                    pendingBadge.textContent = `${pendingCount} pending`;
+                    syncBtn.style.display = 'none';
+                    updateSyncIndicators('offline');
+                } else if (this.isSyncing) {
+                    // Syncing
+                    statusBar.classList.add('syncing', 'visible');
+                    statusIcon.textContent = '↻';
+                    statusText.textContent = 'Syncing changes...';
+                    pendingBadge.style.display = 'none';
+                    syncBtn.style.display = 'none';
+                    updateSyncIndicators('syncing');
+                } else if (pendingCount > 0) {
+                    // Has pending changes
+                    statusBar.classList.add('pending', 'visible');
+                    statusIcon.textContent = '⚡';
+                    statusText.textContent = 'Changes waiting to sync';
+                    pendingBadge.style.display = 'inline';
+                    pendingBadge.textContent = `${pendingCount} pending`;
+                    syncBtn.style.display = 'inline-block';
+                    updateSyncIndicators('pending');
+                } else {
+                    // All synced - show briefly then hide
+                    statusBar.classList.add('synced', 'visible');
+                    statusIcon.textContent = '✓';
+                    statusText.textContent = 'All changes synced';
+                    pendingBadge.style.display = 'none';
+                    syncBtn.style.display = 'none';
+                    updateSyncIndicators('synced');
+
+                    // Hide after 2 seconds when fully synced
+                    setTimeout(() => {
+                        if (this.getSyncQueue().length === 0 && this.isOnline) {
+                            statusBar.classList.remove('visible');
+                        }
+                    }, 2000);
+                }
+            },
+
+            // Cache all current data locally (for offline access)
+            cacheAllData(physiciansData, practicesData, locationsData, assignmentsData) {
+                this.saveLocal(this.STORAGE_KEYS.PHYSICIANS, physiciansData);
+                this.saveLocal(this.STORAGE_KEYS.PRACTICES, practicesData);
+                this.saveLocal(this.STORAGE_KEYS.LOCATIONS, locationsData);
+                this.saveLocal(this.STORAGE_KEYS.ASSIGNMENTS, assignmentsData);
+                this.saveLocal(this.STORAGE_KEYS.LAST_SYNC, new Date().toISOString());
+                console.log('[OfflineManager] Cached all data locally');
+            },
+
+            // Get cached data for offline use
+            getCachedData() {
+                return {
+                    physicians: this.getLocal(this.STORAGE_KEYS.PHYSICIANS) || [],
+                    practices: this.getLocal(this.STORAGE_KEYS.PRACTICES) || [],
+                    locations: this.getLocal(this.STORAGE_KEYS.LOCATIONS) || [],
+                    assignments: this.getLocal(this.STORAGE_KEYS.ASSIGNMENTS) || [],
+                    lastSync: this.getLocal(this.STORAGE_KEYS.LAST_SYNC)
+                };
+            }
+        };
+
         // State
         let physicians = [];
         let practices = [];
@@ -1597,6 +2135,7 @@ const INITIAL_PHYSICIANS = [
         // Initialize
         document.addEventListener('DOMContentLoaded', async () => {
             setToday();
+            OfflineManager.init(); // Initialize offline-first system
             await loadAllData();
             setupRealtimeSubscription();
         });
@@ -1635,90 +2174,174 @@ const INITIAL_PHYSICIANS = [
         }
 
         function updateSyncIndicators(status) {
-            const classes = { synced: 'synced', syncing: 'syncing', error: 'error' };
-            document.getElementById('mobileSyncIndicator').className = `sync-indicator ${classes[status] || 'synced'}`;
-            document.getElementById('desktopSyncIndicator').className = `sync-indicator ${classes[status] || 'synced'}`;
+            const classes = {
+                synced: 'synced',
+                syncing: 'syncing',
+                error: 'error',
+                offline: 'offline',
+                pending: 'pending'
+            };
+            const className = `sync-indicator ${classes[status] || 'synced'}`;
+            document.getElementById('mobileSyncIndicator').className = className;
+            document.getElementById('desktopSyncIndicator').className = className;
         }
 
-        // Load all data
+        // Load all data - with offline support
         async function loadAllData() {
-            try {
-                updateSyncIndicators('syncing');
+            // Check if we should try online first
+            if (OfflineManager.isOnline) {
+                try {
+                    updateSyncIndicators('syncing');
+                    console.log('[LoadData] Loading from Supabase...');
 
-                // Load physicians
-                const { data: physData, error: physError } = await db
-                    .from('physicians')
-                    .select('*')
-                    .order('last_name', { ascending: true });
+                    // Load physicians
+                    const { data: physData, error: physError } = await db
+                        .from('physicians')
+                        .select('*')
+                        .order('last_name', { ascending: true });
 
-                if (physError) throw physError;
-                physicians = physData || [];
+                    if (physError) throw physError;
+                    physicians = physData || [];
 
-                // Load practices
-                const { data: practData, error: practError } = await db
-                    .from('practices')
-                    .select('*')
-                    .order('name', { ascending: true });
+                    // Load practices
+                    const { data: practData, error: practError } = await db
+                        .from('practices')
+                        .select('*')
+                        .order('name', { ascending: true });
 
-                if (!practError) {
-                    practices = practData || [];
+                    if (!practError) {
+                        practices = practData || [];
+                    }
+
+                    // Load practice locations
+                    const { data: locData, error: locError } = await db
+                        .from('practice_locations')
+                        .select('*, practices(name)')
+                        .order('city', { ascending: true });
+
+                    if (!locError) {
+                        practiceLocations = locData || [];
+                    }
+
+                    // Load physician location assignments
+                    const { data: assignData, error: assignError } = await db
+                        .from('physician_location_assignments')
+                        .select('*, practice_locations(*, practices(name))');
+
+                    if (!assignError) {
+                        // Group by physician_id
+                        physicianAssignments = {};
+                        (assignData || []).forEach(a => {
+                            if (!physicianAssignments[a.physician_id]) {
+                                physicianAssignments[a.physician_id] = [];
+                            }
+                            physicianAssignments[a.physician_id].push(a);
+                        });
+                    }
+
+                    // Cache all data locally for offline use
+                    OfflineManager.cacheAllData(physicians, practices, practiceLocations, assignData || []);
+
+                    renderList();
+                    updateSyncIndicators('synced');
+                    updateConnectionStatus('connected');
+                    OfflineManager.updateStatusBar();
+
+                    // Show/hide import section based on data
+                    const importSection = document.getElementById('importSection');
+                    if (importSection) {
+                        importSection.style.display = physicians.length === 0 ? 'block' : 'none';
+                    }
+
+                    console.log('[LoadData] Loaded from Supabase and cached locally');
+                    return;
+                } catch (error) {
+                    console.error('[LoadData] Error loading from Supabase:', error);
+                    // Fall through to load from cache
                 }
+            }
 
-                // Load practice locations
-                const { data: locData, error: locError } = await db
-                    .from('practice_locations')
-                    .select('*, practices(name)')
-                    .order('city', { ascending: true });
+            // Load from local cache (offline or after error)
+            console.log('[LoadData] Loading from local cache...');
+            const cached = OfflineManager.getCachedData();
 
-                if (!locError) {
-                    practiceLocations = locData || [];
-                }
+            if (cached.physicians.length > 0) {
+                physicians = cached.physicians;
+                practices = cached.practices;
+                practiceLocations = cached.locations;
 
-                // Load physician location assignments
-                const { data: assignData, error: assignError } = await db
-                    .from('physician_location_assignments')
-                    .select('*, practice_locations(*, practices(name))');
-
-                if (!assignError) {
-                    // Group by physician_id
-                    physicianAssignments = {};
-                    (assignData || []).forEach(a => {
-                        if (!physicianAssignments[a.physician_id]) {
-                            physicianAssignments[a.physician_id] = [];
-                        }
-                        physicianAssignments[a.physician_id].push(a);
-                    });
-                }
+                // Rebuild assignments grouped by physician_id
+                physicianAssignments = {};
+                (cached.assignments || []).forEach(a => {
+                    if (!physicianAssignments[a.physician_id]) {
+                        physicianAssignments[a.physician_id] = [];
+                    }
+                    physicianAssignments[a.physician_id].push(a);
+                });
 
                 renderList();
-                updateSyncIndicators('synced');
-                updateConnectionStatus('connected');
+                updateSyncIndicators('offline');
+                updateConnectionStatus('disconnected');
+                OfflineManager.updateStatusBar();
 
-                // Show/hide import section based on data
-                const importSection = document.getElementById('importSection');
-                if (importSection) {
-                    importSection.style.display = physicians.length === 0 ? 'block' : 'none';
+                if (cached.lastSync) {
+                    const syncTime = new Date(cached.lastSync).toLocaleString();
+                    showToast(`Working offline. Last synced: ${syncTime}`, 'info');
+                } else {
+                    showToast('Working offline with cached data', 'info');
                 }
-            } catch (error) {
-                console.error('Error loading data:', error);
+
+                console.log('[LoadData] Loaded from local cache');
+            } else {
+                // No cached data available
                 updateSyncIndicators('error');
-                showToast('Error loading data: ' + error.message, 'error');
+                showToast('No internet and no cached data available', 'error');
             }
         }
 
-        // Load contact logs for a physician
+        // Load contact logs for a physician - with offline support
         async function loadContactLogs(physicianId) {
-            try {
-                const { data, error } = await db
-                    .from('contact_logs')
-                    .select('*')
-                    .eq('physician_id', physicianId)
-                    .order('contact_date', { ascending: false });
+            // First, check local cache for any pending (unsynced) logs
+            const localLogsKey = `${OfflineManager.STORAGE_KEYS.CONTACT_LOGS}_${physicianId}`;
+            const localLogs = OfflineManager.getLocal(localLogsKey) || [];
+            const pendingLogs = localLogs.filter(log => !log.synced || log.local_id);
 
-                if (error) throw error;
-                contactLogs[physicianId] = data || [];
-            } catch (error) {
-                console.error('Error loading contact logs:', error);
+            if (OfflineManager.isOnline) {
+                try {
+                    const { data, error } = await db
+                        .from('contact_logs')
+                        .select('*')
+                        .eq('physician_id', physicianId)
+                        .order('contact_date', { ascending: false });
+
+                    if (error) throw error;
+
+                    // Merge server data with any pending local logs
+                    const serverLogs = data || [];
+
+                    // Filter out pending logs that have been synced (match by content)
+                    const uniquePendingLogs = pendingLogs.filter(pending => {
+                        return !serverLogs.some(server =>
+                            server.contact_date === pending.contact_date &&
+                            server.notes === pending.notes &&
+                            server.author === pending.author
+                        );
+                    });
+
+                    // Combine and sort by date
+                    contactLogs[physicianId] = [...uniquePendingLogs, ...serverLogs]
+                        .sort((a, b) => new Date(b.contact_date) - new Date(a.contact_date));
+
+                    // Update local cache
+                    OfflineManager.saveLocal(localLogsKey, contactLogs[physicianId]);
+                } catch (error) {
+                    console.error('Error loading contact logs from server:', error);
+                    // Fall back to local cache
+                    contactLogs[physicianId] = localLogs;
+                }
+            } else {
+                // Offline - use local cache
+                contactLogs[physicianId] = localLogs;
             }
         }
 
@@ -3205,6 +3828,7 @@ const INITIAL_PHYSICIANS = [
             document.getElementById('contactModal').classList.remove('active');
         }
 
+        // OFFLINE-FIRST: Save contact log locally first, then sync to cloud
         async function saveContact(e) {
             e.preventDefault();
 
@@ -3228,41 +3852,38 @@ const INITIAL_PHYSICIANS = [
             };
 
             try {
-                updateSyncIndicators('syncing');
+                // Use OfflineManager for offline-first saving
+                const result = await OfflineManager.saveContactLog(
+                    data,
+                    !!editingContactId,
+                    editingContactId
+                );
 
-                if (editingContactId) {
-                    const { error } = await db
-                        .from('contact_logs')
-                        .update(data)
-                        .eq('id', editingContactId);
+                if (result.success) {
+                    if (result.local) {
+                        // Saved locally only (offline)
+                        btn.textContent = 'Saved Locally!';
+                        showToast('Saved locally - will sync when online', 'info');
+                    } else {
+                        // Synced to cloud
+                        btn.textContent = 'Saved & Synced!';
+                        showToast(editingContactId ? 'Note updated & synced' : 'Note added & synced', 'success');
+                    }
 
-                    if (error) throw error;
-                    showToast('Note updated', 'success');
+                    // Update last_contact on physician (locally)
+                    currentPhysician.last_contact = data.contact_date;
+
+                    btn.classList.remove('saving');
+                    btn.classList.add('saved');
+
+                    // Reload contact logs - will use local cache if offline
+                    await loadContactLogs(currentPhysician.id);
+                    renderProfile();
+                    setTimeout(() => closeContactModal(), 500);
+                    OfflineManager.updateStatusBar();
                 } else {
-                    const { error } = await db
-                        .from('contact_logs')
-                        .insert(data);
-
-                    if (error) throw error;
-                    showToast('Note added', 'success');
+                    throw new Error(result.error || 'Unknown error');
                 }
-
-                // Update last_contact on physician
-                await db
-                    .from('physicians')
-                    .update({ last_contact: data.contact_date })
-                    .eq('id', currentPhysician.id);
-
-                currentPhysician.last_contact = data.contact_date;
-
-                btn.textContent = 'Saved!';
-                btn.classList.remove('saving');
-                btn.classList.add('saved');
-
-                await loadContactLogs(currentPhysician.id);
-                renderProfile();
-                setTimeout(() => closeContactModal(), 500);
-                updateSyncIndicators('synced');
             } catch (error) {
                 console.error('Save error:', error);
                 showToast('Error saving: ' + error.message, 'error');
