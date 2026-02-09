@@ -1060,7 +1060,7 @@ if (!confirm('FINAL WARNING: Click OK to permanently delete all data.')) return;
 try {
 updateSyncIndicators('syncing');
 showToast('Clearing database...', 'info');
-for(const t of ['contact_logs','physician_location_assignments','physicians','practice_locations','practices']){
+for(const t of ['contact_logs','physician_location_assignments','physician_addresses','physicians','practice_locations','practices']){
 const{error,count}=await db.from(t).delete().neq('id','00000000-0000-0000-0000-000000000000');
 console.log(`Deleted from ${t}: error=${error?.message||'none'}`);
 if(error) throw error;
