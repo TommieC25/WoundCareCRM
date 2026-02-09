@@ -1061,15 +1061,32 @@ try {
 updateSyncIndicators('syncing');
 showToast('Clearing database...', 'info');
 for(const t of ['contact_logs','physician_location_assignments','physicians','practice_locations','practices']){
-const{error}=await db.from(t).delete().neq('id','00000000-0000-0000-0000-000000000000');
+const{error,count}=await db.from(t).delete().neq('id','00000000-0000-0000-0000-000000000000');
+console.log(`Deleted from ${t}: error=${error?.message||'none'}`);
 if(error) throw error;
+}
+// Verify physicians table is actually empty
+const{data:remaining}=await db.from('physicians').select('id,first_name,last_name');
+if(remaining&&remaining.length>0){
+console.warn(`${remaining.length} physicians survived delete! RLS may be blocking deletions.`);
+showToast(`Warning: ${remaining.length} records could not be deleted (database permissions issue). Check Supabase RLS policies.`,'error');
+// Try deleting them individually
+for(const r of remaining){
+const{error:e2}=await db.from('physicians').delete().eq('id',r.id);
+console.log(`Individual delete ${r.first_name} ${r.last_name}: ${e2?.message||'ok'}`);
+}
 }
 physicians=[];practices=[];practiceLocations=[];physicianAssignments={};contactLogs={};
 currentPhysician=null;currentPractice=null;
+await loadAllData();
 renderList();
+if(physicians.length>0){
+showToast(`Clear incomplete: ${physicians.length} physicians remain. Check Supabase RLS/policies.`,'error');
+}else{
 renderEmptyState();
-updateSyncIndicators('synced');
 showToast('Database cleared successfully!', 'success');
+}
+updateSyncIndicators('synced');
 } catch (error) {
 console.error('Clear database error:', error);
 showToast('Error clearing database: ' + error.message, 'error');
