@@ -1231,7 +1231,8 @@
                 <div class="import-section" id="importSection" style="max-width: 400px; margin: 2rem auto; display: none;">
                     <h4>Import Data</h4>
                     <p>Click below to import physicians into the database.</p>
-                    <button class="btn-import" id="importBtn" onclick="importInitialData()">Import Physicians</button>
+                    <button class="btn-import" id="importBtn" onclick="importInitialData()">Clear & Import All</button>
+                    <button class="btn-import" style="background: #28a745; margin-left: 8px;" onclick="importNewPhysiciansOnly()">Import New Only</button>
                     <div class="import-progress" id="importProgress">
                         <div class="progress-bar-container">
                             <div class="progress-bar-fill" id="progressBarFill"></div>
@@ -2729,6 +2730,206 @@ const INITIAL_PHYSICIANS = [
             }
         }
 
+        // Import NEW physicians only (append mode - preserves existing data and contact logs)
+        async function importNewPhysiciansOnly() {
+            const btn = event.target;
+            btn.disabled = true;
+            btn.textContent = 'Checking...';
+            updateImportProgress(0, 'Analyzing existing data...');
+
+            try {
+                updateSyncIndicators('syncing');
+
+                // Step 1: Get existing physicians from database
+                const { data: existingPhysicians, error: physErr } = await db
+                    .from('physicians')
+                    .select('first_name, last_name');
+
+                if (physErr) throw physErr;
+
+                // Create set of existing physician keys
+                const existingKeys = new Set(
+                    existingPhysicians.map(p =>
+                        `${(p.first_name || '').toLowerCase().trim()}|${(p.last_name || '').toLowerCase().trim()}`
+                    )
+                );
+
+                console.log(`Found ${existingKeys.size} existing physicians`);
+                updateImportProgress(10, 'Finding new physicians...');
+
+                // Step 2: Filter INITIAL_PHYSICIANS to only new entries
+                const newEntries = INITIAL_PHYSICIANS.filter(p => {
+                    const key = `${(p.first_name || '').toLowerCase().trim()}|${(p.last_name || '').toLowerCase().trim()}`;
+                    return !existingKeys.has(key);
+                });
+
+                if (newEntries.length === 0) {
+                    showToast('No new physicians to import - database is up to date!', 'info');
+                    btn.disabled = false;
+                    btn.textContent = 'Import New Only';
+                    updateSyncIndicators('synced');
+                    const progressDiv = document.getElementById('importProgress');
+                    if (progressDiv) progressDiv.classList.remove('active');
+                    return;
+                }
+
+                console.log(`Found ${newEntries.length} new physicians to import`);
+                updateImportProgress(20, `Importing ${newEntries.length} new physicians...`);
+
+                // Step 3: Get or create practices for new entries
+                const practiceNames = [...new Set(newEntries.map(p => p.practice_name))];
+                const practiceMap = {};
+
+                for (const name of practiceNames) {
+                    const { data: existing } = await db.from('practices').select('*').eq('name', name).maybeSingle();
+                    if (existing) {
+                        practiceMap[name] = existing.id;
+                    } else {
+                        const { data: newPractice, error: err } = await db.from('practices').insert({ name }).select().maybeSingle();
+                        if (!err && newPractice) {
+                            practiceMap[name] = newPractice.id;
+                        }
+                    }
+                }
+
+                updateImportProgress(40, 'Creating physician records...');
+
+                // Step 4: Group new physicians and their locations
+                const physicianMap = new Map();
+                newEntries.forEach(p => {
+                    const key = `${p.first_name.toLowerCase().trim()}|${p.last_name.toLowerCase().trim()}`;
+
+                    if (!physicianMap.has(key)) {
+                        physicianMap.set(key, {
+                            physician: {
+                                first_name: p.first_name,
+                                last_name: p.last_name,
+                                email: p.email || null,
+                                priority: p.priority,
+                                um_connection: p.um_connection,
+                                patient_volume: p.mohs_volume || p.patient_volume,
+                                specialty: p.specialty || null,
+                                general_notes: p.general_notes
+                            },
+                            locations: []
+                        });
+                    }
+
+                    const entry = physicianMap.get(key);
+                    if (p.address && p.address !== '[Research needed]') {
+                        entry.locations.push({
+                            practice_id: practiceMap[p.practice_name],
+                            practice_name: p.practice_name,
+                            address: p.address,
+                            city: p.city,
+                            zip: p.zip,
+                            phone: p.phone,
+                            fax: p.fax
+                        });
+                    }
+                });
+
+                // Step 5: Insert new physicians
+                const insertedPhysicians = [];
+                let progress = 40;
+                const progressPerPhysician = 40 / physicianMap.size;
+
+                for (const [key, data] of physicianMap) {
+                    const { data: newPhys, error: err } = await db
+                        .from('physicians')
+                        .insert(data.physician)
+                        .select()
+                        .maybeSingle();
+
+                    if (!err && newPhys) {
+                        insertedPhysicians.push({ ...newPhys, locations: data.locations });
+                    }
+                    progress += progressPerPhysician;
+                    updateImportProgress(Math.min(80, progress), `Imported ${insertedPhysicians.length} physicians...`);
+                }
+
+                updateImportProgress(85, 'Creating locations and assignments...');
+
+                // Step 6: Create locations and assignments
+                let locationCount = 0;
+                let assignmentCount = 0;
+
+                for (const phys of insertedPhysicians) {
+                    for (let i = 0; i < phys.locations.length; i++) {
+                        const loc = phys.locations[i];
+                        if (!loc.practice_id) continue;
+
+                        // Check if location exists
+                        const { data: existingLoc } = await db
+                            .from('practice_locations')
+                            .select('*')
+                            .eq('practice_id', loc.practice_id)
+                            .eq('address', loc.address)
+                            .maybeSingle();
+
+                        let locationId;
+                        if (existingLoc) {
+                            locationId = existingLoc.id;
+                        } else {
+                            const { data: newLoc, error: locErr } = await db
+                                .from('practice_locations')
+                                .insert({
+                                    practice_id: loc.practice_id,
+                                    address: loc.address,
+                                    city: loc.city,
+                                    zip: loc.zip,
+                                    phone: loc.phone,
+                                    fax: loc.fax
+                                })
+                                .select()
+                                .maybeSingle();
+
+                            if (!locErr && newLoc) {
+                                locationId = newLoc.id;
+                                locationCount++;
+                            }
+                        }
+
+                        // Create assignment
+                        if (locationId) {
+                            const { error: assignErr } = await db
+                                .from('physician_location_assignments')
+                                .insert({
+                                    physician_id: phys.id,
+                                    practice_location_id: locationId,
+                                    is_primary: i === 0
+                                });
+
+                            if (!assignErr) assignmentCount++;
+                        }
+                    }
+                }
+
+                updateImportProgress(95, 'Finishing up...');
+                await loadAllData();
+                updateImportProgress(100, 'Complete!');
+
+                setTimeout(() => {
+                    const progressDiv = document.getElementById('importProgress');
+                    if (progressDiv) progressDiv.classList.remove('active');
+                }, 1000);
+
+                showToast(`Added ${insertedPhysicians.length} new physicians, ${locationCount} locations!`, 'success');
+                updateSyncIndicators('synced');
+                btn.disabled = false;
+                btn.textContent = 'Import New Only';
+
+            } catch (error) {
+                console.error('Import error:', error);
+                showToast('Import failed: ' + error.message, 'error');
+                btn.disabled = false;
+                btn.textContent = 'Import New Only';
+                updateSyncIndicators('error');
+                const progressDiv = document.getElementById('importProgress');
+                if (progressDiv) progressDiv.classList.remove('active');
+            }
+        }
+
         // View switching
         function setView(view) {
             currentView = view;
@@ -2920,7 +3121,8 @@ const INITIAL_PHYSICIANS = [
                     <div class="import-section" id="importSection" style="max-width: 400px; margin: 2rem auto;">
                         <h4>Import Data</h4>
                         <p>Click below to import your physicians into Supabase.</p>
-                        <button class="btn-import" id="importBtn" onclick="importInitialData()">Import Physicians</button>
+                        <button class="btn-import" id="importBtn" onclick="importInitialData()">Clear & Import All</button>
+                    <button class="btn-import" style="background: #28a745; margin-left: 8px;" onclick="importNewPhysiciansOnly()">Import New Only</button>
                         <div class="import-progress" id="importProgress">
                             <div class="progress-bar-container">
                                 <div class="progress-bar-fill" id="progressBarFill"></div>
@@ -4024,7 +4226,8 @@ const INITIAL_PHYSICIANS = [
                     <div class="import-section" id="importSection" style="max-width: 400px; margin: 2rem auto;">
                         <h4>Import Data</h4>
                         <p>Click below to import your physicians into Supabase.</p>
-                        <button class="btn-import" id="importBtn" onclick="importInitialData()">Import Physicians</button>
+                        <button class="btn-import" id="importBtn" onclick="importInitialData()">Clear & Import All</button>
+                    <button class="btn-import" style="background: #28a745; margin-left: 8px;" onclick="importNewPhysiciansOnly()">Import New Only</button>
                         <div class="import-progress" id="importProgress">
                             <div class="progress-bar-container">
                                 <div class="progress-bar-fill" id="progressBarFill"></div>
