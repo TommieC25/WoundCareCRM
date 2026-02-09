@@ -28,7 +28,11 @@
 <button class="admin-btn" onclick="toggleAdminPanel()">Admin Settings</button>
 <div class="admin-panel" id="adminPanel">
 <h4>Database Management</h4>
-<p>Clear all data from the database.</p>
+<p>Import physicians from a CSV file or clear all data.</p>
+<label style="display:block;margin-bottom:0.5rem;padding:0.75rem;background:#0ea5e9;color:white;border-radius:8px;font-weight:600;text-align:center;cursor:pointer;">
+Import from CSV <input type="file" accept=".csv" onchange="importCSV(this.files[0])" style="display:none">
+</label>
+<div id="importStatus" style="font-size:0.8rem;margin-bottom:0.5rem;color:#ccc;"></div>
 <button class="btn-danger" onclick="clearDatabase()">Clear All Data</button>
 </div>
 </div>
@@ -53,7 +57,11 @@
 <main class="main-content" id="mainContent">
 <div class="empty-state">
 <h2>Welcome to Territory CRM</h2>
-<p>Select a physician from the list to view their profile</p>
+<p>Select a physician from the list, or import your data.</p>
+<label style="display:inline-block;margin-top:1rem;padding:0.75rem 1.5rem;background:#0ea5e9;color:white;border-radius:8px;font-weight:600;cursor:pointer;">
+Import from CSV <input type="file" accept=".csv" onchange="importCSV(this.files[0])" style="display:none">
+</label>
+<div id="importStatusMain" style="font-size:0.85rem;margin-top:0.5rem;color:#666;"></div>
 </div>
 </main>
 </div>
@@ -1052,6 +1060,62 @@ await dbDel('contact_logs',logId,'Delete this note?',async()=>{await loadContact
 function toggleAdminPanel() {
 const panel = $('adminPanel');
 panel.classList.toggle('show');
+}
+async function importCSV(file) {
+if(!file)return;
+const status=s=>{const el=$('importStatus');if(el)el.textContent=s;const el2=$('importStatusMain');if(el2)el2.textContent=s;};
+status('Reading CSV...');
+try{
+const text=await file.text();
+const lines=text.split('\n').filter(l=>l.trim());
+const headers=lines[0].split(',').map(h=>h.trim().toLowerCase().replace(/\s+/g,'_'));
+const rows=[];
+for(let i=1;i<lines.length;i++){
+const vals=[];let cur='',inQ=false;
+for(const ch of lines[i]){if(ch==='"'){inQ=!inQ;}else if(ch===','&&!inQ){vals.push(cur.trim());cur='';}else{cur+=ch;}}
+vals.push(cur.trim());
+const row={};headers.forEach((h,j)=>row[h]=vals[j]||'');rows.push(row);
+}
+status(`Parsed ${rows.length} rows. Importing...`);
+updateSyncIndicators('syncing');
+// Build unique practices
+const practiceNames=[...new Set(rows.map(r=>r.practice_name).filter(Boolean))];
+const practiceMap={};
+for(const name of practiceNames){
+const{data:ex}=await db.from('practices').select('*').eq('name',name).maybeSingle();
+if(ex){practiceMap[name]=ex.id;}else{
+const{data:np,error}=await db.from('practices').insert({name}).select().maybeSingle();
+if(np)practiceMap[name]=np.id;
+}}
+// Group by physician name, collect locations
+const physMap=new Map();
+rows.forEach(r=>{
+const key=`${(r.first_name||'').toLowerCase()}|${(r.last_name||'').toLowerCase()}`;
+if(!physMap.has(key))physMap.set(key,{phys:{first_name:r.first_name,last_name:r.last_name,email:r.email||null,priority:r.priority||null,um_connection:r.um_connection||null,specialty:r.specialty||null,general_notes:r.general_notes||null},locs:[]});
+const e=physMap.get(key);
+if(r.address&&r.address!=='[Research needed]')e.locs.push({practice_id:practiceMap[r.practice_name],address:r.address,city:r.city,zip:r.zip,phone:r.phone,fax:r.fax,label:r.city||'Office',is_primary:e.locs.length===0});
+});
+// Insert physicians
+let count=0;const total=physMap.size;
+for(const[key,entry] of physMap){
+count++;if(count%10===0)status(`Importing physician ${count} of ${total}...`);
+const{data:ex}=await db.from('physicians').select('*').ilike('first_name',entry.phys.first_name).ilike('last_name',entry.phys.last_name).maybeSingle();
+const phys=ex||(await db.from('physicians').insert(entry.phys).select().maybeSingle()).data;
+if(!phys)continue;
+// Create locations and assignments
+for(const loc of entry.locs){
+if(!loc.practice_id)continue;
+const{data:exLoc}=await db.from('practice_locations').select('*').eq('practice_id',loc.practice_id).eq('address',loc.address).maybeSingle();
+const locRec=exLoc||(await db.from('practice_locations').insert({practice_id:loc.practice_id,label:loc.label,address:loc.address,city:loc.city,zip:loc.zip,phone:loc.phone,fax:loc.fax}).select().maybeSingle()).data;
+if(!locRec)continue;
+const{data:exA}=await db.from('physician_location_assignments').select('*').eq('physician_id',phys.id).eq('practice_location_id',locRec.id).maybeSingle();
+if(!exA)await db.from('physician_location_assignments').insert({physician_id:phys.id,practice_location_id:locRec.id,is_primary:loc.is_primary});
+}}
+await loadAllData();
+status(`Done! Imported ${physMap.size} physicians, ${practiceNames.length} practices.`);
+showToast(`Imported ${physMap.size} physicians`,'success');
+updateSyncIndicators('synced');
+}catch(e){console.error('Import error:',e);status('Error: '+e.message);showToast('Import failed: '+e.message,'error');updateSyncIndicators('error');}
 }
 async function clearDatabase() {
 const confirmMsg = 'Are you sure you want to DELETE ALL DATA?\n\nThis will remove:\n- All physicians\n- All practices\n- All locations\n- All contact logs\n\nThis cannot be undone!';
