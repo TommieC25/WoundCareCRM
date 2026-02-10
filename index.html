@@ -28,12 +28,13 @@
 <button class="admin-btn" onclick="toggleAdminPanel()">Admin Settings</button>
 <div class="admin-panel" id="adminPanel">
 <h4>Database Management</h4>
-<p>Import physicians from a CSV file or clear all data.</p>
-<label style="display:block;margin-bottom:0.5rem;padding:0.75rem;background:#0ea5e9;color:white;border-radius:8px;font-weight:600;text-align:center;cursor:pointer;">
-Import from CSV <input type="file" accept=".csv" onchange="importCSV(this.files[0])" style="display:none">
+<p style="color:#aaa;font-size:0.8rem;margin-bottom:0.75rem;">Add new records to the existing database, or manage all data.</p>
+<label style="display:block;margin-bottom:0.5rem;padding:0.75rem;background:#10b981;color:white;border-radius:8px;font-weight:600;text-align:center;cursor:pointer;font-size:0.95rem;">
+Append New Records from CSV <input type="file" accept=".csv" onchange="importCSV(this.files[0])" style="display:none">
 </label>
+<div style="font-size:0.7rem;color:#888;margin-bottom:0.75rem;text-align:center;">Adds new physicians without affecting existing data</div>
 <div id="importStatus" style="font-size:0.8rem;margin-bottom:0.5rem;color:#ccc;"></div>
-<button class="btn-danger" onclick="clearDatabase()">Clear All Data</button>
+<button class="btn-danger" onclick="clearDatabase()" style="margin-top:0.5rem;">Clear All Data</button>
 </div>
 </div>
 <div class="view-tabs">
@@ -57,10 +58,7 @@ Import from CSV <input type="file" accept=".csv" onchange="importCSV(this.files[
 <main class="main-content" id="mainContent">
 <div class="empty-state">
 <h2>Welcome to Territory CRM</h2>
-<p>Select a physician from the list, or import your data.</p>
-<label style="display:inline-block;margin-top:1rem;padding:0.75rem 1.5rem;background:#0ea5e9;color:white;border-radius:8px;font-weight:600;cursor:pointer;">
-Import from CSV <input type="file" accept=".csv" onchange="importCSV(this.files[0])" style="display:none">
-</label>
+<p>Select a physician from the list to view their profile</p>
 <div id="importStatusMain" style="font-size:0.85rem;margin-top:0.5rem;color:#666;"></div>
 </div>
 </main>
