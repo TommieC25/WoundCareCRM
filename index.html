@@ -8,7 +8,7 @@
  <title>Territory CRM - Miami Wound Care</title>
  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
  <style>
-*{margin:0;padding:0;box-sizing:border-box}body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f5f5f5;-webkit-font-smoothing:antialiased;overflow-x:hidden}.app{display:flex;height:100vh}.connection-status{position:fixed;top:0;left:0;right:0;padding:0.5rem;text-align:center;font-size:0.75rem;font-weight:600;z-index:200;transition:all 0.3s}.connection-status.connected{background:#10b981;color:white}.connection-status.disconnected{background:#ef4444;color:white}.connection-status.syncing{background:#f59e0b;color:white}.connection-status.hidden{transform:translateY(-100%)}.mobile-header{display:none;background:#0a4d3c;color:white;padding:1rem;align-items:center;gap:1rem;position:sticky;top:0;z-index:60;box-shadow:0 2px 4px rgba(0,0,0,0.1)}.mobile-header h1{flex:1;font-size:1.25rem;font-weight:600}.menu-btn,.add-header-btn{background:none;border:none;color:white;font-size:1.5rem;cursor:pointer;padding:0.5rem;display:flex;align-items:center;justify-content:center;-webkit-tap-highlight-color:transparent}.sidebar{width:300px;background:#0a4d3c;color:white;display:flex;flex-direction:column;overflow-y:auto;transition:transform 0.3s}.sidebar-header{padding:1.5rem;border-bottom:1px solid rgba(255,255,255,0.1)}.sidebar-header h1{font-size:1.5rem;font-weight:700;margin-bottom:0.25rem}.sidebar-header .subtitle{font-size:0.75rem;opacity:0.7;text-transform:uppercase;letter-spacing:1px}.sidebar-header .count{font-size:0.85rem;margin-top:0.5rem;opacity:0.8}.search-box{padding:0.75rem 1rem;border-bottom:1px solid rgba(255,255,255,0.1)}.search-input{width:100%;padding:0.75rem;border:none;border-radius:8px;background:rgba(255,255,255,0.1);color:white;font-size:0.9rem}.search-input::placeholder{color:rgba(255,255,255,0.5)}.search-input:focus{outline:none;background:rgba(255,255,255,0.15)}.sort-controls{padding:0.5rem 1rem;border-bottom:1px solid rgba(255,255,255,0.1);display:flex;gap:0.5rem;flex-wrap:wrap}.sort-btn{padding:0.4rem 0.75rem;background:rgba(255,255,255,0.1);border:none;border-radius:6px;color:white;font-size:0.75rem;cursor:pointer;transition:all 0.2s}.sort-btn:hover{background:rgba(255,255,255,0.2)}.sort-btn.active{background:#f97316}.physician-list{flex:1;padding:0.5rem;list-style:none;overflow-y:auto}.physician-item{padding:0.875rem;margin-bottom:0.5rem;background:rgba(255,255,255,0.1);border-radius:8px;cursor:pointer;transition:all 0.2s;border-left:3px solid transparent;-webkit-tap-highlight-color:transparent}.physician-item:active{transform:scale(0.98)}.physician-item.active{background:rgba(255,255,255,0.2);border-left-color:#f97316}.physician-item .name{font-weight:600;font-size:0.9rem;margin-bottom:0.25rem}.physician-item .practice{font-size:0.75rem;opacity:0.8}.physician-item .tier{font-size:0.65rem;margin-top:0.25rem;padding:0.125rem 0.5rem;background:rgba(249,115,22,0.3);border-radius:4px;display:inline-block}.physician-item .city-badge{font-size:0.65rem;margin-left:0.25rem;padding:0.125rem 0.5rem;background:rgba(255,255,255,0.2);border-radius:4px;display:inline-block}.add-physician-btn{margin:1rem;padding:1rem;background:#f97316;color:white;border:none;border-radius:8px;font-weight:600;font-size:1rem;cursor:pointer;-webkit-tap-highlight-color:transparent}.add-physician-btn:active{transform:scale(0.98)}.main-content{flex:1;overflow-y:auto;padding:1rem;-webkit-overflow-scrolling:touch}.empty-state{text-align:center;padding:4rem 2rem;color:#666}.empty-state h2{font-size:1.5rem;margin-bottom:1rem}.profile-header{background:white;padding:1.5rem;border-radius:12px;margin-bottom:1rem;box-shadow:0 1px 3px rgba(0,0,0,0.1)}.profile-name{font-size:1.75rem;font-weight:700;color:#0a4d3c;margin-bottom:0.5rem}.profile-practice{font-size:1rem;color:#666;margin-bottom:1rem}.profile-meta{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:1rem;padding-top:1rem;border-top:1px solid #e5e5e5}.meta-item{display:flex;flex-direction:column}.meta-label{font-size:0.7rem;text-transform:uppercase;color:#999;letter-spacing:0.5px;margin-bottom:0.25rem}.meta-value{font-weight:600;color:#0a4d3c;font-size:0.9rem}.section{background:white;padding:1.5rem;border-radius:12px;margin-bottom:1rem;box-shadow:0 1px 3px rgba(0,0,0,0.1)}.section-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;padding-bottom:0.75rem;border-bottom:2px solid #f0f0f0}.section-header h3{font-size:1.25rem;color:#0a4d3c}.edit-btn{padding:0.5rem 1rem;background:#0a4d3c;color:white;border:none;border-radius:6px;font-weight:600;font-size:0.85rem;cursor:pointer;-webkit-tap-highlight-color:transparent}.edit-btn:active{transform:scale(0.95)}.delete-btn{padding:0.5rem 1rem;background:#dc2626;color:white;border:none;border-radius:6px;font-weight:600;font-size:0.85rem;cursor:pointer;margin-left:0.5rem}.contact-grid{display:grid;gap:0.75rem}.contact-item{display:flex;gap:0.75rem;padding:0.875rem;background:#f9f9f9;border-radius:8px}.contact-icon{width:40px;height:40px;background:#0a4d3c;color:white;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:1.25rem}.contact-item-content{flex:1}.contact-item-label{font-size:0.7rem;text-transform:uppercase;color:#999;letter-spacing:0.5px;margin-bottom:0.25rem}.contact-item-value{font-weight:500;color:#333;font-size:0.9rem}.contact-item-value a{color:#0a4d3c;text-decoration:none}.form-grid{display:grid;gap:1rem}.form-row{display:grid;grid-template-columns:1fr 1fr;gap:1rem}@media (max-width:500px){.form-row{grid-template-columns:1fr}}label{display:block;font-size:0.75rem;font-weight:600;color:#666;margin-bottom:0.25rem;text-transform:uppercase;letter-spacing:0.5px}input,textarea,select{width:100%;padding:0.875rem;border:2px solid #e5e5e5;border-radius:8px;font-size:1rem;font-family:inherit;-webkit-appearance:none}input:focus,textarea:focus,select:focus{outline:none;border-color:#0a4d3c}textarea{resize:vertical;min-height:100px}.btn-primary{width:100%;padding:1rem;background:#0a4d3c;color:white;border:none;border-radius:8px;font-weight:600;font-size:1rem;cursor:pointer;-webkit-tap-highlight-color:transparent}.btn-primary:active{transform:scale(0.98)}.btn-primary:disabled{background:#ccc;cursor:not-allowed}.btn-primary.saving{background:#f59e0b;pointer-events:none}.btn-primary.saved{background:#10b981}.contact-entries{display:flex;flex-direction:column;gap:0.75rem}.contact-entry{padding:1rem;background:#f9f9f9;border-left:4px solid #0a4d3c;border-radius:8px}.contact-entry-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem}.contact-entry-date{font-size:0.75rem;color:#999;text-transform:uppercase;letter-spacing:0.5px}.contact-entry-location{display:block;font-size:0.8rem;color:#0a4d3c;margin-top:0.25rem}.contact-entry-timestamp{font-size:0.7rem;color:#bbb;margin-left:0.5rem;font-style:italic}.contact-entry-actions{display:flex;gap:0.5rem}.icon-btn{background:none;border:none;font-size:1rem;cursor:pointer;padding:0.25rem;opacity:0.6;transition:opacity 0.2s}.icon-btn:hover{opacity:1}.contact-entry-notes{font-size:0.9rem;line-height:1.5;color:#333;white-space:pre-wrap}.modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:100;padding:1rem}.modal.active{display:flex;align-items:center;justify-content:center}.modal-content{background:white;border-radius:16px;width:100%;max-width:500px;max-height:90vh;overflow-y:auto;box-shadow:0 20px 25px -5px rgba(0,0,0,0.2)}.modal-header{display:flex;justify-content:space-between;align-items:center;padding:1.5rem;border-bottom:1px solid #e5e5e5;position:sticky;top:0;background:white;border-radius:16px 16px 0 0}.modal-header h2{font-size:1.5rem;color:#0a4d3c}.close-btn{background:none;border:none;font-size:2rem;cursor:pointer;color:#999;padding:0;width:40px;height:40px;display:flex;align-items:center;justify-content:center;-webkit-tap-highlight-color:transparent}.modal-body{padding:1.5rem}.locations-grid{display:flex;flex-direction:column;gap:1rem}.location-card{background:#f9f9f9;border-radius:10px;padding:1rem;border-left:4px solid #0a4d3c}.location-card.primary{border-left-color:#f97316}.location-card-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem}.location-label{font-weight:600;color:#0a4d3c;font-size:0.95rem}.location-badge{font-size:0.65rem;padding:0.2rem 0.5rem;background:#f97316;color:white;border-radius:4px;text-transform:uppercase;font-weight:600}.practice-badge{font-size:0.65rem;padding:0.2rem 0.5rem;background:#0a4d3c;color:white;border-radius:4px;margin-left:0.25rem}.location-actions{display:flex;gap:0.25rem}.location-details{display:grid;gap:0.5rem}.location-detail{display:flex;align-items:flex-start;gap:0.5rem;font-size:0.85rem}.location-detail-icon{flex-shrink:0;width:20px;text-align:center}.location-detail-value{color:#333}.location-detail-value a{color:#0a4d3c;text-decoration:none}.add-location-btn{display:flex;align-items:center;justify-content:center;gap:0.5rem;padding:1rem;background:rgba(10,77,60,0.05);border:2px dashed #0a4d3c;border-radius:10px;color:#0a4d3c;font-weight:600;cursor:pointer;transition:all 0.2s}.add-location-btn:hover{background:rgba(10,77,60,0.1)}.selector-section{margin-bottom:1rem;padding:1rem;background:#f0f9ff;border-radius:8px;border:1px solid #bae6fd}.selector-section h4{color:#0369a1;margin-bottom:0.75rem;font-size:0.9rem}.selector-options{display:flex;flex-direction:column;gap:0.5rem;max-height:200px;overflow-y:auto}.selector-option{display:flex;align-items:center;gap:0.5rem;padding:0.5rem;background:white;border-radius:6px;cursor:pointer;transition:all 0.2s}.selector-option:hover{background:#e0f2fe}.selector-option.selected{background:#0ea5e9;color:white}.selector-option input[type="checkbox"],.selector-option input[type="radio"]{width:18px;height:18px;margin:0;accent-color:#0ea5e9;cursor:pointer}.selector-option input[type="checkbox"]:checked{background-color:#0ea5e9}.selector-option input[type="checkbox"]{-webkit-appearance:none;-moz-appearance:none;appearance:none;border:2px solid #0ea5e9;border-radius:3px;background:#e0f2fe;position:relative;flex-shrink:0}.selector-option input[type="checkbox"]:checked{background-color:#0ea5e9;border-color:#0ea5e9}.selector-option input[type="checkbox"]:checked::after{content:'✓';position:absolute;color:white;font-size:14px;font-weight:bold;top:50%;left:50%;transform:translate(-50%,-50%)}.selector-option-label{flex:1;font-size:0.85rem}.selector-option-sub{font-size:0.75rem;opacity:0.7}.btn-secondary{padding:0.5rem 1rem;background:#e5e5e5;color:#333;border:none;border-radius:6px;font-weight:600;font-size:0.85rem;cursor:pointer;margin-top:0.5rem}.btn-secondary:hover{background:#d5d5d5}@media (max-width:768px){.app{flex-direction:column}.mobile-header{display:flex}.sidebar{position:fixed;top:0;left:0;bottom:0;z-index:50;transform:translateX(-100%);box-shadow:2px 0 8px rgba(0,0,0,0.1)}.sidebar.open{transform:translateX(0)}.main-content{padding:0.5rem}.profile-name{font-size:1.5rem}.section{padding:1rem}}.loading{text-align:center;padding:3rem;color:#666}.empty-notice{text-align:center;padding:2rem;color:#999;font-style:italic}.sync-indicator{display:inline-block;width:8px;height:8px;border-radius:50%;margin-left:0.5rem;animation:pulse 1.5s infinite}.sync-indicator.synced{background:#10b981}.sync-indicator.syncing{background:#f59e0b;animation:pulse 0.5s infinite}.sync-indicator.error{background:#ef4444}@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.5}}.toast-container{position:fixed;bottom:1rem;right:1rem;z-index:300;display:flex;flex-direction:column;gap:0.5rem}.toast{padding:1rem 1.5rem;border-radius:8px;color:white;font-weight:500;box-shadow:0 4px 12px rgba(0,0,0,0.15);animation:slideIn 0.3s ease}.toast.success{background:#10b981}.toast.error{background:#ef4444}.toast.info{background:#3b82f6}@keyframes slideIn{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}.view-tabs{display:flex;gap:0.5rem;padding:0.5rem 1rem;border-bottom:1px solid rgba(255,255,255,0.1)}.view-tab{padding:0.5rem 1rem;background:rgba(255,255,255,0.1);border:none;border-radius:6px;color:white;font-size:0.8rem;cursor:pointer;transition:all 0.2s}.view-tab:hover{background:rgba(255,255,255,0.2)}.view-tab.active{background:#f97316}.admin-btn{background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);color:white;padding:0.4rem 0.75rem;border-radius:6px;font-size:0.75rem;cursor:pointer;margin-top:0.5rem;transition:all 0.2s}.admin-btn:hover{background:rgba(255,255,255,0.2)}.admin-panel{background:#1a1a2e;border:1px solid #333;border-radius:8px;padding:1rem;margin-top:1rem;display:none}.admin-panel.show{display:block}.admin-panel h4{color:#f97316;margin-bottom:0.75rem;font-size:0.9rem}.admin-panel p{color:#aaa;font-size:0.8rem;margin-bottom:0.75rem}.btn-danger{background:#dc2626;color:white;border:none;padding:0.6rem 1rem;border-radius:6px;font-size:0.85rem;cursor:pointer;width:100%;margin-bottom:0.5rem;transition:all 0.2s}.btn-danger:hover{background:#b91c1c}.btn-warning{background:#f59e0b;color:white;border:none;padding:0.6rem 1rem;border-radius:6px;font-size:0.85rem;cursor:pointer;width:100%;transition:all 0.2s}.btn-warning:hover{background:#d97706}
+*{margin:0;padding:0;box-sizing:border-box}body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f5f5f5;-webkit-font-smoothing:antialiased;overflow-x:hidden}.app{display:flex;height:100vh}.connection-status{position:fixed;top:0;left:0;right:0;padding:0.5rem;text-align:center;font-size:0.75rem;font-weight:600;z-index:200;transition:all 0.3s}.connection-status.connected{background:#10b981;color:white}.connection-status.disconnected{background:#ef4444;color:white}.connection-status.syncing{background:#f59e0b;color:white}.connection-status.hidden{transform:translateY(-100%)}.mobile-header{display:none;background:#0a4d3c;color:white;padding:1rem;align-items:center;gap:1rem;position:sticky;top:0;z-index:60;box-shadow:0 2px 4px rgba(0,0,0,0.1)}.mobile-header h1{flex:1;font-size:1.25rem;font-weight:600}.menu-btn,.add-header-btn{background:none;border:none;color:white;font-size:1.5rem;cursor:pointer;padding:0.5rem;display:flex;align-items:center;justify-content:center;-webkit-tap-highlight-color:transparent}.sidebar{width:300px;background:#0a4d3c;color:white;display:flex;flex-direction:column;overflow-y:auto;transition:transform 0.3s}.sidebar-header{padding:1.5rem;border-bottom:1px solid rgba(255,255,255,0.1)}.sidebar-header h1{font-size:1.5rem;font-weight:700;margin-bottom:0.25rem}.sidebar-header .subtitle{font-size:0.75rem;opacity:0.7;text-transform:uppercase;letter-spacing:1px}.sidebar-header .count{font-size:0.85rem;margin-top:0.5rem;opacity:0.8}.search-box{padding:0.75rem 1rem;border-bottom:1px solid rgba(255,255,255,0.1)}.search-wrapper{position:relative;display:flex;align-items:center}.search-input{width:100%;padding:0.75rem;padding-right:2.5rem;border:none;border-radius:8px;background:rgba(255,255,255,0.1);color:white;font-size:0.9rem}.search-input::placeholder{color:rgba(255,255,255,0.5)}.search-input:focus{outline:none;background:rgba(255,255,255,0.15)}.search-clear{position:absolute;right:0.5rem;background:rgba(255,255,255,0.3);border:none;color:white;font-size:1.25rem;cursor:pointer;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;padding:0;line-height:1;-webkit-tap-highlight-color:transparent;touch-action:manipulation}.sort-controls{padding:0.5rem 1rem;border-bottom:1px solid rgba(255,255,255,0.1);display:flex;gap:0.5rem;flex-wrap:wrap}.sort-btn{padding:0.4rem 0.75rem;background:rgba(255,255,255,0.1);border:none;border-radius:6px;color:white;font-size:0.75rem;cursor:pointer;transition:all 0.2s}.sort-btn:hover{background:rgba(255,255,255,0.2)}.sort-btn.active{background:#f97316}.physician-list{flex:1;padding:0.5rem;list-style:none;overflow-y:auto}.physician-item{padding:0.875rem;margin-bottom:0.5rem;background:rgba(255,255,255,0.1);border-radius:8px;cursor:pointer;transition:all 0.2s;border-left:3px solid transparent;-webkit-tap-highlight-color:transparent}.physician-item:active{transform:scale(0.98)}.physician-item.active{background:rgba(255,255,255,0.2);border-left-color:#f97316}.physician-item .name{font-weight:600;font-size:0.9rem;margin-bottom:0.25rem}.physician-item .practice{font-size:0.75rem;opacity:0.8}.physician-item .tier{font-size:0.65rem;margin-top:0.25rem;padding:0.125rem 0.5rem;background:rgba(249,115,22,0.3);border-radius:4px;display:inline-block}.physician-item .city-badge{font-size:0.65rem;margin-left:0.25rem;padding:0.125rem 0.5rem;background:rgba(255,255,255,0.2);border-radius:4px;display:inline-block}.add-physician-btn{margin:1rem;padding:1rem;background:#f97316;color:white;border:none;border-radius:8px;font-weight:600;font-size:1rem;cursor:pointer;-webkit-tap-highlight-color:transparent}.add-physician-btn:active{transform:scale(0.98)}.main-content{flex:1;overflow-y:auto;padding:1rem;-webkit-overflow-scrolling:touch}.empty-state{text-align:center;padding:4rem 2rem;color:#666}.empty-state h2{font-size:1.5rem;margin-bottom:1rem}.profile-header{background:white;padding:1.5rem;border-radius:12px;margin-bottom:1rem;box-shadow:0 1px 3px rgba(0,0,0,0.1)}.profile-name{font-size:1.75rem;font-weight:700;color:#0a4d3c;margin-bottom:0.5rem}.profile-practice{font-size:1rem;color:#666;margin-bottom:1rem}.profile-meta{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:1rem;padding-top:1rem;border-top:1px solid #e5e5e5}.meta-item{display:flex;flex-direction:column}.meta-label{font-size:0.7rem;text-transform:uppercase;color:#999;letter-spacing:0.5px;margin-bottom:0.25rem}.meta-value{font-weight:600;color:#0a4d3c;font-size:0.9rem}.section{background:white;padding:1.5rem;border-radius:12px;margin-bottom:1rem;box-shadow:0 1px 3px rgba(0,0,0,0.1)}.section-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;padding-bottom:0.75rem;border-bottom:2px solid #f0f0f0}.section-header h3{font-size:1.25rem;color:#0a4d3c}.edit-btn{padding:0.5rem 1rem;background:#0a4d3c;color:white;border:none;border-radius:6px;font-weight:600;font-size:0.85rem;cursor:pointer;-webkit-tap-highlight-color:transparent;touch-action:manipulation}.edit-btn:active{transform:scale(0.95)}.delete-btn{padding:0.5rem 1rem;background:#dc2626;color:white;border:none;border-radius:6px;font-weight:600;font-size:0.85rem;cursor:pointer;margin-left:0.5rem}.contact-grid{display:grid;gap:0.75rem}.contact-item{display:flex;gap:0.75rem;padding:0.875rem;background:#f9f9f9;border-radius:8px}.contact-icon{width:40px;height:40px;background:#0a4d3c;color:white;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:1.25rem}.contact-item-content{flex:1}.contact-item-label{font-size:0.7rem;text-transform:uppercase;color:#999;letter-spacing:0.5px;margin-bottom:0.25rem}.contact-item-value{font-weight:500;color:#333;font-size:0.9rem}.contact-item-value a{color:#0a4d3c;text-decoration:none}.form-grid{display:grid;gap:1rem}.form-row{display:grid;grid-template-columns:1fr 1fr;gap:1rem}@media (max-width:500px){.form-row{grid-template-columns:1fr}}label{display:block;font-size:0.75rem;font-weight:600;color:#666;margin-bottom:0.25rem;text-transform:uppercase;letter-spacing:0.5px}input,textarea,select{width:100%;padding:0.875rem;border:2px solid #e5e5e5;border-radius:8px;font-size:1rem;font-family:inherit;-webkit-appearance:none}input:focus,textarea:focus,select:focus{outline:none;border-color:#0a4d3c}textarea{resize:vertical;min-height:100px}.btn-primary{width:100%;padding:1rem;background:#0a4d3c;color:white;border:none;border-radius:8px;font-weight:600;font-size:1rem;cursor:pointer;-webkit-tap-highlight-color:transparent;touch-action:manipulation}.btn-primary:active{transform:scale(0.98)}.btn-primary:disabled{background:#ccc;cursor:not-allowed}.btn-primary.saving{background:#f59e0b;pointer-events:none}.btn-primary.saved{background:#10b981}.contact-entries{display:flex;flex-direction:column;gap:0.75rem}.contact-entry{padding:1rem;background:#f9f9f9;border-left:4px solid #0a4d3c;border-radius:8px}.contact-entry-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem}.contact-entry-date{font-size:0.75rem;color:#999;text-transform:uppercase;letter-spacing:0.5px}.contact-entry-location{display:block;font-size:0.8rem;color:#0a4d3c;margin-top:0.25rem}.contact-entry-timestamp{font-size:0.7rem;color:#bbb;margin-left:0.5rem;font-style:italic}.contact-entry-actions{display:flex;gap:0.5rem}.icon-btn{background:none;border:none;font-size:1rem;cursor:pointer;padding:0.25rem;opacity:0.6;transition:opacity 0.2s;touch-action:manipulation;-webkit-tap-highlight-color:transparent}.icon-btn:hover{opacity:1}.contact-entry-notes{font-size:0.9rem;line-height:1.5;color:#333;white-space:pre-wrap}.modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:100;padding:1rem;overflow-y:auto;-webkit-overflow-scrolling:touch}.modal.active{display:flex;align-items:center;justify-content:center}.modal-content{background:white;border-radius:16px;width:100%;max-width:500px;max-height:90vh;overflow-y:auto;-webkit-overflow-scrolling:touch;box-shadow:0 20px 25px -5px rgba(0,0,0,0.2)}.modal-header{display:flex;justify-content:space-between;align-items:center;padding:1.5rem;border-bottom:1px solid #e5e5e5;position:sticky;top:0;background:white;border-radius:16px 16px 0 0}.modal-header h2{font-size:1.5rem;color:#0a4d3c}.close-btn{background:none;border:none;font-size:2rem;cursor:pointer;color:#999;padding:0;width:40px;height:40px;display:flex;align-items:center;justify-content:center;-webkit-tap-highlight-color:transparent}.modal-body{padding:1.5rem}.locations-grid{display:flex;flex-direction:column;gap:1rem}.location-card{background:#f9f9f9;border-radius:10px;padding:1rem;border-left:4px solid #0a4d3c}.location-card.primary{border-left-color:#f97316}.location-card-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem}.location-label{font-weight:600;color:#0a4d3c;font-size:0.95rem}.location-badge{font-size:0.65rem;padding:0.2rem 0.5rem;background:#f97316;color:white;border-radius:4px;text-transform:uppercase;font-weight:600}.practice-badge{font-size:0.65rem;padding:0.2rem 0.5rem;background:#0a4d3c;color:white;border-radius:4px;margin-left:0.25rem}.location-actions{display:flex;gap:0.25rem}.location-details{display:grid;gap:0.5rem}.location-detail{display:flex;align-items:flex-start;gap:0.5rem;font-size:0.85rem}.location-detail-icon{flex-shrink:0;width:20px;text-align:center}.location-detail-value{color:#333}.location-detail-value a{color:#0a4d3c;text-decoration:none}.add-location-btn{display:flex;align-items:center;justify-content:center;gap:0.5rem;padding:1rem;background:rgba(10,77,60,0.05);border:2px dashed #0a4d3c;border-radius:10px;color:#0a4d3c;font-weight:600;cursor:pointer;transition:all 0.2s}.add-location-btn:hover{background:rgba(10,77,60,0.1)}.selector-section{margin-bottom:1rem;padding:1rem;background:#f0f9ff;border-radius:8px;border:1px solid #bae6fd}.selector-section h4{color:#0369a1;margin-bottom:0.75rem;font-size:0.9rem}.selector-options{display:flex;flex-direction:column;gap:0.5rem;max-height:200px;overflow-y:auto}.selector-option{display:flex;align-items:center;gap:0.5rem;padding:0.5rem;background:white;border-radius:6px;cursor:pointer;transition:all 0.2s;touch-action:manipulation;-webkit-tap-highlight-color:transparent}.selector-option:hover{background:#e0f2fe}.selector-option.selected{background:#0ea5e9;color:white}.selector-option input[type="checkbox"],.selector-option input[type="radio"]{width:18px;height:18px;margin:0;accent-color:#0ea5e9;cursor:pointer}.selector-option input[type="checkbox"]:checked{background-color:#0ea5e9}.selector-option input[type="checkbox"]{-webkit-appearance:none;-moz-appearance:none;appearance:none;border:2px solid #0ea5e9;border-radius:3px;background:#e0f2fe;position:relative;flex-shrink:0}.selector-option input[type="checkbox"]:checked{background-color:#0ea5e9;border-color:#0ea5e9}.selector-option input[type="checkbox"]:checked::after{content:'✓';position:absolute;color:white;font-size:14px;font-weight:bold;top:50%;left:50%;transform:translate(-50%,-50%)}.selector-option-label{flex:1;font-size:0.85rem}.selector-option-sub{font-size:0.75rem;opacity:0.7}.btn-secondary{padding:0.5rem 1rem;background:#e5e5e5;color:#333;border:none;border-radius:6px;font-weight:600;font-size:0.85rem;cursor:pointer;margin-top:0.5rem;touch-action:manipulation;-webkit-tap-highlight-color:transparent}.btn-secondary:hover{background:#d5d5d5}@media (max-width:768px){.app{flex-direction:column}.mobile-header{display:flex}.sidebar{position:fixed;top:0;left:0;bottom:0;z-index:50;transform:translateX(-100%);box-shadow:2px 0 8px rgba(0,0,0,0.1)}.sidebar.open{transform:translateX(0)}.main-content{padding:0.5rem}.profile-name{font-size:1.5rem}.section{padding:1rem}}.loading{text-align:center;padding:3rem;color:#666}.empty-notice{text-align:center;padding:2rem;color:#999;font-style:italic}.sync-indicator{display:inline-block;width:8px;height:8px;border-radius:50%;margin-left:0.5rem;animation:pulse 1.5s infinite}.sync-indicator.synced{background:#10b981}.sync-indicator.syncing{background:#f59e0b;animation:pulse 0.5s infinite}.sync-indicator.error{background:#ef4444}@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.5}}.toast-container{position:fixed;bottom:1rem;right:1rem;z-index:300;display:flex;flex-direction:column;gap:0.5rem}.toast{padding:1rem 1.5rem;border-radius:8px;color:white;font-weight:500;box-shadow:0 4px 12px rgba(0,0,0,0.15);animation:slideIn 0.3s ease}.toast.success{background:#10b981}.toast.error{background:#ef4444}.toast.info{background:#3b82f6}@keyframes slideIn{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}.view-tabs{display:flex;gap:0.5rem;padding:0.5rem 1rem;border-bottom:1px solid rgba(255,255,255,0.1)}.view-tab{padding:0.5rem 1rem;background:rgba(255,255,255,0.1);border:none;border-radius:6px;color:white;font-size:0.8rem;cursor:pointer;transition:all 0.2s}.view-tab:hover{background:rgba(255,255,255,0.2)}.view-tab.active{background:#f97316}.admin-btn{background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);color:white;padding:0.4rem 0.75rem;border-radius:6px;font-size:0.75rem;cursor:pointer;margin-top:0.5rem;transition:all 0.2s}.admin-btn:hover{background:rgba(255,255,255,0.2)}.admin-panel{background:#1a1a2e;border:1px solid #333;border-radius:8px;padding:1rem;margin-top:1rem;display:none}.admin-panel.show{display:block}.admin-panel h4{color:#f97316;margin-bottom:0.75rem;font-size:0.9rem}.admin-panel p{color:#aaa;font-size:0.8rem;margin-bottom:0.75rem}.btn-danger{background:#dc2626;color:white;border:none;padding:0.6rem 1rem;border-radius:6px;font-size:0.85rem;cursor:pointer;width:100%;margin-bottom:0.5rem;transition:all 0.2s}.btn-danger:hover{background:#b91c1c}.btn-warning{background:#f59e0b;color:white;border:none;padding:0.6rem 1rem;border-radius:6px;font-size:0.85rem;cursor:pointer;width:100%;transition:all 0.2s}.btn-warning:hover{background:#d97706}
 </style>
 </head>
 <body>
@@ -42,7 +42,10 @@ Append New Records from CSV <input type="file" accept=".csv" onchange="importCSV
 <button class="view-tab" onclick="setView('practices')" id="tabPractices">Practices</button>
 </div>
 <div class="search-box">
+<div class="search-wrapper">
 <input type="text" class="search-input" id="searchInput" placeholder="Search physicians..." oninput="filterList()">
+<button class="search-clear" id="searchClear" onclick="clearSearch()" style="display:none">&times;</button>
+</div>
 </div>
 <div class="sort-controls" id="sortControls">
 <button class="sort-btn active" onclick="setSortBy('name')" id="sortName">Name</button>
@@ -162,8 +165,8 @@ Append New Records from CSV <input type="file" accept=".csv" onchange="importCSV
 </div>
 <div class="form-row">
 <div>
-<label>Location Label *</label>
-<input type="text" id="locationLabel" placeholder="e.g., Main Office, Key Biscayne" required>
+<label>Location Label</label>
+<input type="text" id="locationLabel" placeholder="e.g., Main Office, Key Biscayne">
 </div>
 <div>
 <label>Primary Location?</label>
@@ -271,13 +274,13 @@ Append New Records from CSV <input type="file" accept=".csv" onchange="importCSV
 <input type="date" id="contactDate" required>
 </div>
 <div>
-<label>Time *</label>
-<input type="time" id="contactTime" required>
+<label>Time</label>
+<input type="time" id="contactTime">
 </div>
 </div>
 <div id="locationSelectRow">
-<label>Location *</label>
-<select id="contactLocation" required>
+<label>Location</label>
+<select id="contactLocation">
 <option value="">Select location...</option>
 </select>
 </div>
@@ -314,8 +317,38 @@ Append New Records from CSV <input type="file" accept=".csv" onchange="importCSV
 </div>
 <div class="modal-body">
 <p style="margin-bottom: 0.5rem; color: #666;">Select a location at this practice:</p>
-<select id="assignPhysLocationSelect" style="width:100%;margin-bottom:1rem;"></select>
-<p style="margin-bottom: 0.5rem; color: #666;">Search and select physicians to assign:</p>
+<select id="assignPhysLocationSelect" style="width:100%;margin-bottom:1rem;padding:0.5rem;border:1px solid #e5e5e5;border-radius:6px;font-size:0.9rem;"></select>
+<div id="quickAddPhysSection" style="margin-bottom:1rem;padding:1rem;background:#f0fdf4;border:1px solid #86efac;border-radius:8px;">
+<h4 style="color:#0a4d3c;margin-bottom:0.75rem;font-size:0.9rem;">Quick Add New Physician</h4>
+<div class="form-row" style="margin-bottom:0.5rem;">
+<div><input type="text" id="quickPhysFirst" placeholder="First Name" style="padding:0.5rem;font-size:0.85rem;"></div>
+<div><input type="text" id="quickPhysLast" placeholder="Last Name" style="padding:0.5rem;font-size:0.85rem;"></div>
+</div>
+<div class="form-row" style="margin-bottom:0.5rem;">
+<div>
+<select id="quickPhysSpecialty" style="padding:0.5rem;font-size:0.85rem;">
+<option value="">Specialty</option>
+<option value="Dermatology">Dermatology</option>
+<option value="Podiatry">Podiatry</option>
+<option value="Wound Healing">Wound Healing</option>
+<option value="Plastic & Reconstructive Surgery">Plastic & Reconstructive Surgery</option>
+<option value="General Surgery">General Surgery</option>
+</select>
+</div>
+<div>
+<select id="quickPhysPriority" style="padding:0.5rem;font-size:0.85rem;">
+<option value="">Priority</option>
+<option value="1">Tier 1</option>
+<option value="2">Tier 2</option>
+<option value="3">Tier 3</option>
+<option value="4">Tier 4</option>
+<option value="5">Tier 5</option>
+</select>
+</div>
+</div>
+<button type="button" class="btn-secondary" style="background:#0a4d3c;color:white;width:100%;" onclick="quickAddPhysician()">Add & Assign Physician</button>
+</div>
+<p style="margin-bottom: 0.5rem; color: #666;">Or select existing physicians:</p>
 <input type="text" id="assignPhysSearch" placeholder="Search physicians..." oninput="filterAssignPhysicianOptions()" style="width:100%;padding:0.5rem;border:1px solid #e5e5e5;border-radius:6px;margin-bottom:0.5rem;font-size:0.85rem;">
 <div class="selector-options" id="assignPhysicianOptions" style="max-height: 300px;">
 </div>
@@ -351,6 +384,14 @@ document.addEventListener('DOMContentLoaded', async () => {
 setToday();
 await loadAllData();
 setupRealtimeSubscription();
+// Prevent background scroll when modals are open (iPad fix)
+document.querySelectorAll('.modal').forEach(modal => {
+modal.addEventListener('touchmove', function(e) {
+const content = modal.querySelector('.modal-content');
+if (content && content.contains(e.target)) return; // allow scroll inside modal content
+e.preventDefault();
+}, { passive: false });
+});
 });
 function setToday() {
 const today = new Date();
@@ -532,7 +573,15 @@ p.name.toLowerCase().includes(search)
 );
 }
 function filterList() {
+const val = $('searchInput').value;
+$('searchClear').style.display = val ? 'flex' : 'none';
 renderList();
+}
+function clearSearch() {
+$('searchInput').value = '';
+$('searchClear').style.display = 'none';
+renderList();
+$('searchInput').focus();
 }
 function renderList() {
 const list = $('physicianList');
@@ -908,6 +957,21 @@ let practiceId=selectedPracticeId;const npn=$('newPracticeName').value;
 if(npn&&!practiceId){const{data:np,error:pe}=await db.from('practices').insert({name:npn}).select().single();if(pe)throw pe;practiceId=np.id;practices.push(np);}
 const{data:newP,error}=await db.from('physicians').insert(data).select().single();if(error)throw error;
 if(selectedLocationIds.length>0){const a=selectedLocationIds.map((lid,i)=>({physician_id:newP.id,practice_location_id:lid,is_primary:i===0}));const{error:ae}=await db.from('physician_location_assignments').insert(a);if(ae)throw ae;}
+else if(practiceId){
+// Auto-create a default location for the new practice and assign physician
+const existingLocs=practiceLocations.filter(l=>l.practice_id===practiceId);
+if(existingLocs.length>0){
+// Assign to first existing location
+const{error:ae}=await db.from('physician_location_assignments').insert({physician_id:newP.id,practice_location_id:existingLocs[0].id,is_primary:true});
+if(ae)throw ae;
+}else{
+// Create a default location and assign
+const{data:newLoc,error:le}=await db.from('practice_locations').insert({practice_id:practiceId,label:'Main Office'}).select().single();
+if(le)throw le;
+const{error:ae}=await db.from('physician_location_assignments').insert({physician_id:newP.id,practice_location_id:newLoc.id,is_primary:true});
+if(ae)throw ae;
+}
+}
 physicians.push(newP);physicians.sort((a,b)=>a.last_name.localeCompare(b.last_name));showToast('Physician added','success');
 }
 await loadAllData();renderList();setTimeout(()=>closePhysicianModal(),500);
@@ -977,7 +1041,7 @@ return `
 <div style="margin-bottom: 1rem;">
 <div style="font-weight: 600; margin-bottom: 0.5rem; color: #0a4d3c;">${practice.name}</div>
 ${locations.map(loc => `
-<div class="selector-option" onclick="toggleAssignLocation('${loc.id}', this)">
+<div class="selector-option" data-loc-id="${loc.id}" onclick="toggleAssignLocation('${loc.id}', this)">
 <input type="checkbox" ${existingAssignments.includes(loc.id) ? 'checked' : ''}>
 <div>
 <span class="selector-option-label">${loc.label || 'Office'}</span>
@@ -998,14 +1062,12 @@ const checkbox = element.querySelector('input[type="checkbox"]');
 checkbox.checked = !checkbox.checked;
 }
 async function saveLocationAssignments() {
-const checkboxes = document.querySelectorAll('#assignLocationOptions input[type="checkbox"]');
+const options = document.querySelectorAll('#assignLocationOptions .selector-option');
 const selectedIds = [];
-checkboxes.forEach((cb, index) => {
-if (cb.checked) {
-const optionDiv = cb.closest('.selector-option');
-const locationId = optionDiv.getAttribute('onclick').match(/'([^']+)'/)[1];
-selectedIds.push(locationId);
-}
+options.forEach(opt => {
+const cb = opt.querySelector('input[type="checkbox"]');
+const locId = opt.getAttribute('data-loc-id');
+if (cb && cb.checked && locId) selectedIds.push(locId);
 });
 try {
 updateSyncIndicators('syncing');
@@ -1078,7 +1140,8 @@ $('contactModal').classList.remove('active');
 async function saveContact(e) {
 e.preventDefault();
 const tv=$('contactTime').value,nv=$('contactNotes').value;
-const data={physician_id:currentPhysician.id,contact_date:$('contactDate').value,author:$('authorName').value,notes:tv?`[${tv}] ${nv}`:nv};
+const locVal=$('contactLocation').value||null;
+const data={physician_id:currentPhysician.id,contact_date:$('contactDate').value,contact_time:tv||null,author:$('authorName').value,practice_location_id:locVal,notes:tv?`[${tv}] ${nv}`:nv};
 await withSave('contactSaveBtn','Save Note',async()=>{
 if(editingContactId){const{error}=await db.from('contact_logs').update(data).eq('id',editingContactId);if(error)throw error;showToast('Note updated','success');
 }else{const{error}=await db.from('contact_logs').insert(data);if(error)throw error;showToast('Note added','success');}
@@ -1091,12 +1154,24 @@ const log = (contactLogs[currentPhysician.id] || []).find(l => l.id === logId);
 if (!log) return;
 editingContactId = logId;
 $('contactModalTitle').textContent = 'Edit Contact Note';
+$('contactSaveBtn').textContent = 'Save Note';
+$('contactSaveBtn').className = 'btn-primary';
 populateLocationDropdown();
 $('contactDate').value = log.contact_date;
-$('contactTime').value = log.contact_time || '';
 $('contactLocation').value = log.practice_location_id || '';
 $('authorName').value = log.author || '';
-$('contactNotes').value = log.notes;
+// Parse time from notes if stored as [HH:MM] prefix
+let notes = log.notes || '';
+let time = log.contact_time || '';
+if (!time) {
+const timeMatch = notes.match(/^\[(\d{1,2}:\d{2})\]\s*/);
+if (timeMatch) {
+time = timeMatch[1];
+notes = notes.replace(timeMatch[0], '');
+}
+}
+$('contactTime').value = time;
+$('contactNotes').value = notes;
 $('contactModal').classList.add('active');
 }
 async function deleteNote(logId) {
@@ -1220,7 +1295,7 @@ function renderAssignPhysicianOptions(existingPhysIds) {
 const search = ($('assignPhysSearch')?.value || '').toLowerCase();
 const filtered = search ? physicians.filter(p => `${p.first_name} ${p.last_name}`.toLowerCase().includes(search)) : physicians;
 $('assignPhysicianOptions').innerHTML = filtered.map(p => `
-<div class="selector-option" onclick="toggleAssignPhys('${p.id}', this)">
+<div class="selector-option" data-phys-id="${p.id}" onclick="toggleAssignPhys('${p.id}', this)">
 <input type="checkbox" ${existingPhysIds.includes(p.id) ? 'checked' : ''}>
 <div>
 <span class="selector-option-label">Dr. ${p.first_name} ${p.last_name}</span>
@@ -1230,38 +1305,90 @@ $('assignPhysicianOptions').innerHTML = filtered.map(p => `
 `).join('') || '<div class="empty-notice">No physicians found</div>';
 }
 function filterAssignPhysicianOptions() {
+// Preserve current checkbox state before re-rendering
+const currentChecked = new Set();
+document.querySelectorAll('#assignPhysicianOptions .selector-option').forEach(opt => {
+const cb = opt.querySelector('input[type="checkbox"]');
+const pid = opt.getAttribute('data-phys-id');
+if (cb && cb.checked && pid) currentChecked.add(pid);
+});
 const locations = practiceLocations.filter(l => l.practice_id === currentPractice.id);
 const existingPhysIds = physicians.filter(p => {
 const assigns = physicianAssignments[p.id] || [];
 return assigns.some(a => locations.some(l => l.id === a.practice_location_id));
 }).map(p => p.id);
-renderAssignPhysicianOptions(existingPhysIds);
+// Merge: existing DB assignments + manually checked
+const mergedIds = [...new Set([...existingPhysIds, ...currentChecked])];
+renderAssignPhysicianOptions(mergedIds);
 }
 function toggleAssignPhys(physId, element) {
 const cb = element.querySelector('input[type="checkbox"]');
 cb.checked = !cb.checked;
 }
 function closeAssignPhysicianModal() { $('assignPhysicianModal').classList.remove('active'); }
+async function quickAddPhysician() {
+const first = $('quickPhysFirst').value.trim();
+const last = $('quickPhysLast').value.trim();
+if (!first || !last) { showToast('First and last name required', 'error'); return; }
+const locId = $('assignPhysLocationSelect').value;
+if (!locId) { showToast('Select a location first', 'error'); return; }
+try {
+updateSyncIndicators('syncing');
+const data = {first_name:first,last_name:last,specialty:$('quickPhysSpecialty').value||null,priority:$('quickPhysPriority').value||null};
+const {data:newPhys,error} = await db.from('physicians').insert(data).select().single();
+if (error) throw error;
+// Assign to selected location
+const {error:assignErr} = await db.from('physician_location_assignments').insert({physician_id:newPhys.id,practice_location_id:locId,is_primary:true});
+if (assignErr) throw assignErr;
+await loadAllData();
+// Clear quick-add fields
+$('quickPhysFirst').value = '';
+$('quickPhysLast').value = '';
+$('quickPhysSpecialty').value = '';
+$('quickPhysPriority').value = '';
+renderPracticeProfile();
+// Re-render the physician options to show the new physician as checked
+const locations = practiceLocations.filter(l => l.practice_id === currentPractice.id);
+const existingPhysIds = physicians.filter(p => {
+const assigns = physicianAssignments[p.id] || [];
+return assigns.some(a => locations.some(l => l.id === a.practice_location_id));
+}).map(p => p.id);
+renderAssignPhysicianOptions(existingPhysIds);
+showToast(`Dr. ${first} ${last} added and assigned`, 'success');
+updateSyncIndicators('synced');
+} catch(e) {
+console.error('Quick add error:', e);
+showToast('Error: ' + e.message, 'error');
+updateSyncIndicators('error');
+}
+}
 async function savePhysicianToLocation() {
 const locId = $('assignPhysLocationSelect').value;
 if (!locId) { showToast('Select a location', 'error'); return; }
-const checkboxes = document.querySelectorAll('#assignPhysicianOptions .selector-option');
+const options = document.querySelectorAll('#assignPhysicianOptions .selector-option');
 const selectedPhysIds = [];
-checkboxes.forEach(opt => {
+const unselectedPhysIds = [];
+options.forEach(opt => {
 const cb = opt.querySelector('input[type="checkbox"]');
-if (cb && cb.checked) {
-const physId = opt.getAttribute('onclick').match(/'([^']+)'/)[1];
-selectedPhysIds.push(physId);
+const physId = opt.getAttribute('data-phys-id');
+if (physId && cb) {
+if (cb.checked) selectedPhysIds.push(physId);
+else unselectedPhysIds.push(physId);
 }
 });
 try {
 updateSyncIndicators('syncing');
+// Add new assignments
 for (const physId of selectedPhysIds) {
 const {data:existing} = await db.from('physician_location_assignments').select('id').eq('physician_id',physId).eq('practice_location_id',locId).maybeSingle();
 if (!existing) {
 const {error} = await db.from('physician_location_assignments').insert({physician_id:physId,practice_location_id:locId,is_primary:false});
 if (error) throw error;
 }
+}
+// Remove unchecked assignments
+for (const physId of unselectedPhysIds) {
+await db.from('physician_location_assignments').delete().eq('physician_id',physId).eq('practice_location_id',locId);
 }
 await loadAllData();
 renderPracticeProfile();
