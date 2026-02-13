@@ -1293,7 +1293,7 @@ async function saveContact(e) {
 e.preventDefault();
 const tv=$('contactTime').value,nv=$('contactNotes').value;
 const locVal=$('contactLocation').value||null;
-const data={physician_id:currentPhysician.id,contact_date:$('contactDate').value,author:$('authorName').value,practice_location_id:locVal,notes:tv?`[${tv}] ${nv}`:nv};
+const data={physician_id:currentPhysician.id,contact_date:$('contactDate').value,author:$('authorName').value,notes:tv?`[${tv}] ${nv}`:nv};
 await withSave('contactSaveBtn','Save Note',async()=>{
 if(editingContactId){const{error}=await db.from('contact_logs').update(data).eq('id',editingContactId);if(error)throw error;showToast('Note updated','success');
 }else{const{error}=await db.from('contact_logs').insert(data);if(error)throw error;showToast('Note added','success');}
