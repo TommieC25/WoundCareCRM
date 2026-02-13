@@ -681,13 +681,55 @@ ${cities.length > 2 ? `<span class="city-badge">+${cities.length - 2} more</span
 </li>
 `}).join('');
 }
-function renderEmptyState() {
+async function renderEmptyState() {
 $('mainContent').innerHTML = `
 <div class="empty-state">
 <h2>Welcome to Territory CRM</h2>
 <p>Select a ${currentView === 'physicians' ? 'physician' : 'practice'} from the list to view details</p>
 </div>
+<div class="section" style="margin-top:1rem;">
+<div class="section-header"><h3>Recent Activity</h3></div>
+<div id="recentActivityContent"><div class="loading">Loading recent activity...</div></div>
+</div>
+<div class="section">
+<div class="section-header"><h3>Quick Stats</h3></div>
+<div class="profile-meta">
+${mi('Physicians',physicians.length)}${mi('Practices',practices.length)}${mi('Locations',practiceLocations.length)}${mi('Cities',[...new Set(practiceLocations.map(l=>l.city).filter(Boolean))].length)}
+</div>
+</div>
 `;
+try {
+const {data:recentLogs,error} = await db.from('contact_logs').select('*').order('created_at',{ascending:false}).limit(15);
+if (error) throw error;
+const container = $('recentActivityContent');
+if (!recentLogs || recentLogs.length === 0) {
+container.innerHTML = '<div class="empty-notice">No contact notes yet. Start logging your visits and calls!</div>';
+return;
+}
+container.innerHTML = '<div class="contact-entries">' + recentLogs.map(e => {
+const phys = physicians.find(p => p.id === e.physician_id);
+const physName = phys ? `Dr. ${phys.first_name} ${phys.last_name}` : 'Unknown';
+const tm = (e.notes||'').match(/^\[(\d{1,2}:\d{2}(?:\s*[APap][Mm])?)\]\s*/);
+const displayTime = tm ? ' ' + tm[1] : '';
+const displayNotes = tm ? e.notes.replace(tm[0], '') : (e.notes||'');
+const preview = displayNotes.length > 120 ? displayNotes.substring(0,120) + '...' : displayNotes;
+return `
+<div class="contact-entry" style="cursor:pointer" onclick="viewPhysician('${e.physician_id}')">
+<div class="contact-entry-header">
+<div>
+<span class="contact-entry-date">${e.contact_date}${displayTime}${e.author ? ' - ' + e.author : ''}</span>
+<span style="font-weight:600;color:#0a4d3c;display:block;margin-top:0.25rem;">${physName}</span>
+${e.practice_location_id ? '<span class="contact-entry-location">' + getLocationLabel(e.practice_location_id) + '</span>' : ''}
+</div>
+</div>
+<div class="contact-entry-notes">${preview}</div>
+</div>
+`;
+}).join('') + '</div>';
+} catch(e) {
+const container = $('recentActivityContent');
+if (container) container.innerHTML = '<div class="empty-notice">Could not load recent activity</div>';
+}
 }
 async function viewPhysician(id) {
 currentPhysician = physicians.find(p => p.id === id);
