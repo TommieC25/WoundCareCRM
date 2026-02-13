@@ -462,9 +462,20 @@ function showToast(message, type = 'info') {
 const container = $('toastContainer');
 const toast = document.createElement('div');
 toast.className = `toast ${type}`;
-toast.textContent = message;
+toast.style.cssText = 'display:flex;align-items:center;justify-content:space-between;gap:0.5rem;';
+const msg = document.createElement('span');
+msg.textContent = message;
+toast.appendChild(msg);
+if (type === 'error') {
+const closeBtn = document.createElement('button');
+closeBtn.textContent = '\u00d7';
+closeBtn.style.cssText = 'background:none;border:none;color:white;font-size:1.5rem;cursor:pointer;padding:0 0.25rem;flex-shrink:0;';
+closeBtn.onclick = () => toast.remove();
+toast.appendChild(closeBtn);
+}
 container.appendChild(toast);
-setTimeout(() => toast.remove(), 3000);
+const duration = type === 'error' ? 10000 : 3000;
+setTimeout(() => toast.remove(), duration);
 }
 function updateConnectionStatus(status) {
 const el = $('connectionStatus');
