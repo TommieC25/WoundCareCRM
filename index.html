@@ -102,6 +102,26 @@ Append New Records from CSV <input type="file" accept=".csv" onchange="importCSV
 <input type="text" id="lastName" required>
 </div>
 </div>
+<div class="form-row">
+<div>
+<label>Degree</label>
+<select id="degree">
+<option value="">-- Select --</option>
+<option value="MD">MD</option>
+<option value="DO">DO</option>
+<option value="DPM">DPM</option>
+<option value="PA-C">PA-C</option>
+<option value="NP">NP</option>
+<option value="RN">RN</option>
+<option value="PhD">PhD</option>
+<option value="Other">Other</option>
+</select>
+</div>
+<div>
+<label>Title (non-physician staff)</label>
+<input type="text" id="staffTitle" placeholder="e.g. Office Manager">
+</div>
+</div>
 <div>
 <label>Email</label>
 <input type="email" id="physicianEmail">
@@ -127,6 +147,9 @@ Append New Records from CSV <input type="file" accept=".csv" onchange="importCSV
 <option value="Wound Healing">Wound Healing</option>
 <option value="Plastic & Reconstructive Surgery">Plastic & Reconstructive Surgery</option>
 <option value="General Surgery">General Surgery</option>
+<option value="Vascular Surgery">Vascular Surgery</option>
+<option value="Internal Medicine">Internal Medicine</option>
+<option value="Other">Other</option>
 </select>
 </div>
 </div>
@@ -249,6 +272,23 @@ Append New Records from CSV <input type="file" accept=".csv" onchange="importCSV
 <label>General Notes</label>
 <textarea id="practiceNotes" rows="3"></textarea>
 </div>
+<div id="practiceAddressSection">
+<div style="border-top:1px solid #e5e5e5;margin-top:0.5rem;padding-top:0.75rem;">
+<label style="color:#0a4d3c;font-size:0.85rem;margin-bottom:0.5rem;">Primary Location (optional)</label>
+</div>
+<div>
+<label>Address</label>
+<input type="text" id="practiceAddress" placeholder="123 Main St">
+</div>
+<div class="form-row">
+<div><label>City</label><input type="text" id="practiceCity"></div>
+<div><label>ZIP</label><input type="text" id="practiceZip"></div>
+</div>
+<div class="form-row">
+<div><label>Phone</label><input type="tel" id="practicePhone"></div>
+<div><label>Fax</label><input type="tel" id="practiceFax"></div>
+</div>
+</div>
 </div>
 <button type="submit" class="btn-primary" id="practiceSaveBtn" style="margin-top: 1.5rem;">Save Practice</button>
 </form>
@@ -301,7 +341,20 @@ Append New Records from CSV <input type="file" accept=".csv" onchange="importCSV
 <button class="close-btn" onclick="closeAssignLocationModal()">&times;</button>
 </div>
 <div class="modal-body">
-<p style="margin-bottom: 1rem; color: #666;">Select existing locations to assign this physician to:</p>
+<div id="quickAddPracticeSection" style="margin-bottom:1rem;padding:1rem;background:#f0fdf4;border:1px solid #86efac;border-radius:8px;">
+<h4 style="color:#0a4d3c;margin-bottom:0.75rem;font-size:0.9rem;">Quick Add New Practice + Location</h4>
+<div style="margin-bottom:0.5rem;"><input type="text" id="quickPracticeName" placeholder="Practice Name" style="padding:0.5rem;font-size:0.85rem;"></div>
+<div class="form-row" style="margin-bottom:0.5rem;">
+<div><input type="text" id="quickPracticeAddr" placeholder="Address" style="padding:0.5rem;font-size:0.85rem;"></div>
+<div><input type="text" id="quickPracticeCity" placeholder="City" style="padding:0.5rem;font-size:0.85rem;"></div>
+</div>
+<div class="form-row" style="margin-bottom:0.5rem;">
+<div><input type="text" id="quickPracticeZip" placeholder="ZIP" style="padding:0.5rem;font-size:0.85rem;"></div>
+<div><input type="tel" id="quickPracticePhone" placeholder="Phone" style="padding:0.5rem;font-size:0.85rem;"></div>
+</div>
+<button type="button" class="btn-secondary" style="background:#0a4d3c;color:white;width:100%;" onclick="quickAddPracticeAndAssign()">Create & Assign</button>
+</div>
+<p style="margin-bottom: 0.5rem; color: #666;">Or select existing locations:</p>
 <input type="text" id="assignLocationSearch" placeholder="Search practices or locations..." oninput="filterAssignLocationOptions()" style="width:100%;padding:0.5rem;border:1px solid #e5e5e5;border-radius:6px;margin-bottom:0.5rem;font-size:0.85rem;">
 <div class="selector-options" id="assignLocationOptions" style="max-height: 300px;">
 </div>
@@ -333,6 +386,9 @@ Append New Records from CSV <input type="file" accept=".csv" onchange="importCSV
 <option value="Wound Healing">Wound Healing</option>
 <option value="Plastic & Reconstructive Surgery">Plastic & Reconstructive Surgery</option>
 <option value="General Surgery">General Surgery</option>
+<option value="Vascular Surgery">Vascular Surgery</option>
+<option value="Internal Medicine">Internal Medicine</option>
+<option value="Other">Other</option>
 </select>
 </div>
 <div>
@@ -511,6 +567,13 @@ document.querySelectorAll('.sort-btn').forEach(btn => btn.classList.remove('acti
 $('sort' + sort.charAt(0).toUpperCase() + sort.slice(1)).classList.add('active');
 renderList();
 }
+function fmtName(p) {
+const deg = p.degree || '';
+const tl = p.title || '';
+if (deg) return `${p.first_name} ${p.last_name}, ${deg}`;
+if (tl) return `${p.first_name} ${p.last_name} (${tl})`;
+return `Dr. ${p.first_name} ${p.last_name}`;
+}
 function getSortedPhysicians(filtered) {
 return [...filtered].sort((a, b) => {
 if (sortBy === 'name') {
@@ -536,7 +599,9 @@ function mi(label,val){return `<div class="meta-item"><div class="meta-label">${
 function ci(icon,label,val){return val?`<div class="contact-item"><div class="contact-icon">${icon}</div><div class="contact-item-content"><div class="contact-item-label">${label}</div><div class="contact-item-value">${val}</div></div></div>`:''}
 function getPrimaryLoc(physicianId) {
 const a = physicianAssignments[physicianId] || [];
-return (a.find(x => x.is_primary) || a[0])?.practice_locations || {};
+const assign = a.find(x => x.is_primary) || a[0];
+if (!assign) return {};
+return assign.practice_locations || practiceLocations.find(l => l.id === assign.practice_location_id) || {};
 }
 function toggleSidebar() {
 $('sidebar').classList.toggle('open');
@@ -556,21 +621,27 @@ $('physicianCount').textContent =
 function getFilteredPhysicians(search) {
 if (!search) return physicians;
 return physicians.filter(p => {
-const nameMatch = p.first_name.toLowerCase().includes(search) ||
-p.last_name.toLowerCase().includes(search);
-const pl = getPrimaryLoc(p.id);
-const practiceMatch = (pl.practices?.name||'').toLowerCase().includes(search);
-const cityMatch = (pl.city||'').toLowerCase().includes(search);
-const zipMatch = (pl.zip||'').toLowerCase().includes(search);
-const addressMatch = (pl.address||'').toLowerCase().includes(search);
-return nameMatch || practiceMatch || cityMatch || zipMatch || addressMatch;
+if (p.first_name.toLowerCase().includes(search) || p.last_name.toLowerCase().includes(search)) return true;
+if ((p.specialty||'').toLowerCase().includes(search)) return true;
+if ((p.email||'').toLowerCase().includes(search)) return true;
+if ((p.general_notes||'').toLowerCase().includes(search)) return true;
+const assigns = physicianAssignments[p.id] || [];
+return assigns.some(a => {
+const loc = a.practice_locations || practiceLocations.find(l => l.id === a.practice_location_id) || {};
+const pName = loc.practices?.name || practices.find(pr => pr.id === loc.practice_id)?.name || '';
+return pName.toLowerCase().includes(search) || (loc.city||'').toLowerCase().includes(search) || (loc.zip||'').toLowerCase().includes(search) || (loc.address||'').toLowerCase().includes(search) || (loc.phone||'').toLowerCase().includes(search);
+});
 });
 }
 function getFilteredPractices(search) {
 if (!search) return practices;
-return practices.filter(p =>
-p.name.toLowerCase().includes(search)
-);
+return practices.filter(p => {
+if (p.name.toLowerCase().includes(search)) return true;
+if ((p.website||'').toLowerCase().includes(search)) return true;
+if ((p.general_notes||'').toLowerCase().includes(search)) return true;
+const locs = practiceLocations.filter(l => l.practice_id === p.id);
+return locs.some(l => (l.address||'').toLowerCase().includes(search) || (l.city||'').toLowerCase().includes(search) || (l.zip||'').toLowerCase().includes(search) || (l.phone||'').toLowerCase().includes(search));
+});
 }
 function filterList() {
 const val = $('searchInput').value;
@@ -603,13 +674,14 @@ return;
 list.innerHTML = sorted.map(p => {
 const assignments = physicianAssignments[p.id] || [];
 const primaryAssign = assignments.find(a => a.is_primary) || assignments[0];
-const cityDisplay = primaryAssign?.practice_locations?.city || '';
-const practiceName = primaryAssign?.practice_locations?.practices?.name || p.practice_name || '';
+const pLoc = primaryAssign?.practice_locations || (primaryAssign ? practiceLocations.find(l => l.id === primaryAssign.practice_location_id) : null) || {};
+const cityDisplay = pLoc.city || '';
+const practiceName = pLoc.practices?.name || (pLoc.practice_id ? practices.find(pr => pr.id === pLoc.practice_id)?.name : '') || p.practice_name || '';
 const locationCount = assignments.length;
 return `
 <li class="physician-item ${currentPhysician?.id === p.id ? 'active' : ''}"
 onclick="viewPhysician('${p.id}')">
-<div class="name">Dr. ${p.first_name} ${p.last_name}</div>
+<div class="name">${fmtName(p)}</div>
 <div class="practice">${practiceName}</div>
 <div class="tier">${p.priority || 'No tier'}</div>
 ${cityDisplay ? `<span class="city-badge">${cityDisplay}</span>` : ''}
@@ -636,13 +708,55 @@ ${cities.length > 2 ? `<span class="city-badge">+${cities.length - 2} more</span
 </li>
 `}).join('');
 }
-function renderEmptyState() {
+async function renderEmptyState() {
 $('mainContent').innerHTML = `
 <div class="empty-state">
 <h2>Welcome to Territory CRM</h2>
 <p>Select a ${currentView === 'physicians' ? 'physician' : 'practice'} from the list to view details</p>
 </div>
+<div class="section" style="margin-top:1rem;">
+<div class="section-header"><h3>Recent Activity</h3></div>
+<div id="recentActivityContent"><div class="loading">Loading recent activity...</div></div>
+</div>
+<div class="section">
+<div class="section-header"><h3>Quick Stats</h3></div>
+<div class="profile-meta">
+${mi('Physicians',physicians.length)}${mi('Practices',practices.length)}${mi('Locations',practiceLocations.length)}${mi('Cities',[...new Set(practiceLocations.map(l=>l.city).filter(Boolean))].length)}
+</div>
+</div>
 `;
+try {
+const {data:recentLogs,error} = await db.from('contact_logs').select('*').order('created_at',{ascending:false}).limit(15);
+if (error) throw error;
+const container = $('recentActivityContent');
+if (!recentLogs || recentLogs.length === 0) {
+container.innerHTML = '<div class="empty-notice">No contact notes yet. Start logging your visits and calls!</div>';
+return;
+}
+container.innerHTML = '<div class="contact-entries">' + recentLogs.map(e => {
+const phys = physicians.find(p => p.id === e.physician_id);
+const physName = phys ? fmtName(phys) : 'Unknown';
+const tm = (e.notes||'').match(/^\[(\d{1,2}:\d{2}(?:\s*[APap][Mm])?)\]\s*/);
+const displayTime = tm ? ' ' + tm[1] : '';
+const displayNotes = tm ? e.notes.replace(tm[0], '') : (e.notes||'');
+const preview = displayNotes.length > 120 ? displayNotes.substring(0,120) + '...' : displayNotes;
+return `
+<div class="contact-entry" style="cursor:pointer" onclick="viewPhysician('${e.physician_id}')">
+<div class="contact-entry-header">
+<div>
+<span class="contact-entry-date">${e.contact_date}${displayTime}${e.author ? ' - ' + e.author : ''}</span>
+<span style="font-weight:600;color:#0a4d3c;display:block;margin-top:0.25rem;">${physName}</span>
+${e.practice_location_id ? '<span class="contact-entry-location">' + getLocationLabel(e.practice_location_id) + '</span>' : ''}
+</div>
+</div>
+<div class="contact-entry-notes">${preview}</div>
+</div>
+`;
+}).join('') + '</div>';
+} catch(e) {
+const container = $('recentActivityContent');
+if (container) container.innerHTML = '<div class="empty-notice">Could not load recent activity</div>';
+}
 }
 async function viewPhysician(id) {
 currentPhysician = physicians.find(p => p.id === id);
@@ -687,13 +801,13 @@ return loc?.practice_id;
 const associatedPractices = practices.filter(pr => practiceIds.includes(pr.id));
 $('mainContent').innerHTML = `
 <div class="profile-header">
-<div class="profile-name">Dr. ${p.first_name} ${p.last_name}</div>
+<div class="profile-name">${fmtName(p)}</div>
 <div class="profile-practice">
 ${associatedPractices.map(pr => pr.name).join(' | ') || 'No practice assigned'}
 </div>
 <div class="profile-meta">
-${mi('Priority',p.priority||'Not set')}${mi('Specialty',p.specialty||'Not set')}${mi('UM Connection',p.um_connection||'None')}
-${mi('Candidate Patient Volume',p.patient_volume||p.mohs_volume||'Unknown')}${mi('Last Contact',p.last_contact||'Never')}${mi('Locations',assignments.length+' location'+(assignments.length!==1?'s':''))}
+${mi('Priority',p.priority||'Not set')}${mi('Specialty',p.specialty||'Not set')}${mi('Degree',p.degree||'Not set')}${p.title?mi('Title',p.title):''}
+${mi('UM Connection',p.um_connection||'None')}${mi('Candidate Patient Volume',p.patient_volume||p.mohs_volume||'Unknown')}${mi('Last Contact',p.last_contact||'Never')}${mi('Locations',assignments.length+' location'+(assignments.length!==1?'s':''))}
 </div>
 </div>
 <div class="section">
@@ -753,11 +867,15 @@ ${ld(loc.office_hours,'🕐')}${ld(loc.office_staff,'👥')}${ld(loc.receptionis
 ${logs.length === 0 ?
 '<div class="empty-notice">No contact history yet. Click + Add Note to record your first call or visit.</div>' :
 '<div class="contact-entries">' +
-logs.map(e => `
+logs.map(e => {
+const tm = (e.notes||'').match(/^\[(\d{1,2}:\d{2}(?:\s*[APap][Mm])?)\]\s*/);
+const displayTime = tm ? ' ' + tm[1] : '';
+const displayNotes = tm ? e.notes.replace(tm[0], '') : (e.notes||'');
+return `
 <div class="contact-entry">
 <div class="contact-entry-header">
 <div>
-<span class="contact-entry-date">${e.contact_date}${e.contact_time ? ' ' + e.contact_time : ''}${e.author ? ' - ' + e.author : ''}</span>
+<span class="contact-entry-date">${e.contact_date}${displayTime}${e.author ? ' - ' + e.author : ''}</span>
 ${e.practice_location_id ? '<span class="contact-entry-location">' + getLocationLabel(e.practice_location_id) + '</span>' : ''}
 <span class="contact-entry-timestamp">${formatTimestamp(e.created_at)}</span>
 </div>
@@ -766,9 +884,9 @@ ${e.practice_location_id ? '<span class="contact-entry-location">' + getLocation
 <button class="icon-btn" onclick="deleteNote('${e.id}')" title="Delete">🗑️</button>
 </div>
 </div>
-<div class="contact-entry-notes">${e.notes}</div>
+<div class="contact-entry-notes">${displayNotes}</div>
 </div>
-`).join('') +
+`;}).join('') +
 '</div>'
 }
 </div>
@@ -842,7 +960,7 @@ practicePhysicians.map(phys => `
 <div class="contact-icon">👨‍⚕️</div>
 <div class="contact-item-content">
 <div class="contact-item-label">${phys.priority || 'No tier'}</div>
-<div class="contact-item-value">Dr. ${phys.first_name} ${phys.last_name}</div>
+<div class="contact-item-value">${fmtName(phys)}</div>
 </div>
 </div>
 `).join('') +
@@ -949,13 +1067,15 @@ openLocationModal(practiceId);
 }
 function editPhysicianInfo() {
 editMode=true;const p=currentPhysician;$('modalTitle').textContent='Edit Physician';
-setFields({firstName:p.first_name,lastName:p.last_name,physicianEmail:p.email||'',priority:p.priority||'',specialty:p.specialty||'',umConnection:p.um_connection||'',patientVolume:p.patient_volume||p.mohs_volume||'',physicianGeneralNotes:p.general_notes||''});
+setFields({firstName:p.first_name,lastName:p.last_name,physicianEmail:p.email||'',priority:p.priority||'',specialty:p.specialty||'',umConnection:p.um_connection||'',patientVolume:p.patient_volume||p.mohs_volume||'',physicianGeneralNotes:p.general_notes||'',degree:p.degree||'',staffTitle:p.title||''});
 $('practiceSelector').style.display='none';$('locationSelector').style.display='none';
 $('physicianSaveBtn').textContent='Save Physician';$('physicianSaveBtn').className='btn-primary';$('physicianModal').classList.add('active');
 }
 async function savePhysician(e) {
 e.preventDefault();
 const data = {first_name:$('firstName').value,last_name:$('lastName').value,email:$('physicianEmail').value||null,priority:$('priority').value||null,specialty:$('specialty').value||null,um_connection:$('umConnection').value||null,patient_volume:$('patientVolume').value||null,general_notes:$('physicianGeneralNotes').value||null};
+const degreeVal=$('degree').value||null;const titleVal=$('staffTitle').value||null;
+if(degreeVal)data.degree=degreeVal;if(titleVal)data.title=titleVal;
 await withSave('physicianSaveBtn','Save Physician',async()=>{
 if(editMode){const{error}=await db.from('physicians').update(data).eq('id',currentPhysician.id);if(error)throw error;Object.assign(currentPhysician,data);renderProfile();showToast('Physician updated','success');
 }else{
@@ -984,17 +1104,20 @@ await loadAllData();renderList();setTimeout(()=>closePhysicianModal(),500);
 });
 }
 async function deletePhysician() {
-await dbDel('physicians',currentPhysician.id,`Delete Dr. ${currentPhysician.first_name} ${currentPhysician.last_name}?`,async()=>{physicians=physicians.filter(p=>p.id!==currentPhysician.id);currentPhysician=null;renderList();renderEmptyState();});
+await dbDel('physicians',currentPhysician.id,`Delete ${fmtName(currentPhysician)}?`,async()=>{physicians=physicians.filter(p=>p.id!==currentPhysician.id);currentPhysician=null;renderList();renderEmptyState();});
 }
-function openPracticeModal(){editingPracticeId=null;$('practiceModalTitle').textContent='Add Practice';$('practiceForm').reset();$('practiceSaveBtn').textContent='Save Practice';$('practiceSaveBtn').className='btn-primary';$('practiceModal').classList.add('active');}
+function openPracticeModal(){editingPracticeId=null;$('practiceModalTitle').textContent='Add Practice';$('practiceForm').reset();$('practiceAddressSection').style.display='';$('practiceSaveBtn').textContent='Save Practice';$('practiceSaveBtn').className='btn-primary';$('practiceModal').classList.add('active');}
 function closePracticeModal(){$('practiceModal').classList.remove('active');}
-function editPractice(){editingPracticeId=currentPractice.id;$('practiceModalTitle').textContent='Edit Practice';setFields({practiceName:currentPractice.name,practiceWebsite:currentPractice.website||'',practiceNotes:currentPractice.general_notes||''});$('practiceSaveBtn').textContent='Save Practice';$('practiceSaveBtn').className='btn-primary';$('practiceModal').classList.add('active');}
+function editPractice(){editingPracticeId=currentPractice.id;$('practiceModalTitle').textContent='Edit Practice';setFields({practiceName:currentPractice.name,practiceWebsite:currentPractice.website||'',practiceNotes:currentPractice.general_notes||''});$('practiceAddressSection').style.display='none';$('practiceSaveBtn').textContent='Save Practice';$('practiceSaveBtn').className='btn-primary';$('practiceModal').classList.add('active');}
 async function savePractice(e) {
 e.preventDefault();
 const data={name:$('practiceName').value,website:$('practiceWebsite').value||null,general_notes:$('practiceNotes').value||null};
 await withSave('practiceSaveBtn','Save Practice',async()=>{
 if(editingPracticeId){const{error}=await db.from('practices').update(data).eq('id',editingPracticeId);if(error)throw error;showToast('Practice updated','success');
-}else{const{error}=await db.from('practices').insert(data);if(error)throw error;showToast('Practice added','success');}
+}else{const{data:newPract,error}=await db.from('practices').insert(data).select().single();if(error)throw error;
+const addr=$('practiceAddress').value,city=$('practiceCity').value,zip=$('practiceZip').value,ph=$('practicePhone').value,fx=$('practiceFax').value;
+if(addr||city){const locData={practice_id:newPract.id,label:'Main Office',address:addr||null,city:city||null,zip:zip||null,phone:ph||null,fax:fx||null};const{error:le}=await db.from('practice_locations').insert(locData);if(le)console.error('Location insert error:',le);}
+showToast('Practice added','success');}
 await loadAllData();if(currentPractice){currentPractice=practices.find(p=>p.id===currentPractice.id);renderPracticeProfile();}
 setTimeout(()=>closePracticeModal(),500);
 });
@@ -1104,6 +1227,29 @@ showToast('Error saving: ' + error.message, 'error');
 updateSyncIndicators('error');
 }
 }
+async function quickAddPracticeAndAssign() {
+const name = $('quickPracticeName').value.trim();
+if (!name) { showToast('Practice name required', 'error'); return; }
+try {
+updateSyncIndicators('syncing');
+const {data:newPract,error:pe} = await db.from('practices').insert({name}).select().single();
+if (pe) throw pe;
+const locData = {practice_id:newPract.id,label:'Main Office',address:$('quickPracticeAddr').value||null,city:$('quickPracticeCity').value||null,zip:$('quickPracticeZip').value||null,phone:$('quickPracticePhone').value||null};
+const {data:newLoc,error:le} = await db.from('practice_locations').insert(locData).select().single();
+if (le) throw le;
+const {error:ae} = await db.from('physician_location_assignments').insert({physician_id:currentPhysician.id,practice_location_id:newLoc.id,is_primary:false});
+if (ae) throw ae;
+await loadAllData();
+renderProfile();
+closeAssignLocationModal();
+showToast(`${name} created and assigned`, 'success');
+updateSyncIndicators('synced');
+} catch(e) {
+console.error('Quick add practice error:', e);
+showToast('Error: ' + e.message, 'error');
+updateSyncIndicators('error');
+}
+}
 async function removeAssignment(assignmentId) {
 await dbDel('physician_location_assignments',assignmentId,'Remove this location assignment?',async()=>{await loadAllData();renderProfile();});
 }
@@ -1148,7 +1294,7 @@ async function saveContact(e) {
 e.preventDefault();
 const tv=$('contactTime').value,nv=$('contactNotes').value;
 const locVal=$('contactLocation').value||null;
-const data={physician_id:currentPhysician.id,contact_date:$('contactDate').value,contact_time:tv||null,author:$('authorName').value,practice_location_id:locVal,notes:tv?`[${tv}] ${nv}`:nv};
+const data={physician_id:currentPhysician.id,contact_date:$('contactDate').value,author:$('authorName').value,practice_location_id:locVal,notes:tv?`[${tv}] ${nv}`:nv};
 await withSave('contactSaveBtn','Save Note',async()=>{
 if(editingContactId){const{error}=await db.from('contact_logs').update(data).eq('id',editingContactId);if(error)throw error;showToast('Note updated','success');
 }else{const{error}=await db.from('contact_logs').insert(data);if(error)throw error;showToast('Note added','success');}
@@ -1251,7 +1397,7 @@ if (!confirm('FINAL WARNING: Click OK to permanently delete all data.')) return;
 try {
 updateSyncIndicators('syncing');
 showToast('Clearing database...', 'info');
-for(const t of ['contact_logs','physician_location_assignments','physician_addresses','physicians','practice_locations','practices']){
+for(const t of ['contact_logs','physician_location_assignments','physicians','practice_locations','practices']){
 const{error,count}=await db.from(t).delete().neq('id','00000000-0000-0000-0000-000000000000');
 console.log(`Deleted from ${t}: error=${error?.message||'none'}`);
 if(error) throw error;
@@ -1305,7 +1451,7 @@ $('assignPhysicianOptions').innerHTML = filtered.map(p => `
 <div class="selector-option" data-phys-id="${p.id}" onclick="toggleAssignPhys('${p.id}', this)">
 <input type="checkbox" ${existingPhysIds.includes(p.id) ? 'checked' : ''}>
 <div>
-<span class="selector-option-label">Dr. ${p.first_name} ${p.last_name}</span>
+<span class="selector-option-label">${fmtName(p)}</span>
 <div class="selector-option-sub">${p.specialty || ''}</div>
 </div>
 </div>
