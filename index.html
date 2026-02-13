@@ -3,6 +3,9 @@
 <head>
  <meta charset="UTF-8">
  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+ <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+ <meta http-equiv="Pragma" content="no-cache">
+ <meta http-equiv="Expires" content="0">
  <meta name="apple-mobile-web-app-capable" content="yes">
  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
  <title>Territory CRM - Miami Wound Care</title>
@@ -147,8 +150,6 @@ Append New Records from CSV <input type="file" accept=".csv" onchange="importCSV
 <option value="Wound Healing">Wound Healing</option>
 <option value="Plastic & Reconstructive Surgery">Plastic & Reconstructive Surgery</option>
 <option value="General Surgery">General Surgery</option>
-<option value="Vascular Surgery">Vascular Surgery</option>
-<option value="Internal Medicine">Internal Medicine</option>
 <option value="Other">Other</option>
 </select>
 </div>
@@ -386,8 +387,6 @@ Append New Records from CSV <input type="file" accept=".csv" onchange="importCSV
 <option value="Wound Healing">Wound Healing</option>
 <option value="Plastic & Reconstructive Surgery">Plastic & Reconstructive Surgery</option>
 <option value="General Surgery">General Surgery</option>
-<option value="Vascular Surgery">Vascular Surgery</option>
-<option value="Internal Medicine">Internal Medicine</option>
 <option value="Other">Other</option>
 </select>
 </div>
@@ -463,9 +462,20 @@ function showToast(message, type = 'info') {
 const container = $('toastContainer');
 const toast = document.createElement('div');
 toast.className = `toast ${type}`;
-toast.textContent = message;
+toast.style.cssText = 'display:flex;align-items:center;justify-content:space-between;gap:0.5rem;';
+const msg = document.createElement('span');
+msg.textContent = message;
+toast.appendChild(msg);
+if (type === 'error') {
+const closeBtn = document.createElement('button');
+closeBtn.textContent = '\u00d7';
+closeBtn.style.cssText = 'background:none;border:none;color:white;font-size:1.5rem;cursor:pointer;padding:0 0.25rem;flex-shrink:0;';
+closeBtn.onclick = () => toast.remove();
+toast.appendChild(closeBtn);
+}
 container.appendChild(toast);
-setTimeout(() => toast.remove(), 3000);
+const duration = type === 'error' ? 10000 : 3000;
+setTimeout(() => toast.remove(), duration);
 }
 function updateConnectionStatus(status) {
 const el = $('connectionStatus');
@@ -1294,7 +1304,7 @@ async function saveContact(e) {
 e.preventDefault();
 const tv=$('contactTime').value,nv=$('contactNotes').value;
 const locVal=$('contactLocation').value||null;
-const data={physician_id:currentPhysician.id,contact_date:$('contactDate').value,author:$('authorName').value,practice_location_id:locVal,notes:tv?`[${tv}] ${nv}`:nv};
+const data={physician_id:currentPhysician.id,contact_date:$('contactDate').value,author:$('authorName').value,notes:tv?`[${tv}] ${nv}`:nv};
 await withSave('contactSaveBtn','Save Note',async()=>{
 if(editingContactId){const{error}=await db.from('contact_logs').update(data).eq('id',editingContactId);if(error)throw error;showToast('Note updated','success');
 }else{const{error}=await db.from('contact_logs').insert(data);if(error)throw error;showToast('Note added','success');}
@@ -1315,7 +1325,7 @@ $('contactLocation').value = log.practice_location_id || '';
 $('authorName').value = log.author || '';
 // Parse time from notes if stored as [HH:MM] prefix
 let notes = log.notes || '';
-let time = log.contact_time || '';
+let time = '';
 if (!time) {
 const timeMatch = notes.match(/^\[(\d{1,2}:\d{2})\]\s*/);
 if (timeMatch) {
