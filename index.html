@@ -102,6 +102,26 @@ Append New Records from CSV <input type="file" accept=".csv" onchange="importCSV
 <input type="text" id="lastName" required>
 </div>
 </div>
+<div class="form-row">
+<div>
+<label>Degree</label>
+<select id="degree">
+<option value="">-- Select --</option>
+<option value="MD">MD</option>
+<option value="DO">DO</option>
+<option value="DPM">DPM</option>
+<option value="PA-C">PA-C</option>
+<option value="NP">NP</option>
+<option value="RN">RN</option>
+<option value="PhD">PhD</option>
+<option value="Other">Other</option>
+</select>
+</div>
+<div>
+<label>Title (non-physician staff)</label>
+<input type="text" id="staffTitle" placeholder="e.g. Office Manager">
+</div>
+</div>
 <div>
 <label>Email</label>
 <input type="email" id="physicianEmail">
@@ -547,6 +567,13 @@ document.querySelectorAll('.sort-btn').forEach(btn => btn.classList.remove('acti
 $('sort' + sort.charAt(0).toUpperCase() + sort.slice(1)).classList.add('active');
 renderList();
 }
+function fmtName(p) {
+const deg = p.degree || '';
+const tl = p.title || '';
+if (deg) return `${p.first_name} ${p.last_name}, ${deg}`;
+if (tl) return `${p.first_name} ${p.last_name} (${tl})`;
+return `Dr. ${p.first_name} ${p.last_name}`;
+}
 function getSortedPhysicians(filtered) {
 return [...filtered].sort((a, b) => {
 if (sortBy === 'name') {
@@ -654,7 +681,7 @@ const locationCount = assignments.length;
 return `
 <li class="physician-item ${currentPhysician?.id === p.id ? 'active' : ''}"
 onclick="viewPhysician('${p.id}')">
-<div class="name">Dr. ${p.first_name} ${p.last_name}</div>
+<div class="name">${fmtName(p)}</div>
 <div class="practice">${practiceName}</div>
 <div class="tier">${p.priority || 'No tier'}</div>
 ${cityDisplay ? `<span class="city-badge">${cityDisplay}</span>` : ''}
@@ -708,7 +735,7 @@ return;
 }
 container.innerHTML = '<div class="contact-entries">' + recentLogs.map(e => {
 const phys = physicians.find(p => p.id === e.physician_id);
-const physName = phys ? `Dr. ${phys.first_name} ${phys.last_name}` : 'Unknown';
+const physName = phys ? fmtName(phys) : 'Unknown';
 const tm = (e.notes||'').match(/^\[(\d{1,2}:\d{2}(?:\s*[APap][Mm])?)\]\s*/);
 const displayTime = tm ? ' ' + tm[1] : '';
 const displayNotes = tm ? e.notes.replace(tm[0], '') : (e.notes||'');
@@ -774,13 +801,13 @@ return loc?.practice_id;
 const associatedPractices = practices.filter(pr => practiceIds.includes(pr.id));
 $('mainContent').innerHTML = `
 <div class="profile-header">
-<div class="profile-name">Dr. ${p.first_name} ${p.last_name}</div>
+<div class="profile-name">${fmtName(p)}</div>
 <div class="profile-practice">
 ${associatedPractices.map(pr => pr.name).join(' | ') || 'No practice assigned'}
 </div>
 <div class="profile-meta">
-${mi('Priority',p.priority||'Not set')}${mi('Specialty',p.specialty||'Not set')}${mi('UM Connection',p.um_connection||'None')}
-${mi('Candidate Patient Volume',p.patient_volume||p.mohs_volume||'Unknown')}${mi('Last Contact',p.last_contact||'Never')}${mi('Locations',assignments.length+' location'+(assignments.length!==1?'s':''))}
+${mi('Priority',p.priority||'Not set')}${mi('Specialty',p.specialty||'Not set')}${mi('Degree',p.degree||'Not set')}${p.title?mi('Title',p.title):''}
+${mi('UM Connection',p.um_connection||'None')}${mi('Candidate Patient Volume',p.patient_volume||p.mohs_volume||'Unknown')}${mi('Last Contact',p.last_contact||'Never')}${mi('Locations',assignments.length+' location'+(assignments.length!==1?'s':''))}
 </div>
 </div>
 <div class="section">
@@ -933,7 +960,7 @@ practicePhysicians.map(phys => `
 <div class="contact-icon">👨‍⚕️</div>
 <div class="contact-item-content">
 <div class="contact-item-label">${phys.priority || 'No tier'}</div>
-<div class="contact-item-value">Dr. ${phys.first_name} ${phys.last_name}</div>
+<div class="contact-item-value">${fmtName(phys)}</div>
 </div>
 </div>
 `).join('') +
@@ -1040,13 +1067,15 @@ openLocationModal(practiceId);
 }
 function editPhysicianInfo() {
 editMode=true;const p=currentPhysician;$('modalTitle').textContent='Edit Physician';
-setFields({firstName:p.first_name,lastName:p.last_name,physicianEmail:p.email||'',priority:p.priority||'',specialty:p.specialty||'',umConnection:p.um_connection||'',patientVolume:p.patient_volume||p.mohs_volume||'',physicianGeneralNotes:p.general_notes||''});
+setFields({firstName:p.first_name,lastName:p.last_name,physicianEmail:p.email||'',priority:p.priority||'',specialty:p.specialty||'',umConnection:p.um_connection||'',patientVolume:p.patient_volume||p.mohs_volume||'',physicianGeneralNotes:p.general_notes||'',degree:p.degree||'',staffTitle:p.title||''});
 $('practiceSelector').style.display='none';$('locationSelector').style.display='none';
 $('physicianSaveBtn').textContent='Save Physician';$('physicianSaveBtn').className='btn-primary';$('physicianModal').classList.add('active');
 }
 async function savePhysician(e) {
 e.preventDefault();
 const data = {first_name:$('firstName').value,last_name:$('lastName').value,email:$('physicianEmail').value||null,priority:$('priority').value||null,specialty:$('specialty').value||null,um_connection:$('umConnection').value||null,patient_volume:$('patientVolume').value||null,general_notes:$('physicianGeneralNotes').value||null};
+const degreeVal=$('degree').value||null;const titleVal=$('staffTitle').value||null;
+if(degreeVal)data.degree=degreeVal;if(titleVal)data.title=titleVal;
 await withSave('physicianSaveBtn','Save Physician',async()=>{
 if(editMode){const{error}=await db.from('physicians').update(data).eq('id',currentPhysician.id);if(error)throw error;Object.assign(currentPhysician,data);renderProfile();showToast('Physician updated','success');
 }else{
@@ -1075,7 +1104,7 @@ await loadAllData();renderList();setTimeout(()=>closePhysicianModal(),500);
 });
 }
 async function deletePhysician() {
-await dbDel('physicians',currentPhysician.id,`Delete Dr. ${currentPhysician.first_name} ${currentPhysician.last_name}?`,async()=>{physicians=physicians.filter(p=>p.id!==currentPhysician.id);currentPhysician=null;renderList();renderEmptyState();});
+await dbDel('physicians',currentPhysician.id,`Delete ${fmtName(currentPhysician)}?`,async()=>{physicians=physicians.filter(p=>p.id!==currentPhysician.id);currentPhysician=null;renderList();renderEmptyState();});
 }
 function openPracticeModal(){editingPracticeId=null;$('practiceModalTitle').textContent='Add Practice';$('practiceForm').reset();$('practiceAddressSection').style.display='';$('practiceSaveBtn').textContent='Save Practice';$('practiceSaveBtn').className='btn-primary';$('practiceModal').classList.add('active');}
 function closePracticeModal(){$('practiceModal').classList.remove('active');}
@@ -1422,7 +1451,7 @@ $('assignPhysicianOptions').innerHTML = filtered.map(p => `
 <div class="selector-option" data-phys-id="${p.id}" onclick="toggleAssignPhys('${p.id}', this)">
 <input type="checkbox" ${existingPhysIds.includes(p.id) ? 'checked' : ''}>
 <div>
-<span class="selector-option-label">Dr. ${p.first_name} ${p.last_name}</span>
+<span class="selector-option-label">${fmtName(p)}</span>
 <div class="selector-option-sub">${p.specialty || ''}</div>
 </div>
 </div>
