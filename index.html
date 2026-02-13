@@ -536,7 +536,9 @@ function mi(label,val){return `<div class="meta-item"><div class="meta-label">${
 function ci(icon,label,val){return val?`<div class="contact-item"><div class="contact-icon">${icon}</div><div class="contact-item-content"><div class="contact-item-label">${label}</div><div class="contact-item-value">${val}</div></div></div>`:''}
 function getPrimaryLoc(physicianId) {
 const a = physicianAssignments[physicianId] || [];
-return (a.find(x => x.is_primary) || a[0])?.practice_locations || {};
+const assign = a.find(x => x.is_primary) || a[0];
+if (!assign) return {};
+return assign.practice_locations || practiceLocations.find(l => l.id === assign.practice_location_id) || {};
 }
 function toggleSidebar() {
 $('sidebar').classList.toggle('open');
