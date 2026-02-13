@@ -127,6 +127,9 @@ Append New Records from CSV <input type="file" accept=".csv" onchange="importCSV
 <option value="Wound Healing">Wound Healing</option>
 <option value="Plastic & Reconstructive Surgery">Plastic & Reconstructive Surgery</option>
 <option value="General Surgery">General Surgery</option>
+<option value="Vascular Surgery">Vascular Surgery</option>
+<option value="Internal Medicine">Internal Medicine</option>
+<option value="Other">Other</option>
 </select>
 </div>
 </div>
@@ -249,6 +252,23 @@ Append New Records from CSV <input type="file" accept=".csv" onchange="importCSV
 <label>General Notes</label>
 <textarea id="practiceNotes" rows="3"></textarea>
 </div>
+<div id="practiceAddressSection">
+<div style="border-top:1px solid #e5e5e5;margin-top:0.5rem;padding-top:0.75rem;">
+<label style="color:#0a4d3c;font-size:0.85rem;margin-bottom:0.5rem;">Primary Location (optional)</label>
+</div>
+<div>
+<label>Address</label>
+<input type="text" id="practiceAddress" placeholder="123 Main St">
+</div>
+<div class="form-row">
+<div><label>City</label><input type="text" id="practiceCity"></div>
+<div><label>ZIP</label><input type="text" id="practiceZip"></div>
+</div>
+<div class="form-row">
+<div><label>Phone</label><input type="tel" id="practicePhone"></div>
+<div><label>Fax</label><input type="tel" id="practiceFax"></div>
+</div>
+</div>
 </div>
 <button type="submit" class="btn-primary" id="practiceSaveBtn" style="margin-top: 1.5rem;">Save Practice</button>
 </form>
@@ -301,7 +321,20 @@ Append New Records from CSV <input type="file" accept=".csv" onchange="importCSV
 <button class="close-btn" onclick="closeAssignLocationModal()">&times;</button>
 </div>
 <div class="modal-body">
-<p style="margin-bottom: 1rem; color: #666;">Select existing locations to assign this physician to:</p>
+<div id="quickAddPracticeSection" style="margin-bottom:1rem;padding:1rem;background:#f0fdf4;border:1px solid #86efac;border-radius:8px;">
+<h4 style="color:#0a4d3c;margin-bottom:0.75rem;font-size:0.9rem;">Quick Add New Practice + Location</h4>
+<div style="margin-bottom:0.5rem;"><input type="text" id="quickPracticeName" placeholder="Practice Name" style="padding:0.5rem;font-size:0.85rem;"></div>
+<div class="form-row" style="margin-bottom:0.5rem;">
+<div><input type="text" id="quickPracticeAddr" placeholder="Address" style="padding:0.5rem;font-size:0.85rem;"></div>
+<div><input type="text" id="quickPracticeCity" placeholder="City" style="padding:0.5rem;font-size:0.85rem;"></div>
+</div>
+<div class="form-row" style="margin-bottom:0.5rem;">
+<div><input type="text" id="quickPracticeZip" placeholder="ZIP" style="padding:0.5rem;font-size:0.85rem;"></div>
+<div><input type="tel" id="quickPracticePhone" placeholder="Phone" style="padding:0.5rem;font-size:0.85rem;"></div>
+</div>
+<button type="button" class="btn-secondary" style="background:#0a4d3c;color:white;width:100%;" onclick="quickAddPracticeAndAssign()">Create & Assign</button>
+</div>
+<p style="margin-bottom: 0.5rem; color: #666;">Or select existing locations:</p>
 <input type="text" id="assignLocationSearch" placeholder="Search practices or locations..." oninput="filterAssignLocationOptions()" style="width:100%;padding:0.5rem;border:1px solid #e5e5e5;border-radius:6px;margin-bottom:0.5rem;font-size:0.85rem;">
 <div class="selector-options" id="assignLocationOptions" style="max-height: 300px;">
 </div>
@@ -333,6 +366,9 @@ Append New Records from CSV <input type="file" accept=".csv" onchange="importCSV
 <option value="Wound Healing">Wound Healing</option>
 <option value="Plastic & Reconstructive Surgery">Plastic & Reconstructive Surgery</option>
 <option value="General Surgery">General Surgery</option>
+<option value="Vascular Surgery">Vascular Surgery</option>
+<option value="Internal Medicine">Internal Medicine</option>
+<option value="Other">Other</option>
 </select>
 </div>
 <div>
@@ -558,21 +594,27 @@ $('physicianCount').textContent =
 function getFilteredPhysicians(search) {
 if (!search) return physicians;
 return physicians.filter(p => {
-const nameMatch = p.first_name.toLowerCase().includes(search) ||
-p.last_name.toLowerCase().includes(search);
-const pl = getPrimaryLoc(p.id);
-const practiceMatch = (pl.practices?.name||'').toLowerCase().includes(search);
-const cityMatch = (pl.city||'').toLowerCase().includes(search);
-const zipMatch = (pl.zip||'').toLowerCase().includes(search);
-const addressMatch = (pl.address||'').toLowerCase().includes(search);
-return nameMatch || practiceMatch || cityMatch || zipMatch || addressMatch;
+if (p.first_name.toLowerCase().includes(search) || p.last_name.toLowerCase().includes(search)) return true;
+if ((p.specialty||'').toLowerCase().includes(search)) return true;
+if ((p.email||'').toLowerCase().includes(search)) return true;
+if ((p.general_notes||'').toLowerCase().includes(search)) return true;
+const assigns = physicianAssignments[p.id] || [];
+return assigns.some(a => {
+const loc = a.practice_locations || practiceLocations.find(l => l.id === a.practice_location_id) || {};
+const pName = loc.practices?.name || practices.find(pr => pr.id === loc.practice_id)?.name || '';
+return pName.toLowerCase().includes(search) || (loc.city||'').toLowerCase().includes(search) || (loc.zip||'').toLowerCase().includes(search) || (loc.address||'').toLowerCase().includes(search) || (loc.phone||'').toLowerCase().includes(search);
+});
 });
 }
 function getFilteredPractices(search) {
 if (!search) return practices;
-return practices.filter(p =>
-p.name.toLowerCase().includes(search)
-);
+return practices.filter(p => {
+if (p.name.toLowerCase().includes(search)) return true;
+if ((p.website||'').toLowerCase().includes(search)) return true;
+if ((p.general_notes||'').toLowerCase().includes(search)) return true;
+const locs = practiceLocations.filter(l => l.practice_id === p.id);
+return locs.some(l => (l.address||'').toLowerCase().includes(search) || (l.city||'').toLowerCase().includes(search) || (l.zip||'').toLowerCase().includes(search) || (l.phone||'').toLowerCase().includes(search));
+});
 }
 function filterList() {
 const val = $('searchInput').value;
@@ -605,8 +647,9 @@ return;
 list.innerHTML = sorted.map(p => {
 const assignments = physicianAssignments[p.id] || [];
 const primaryAssign = assignments.find(a => a.is_primary) || assignments[0];
-const cityDisplay = primaryAssign?.practice_locations?.city || '';
-const practiceName = primaryAssign?.practice_locations?.practices?.name || p.practice_name || '';
+const pLoc = primaryAssign?.practice_locations || (primaryAssign ? practiceLocations.find(l => l.id === primaryAssign.practice_location_id) : null) || {};
+const cityDisplay = pLoc.city || '';
+const practiceName = pLoc.practices?.name || (pLoc.practice_id ? practices.find(pr => pr.id === pLoc.practice_id)?.name : '') || p.practice_name || '';
 const locationCount = assignments.length;
 return `
 <li class="physician-item ${currentPhysician?.id === p.id ? 'active' : ''}"
@@ -992,15 +1035,18 @@ await loadAllData();renderList();setTimeout(()=>closePhysicianModal(),500);
 async function deletePhysician() {
 await dbDel('physicians',currentPhysician.id,`Delete Dr. ${currentPhysician.first_name} ${currentPhysician.last_name}?`,async()=>{physicians=physicians.filter(p=>p.id!==currentPhysician.id);currentPhysician=null;renderList();renderEmptyState();});
 }
-function openPracticeModal(){editingPracticeId=null;$('practiceModalTitle').textContent='Add Practice';$('practiceForm').reset();$('practiceSaveBtn').textContent='Save Practice';$('practiceSaveBtn').className='btn-primary';$('practiceModal').classList.add('active');}
+function openPracticeModal(){editingPracticeId=null;$('practiceModalTitle').textContent='Add Practice';$('practiceForm').reset();$('practiceAddressSection').style.display='';$('practiceSaveBtn').textContent='Save Practice';$('practiceSaveBtn').className='btn-primary';$('practiceModal').classList.add('active');}
 function closePracticeModal(){$('practiceModal').classList.remove('active');}
-function editPractice(){editingPracticeId=currentPractice.id;$('practiceModalTitle').textContent='Edit Practice';setFields({practiceName:currentPractice.name,practiceWebsite:currentPractice.website||'',practiceNotes:currentPractice.general_notes||''});$('practiceSaveBtn').textContent='Save Practice';$('practiceSaveBtn').className='btn-primary';$('practiceModal').classList.add('active');}
+function editPractice(){editingPracticeId=currentPractice.id;$('practiceModalTitle').textContent='Edit Practice';setFields({practiceName:currentPractice.name,practiceWebsite:currentPractice.website||'',practiceNotes:currentPractice.general_notes||''});$('practiceAddressSection').style.display='none';$('practiceSaveBtn').textContent='Save Practice';$('practiceSaveBtn').className='btn-primary';$('practiceModal').classList.add('active');}
 async function savePractice(e) {
 e.preventDefault();
 const data={name:$('practiceName').value,website:$('practiceWebsite').value||null,general_notes:$('practiceNotes').value||null};
 await withSave('practiceSaveBtn','Save Practice',async()=>{
 if(editingPracticeId){const{error}=await db.from('practices').update(data).eq('id',editingPracticeId);if(error)throw error;showToast('Practice updated','success');
-}else{const{error}=await db.from('practices').insert(data);if(error)throw error;showToast('Practice added','success');}
+}else{const{data:newPract,error}=await db.from('practices').insert(data).select().single();if(error)throw error;
+const addr=$('practiceAddress').value,city=$('practiceCity').value,zip=$('practiceZip').value,ph=$('practicePhone').value,fx=$('practiceFax').value;
+if(addr||city){const locData={practice_id:newPract.id,label:'Main Office',address:addr||null,city:city||null,zip:zip||null,phone:ph||null,fax:fx||null};const{error:le}=await db.from('practice_locations').insert(locData);if(le)console.error('Location insert error:',le);}
+showToast('Practice added','success');}
 await loadAllData();if(currentPractice){currentPractice=practices.find(p=>p.id===currentPractice.id);renderPracticeProfile();}
 setTimeout(()=>closePracticeModal(),500);
 });
@@ -1107,6 +1153,29 @@ updateSyncIndicators('synced');
 } catch (error) {
 console.error('Save error:', error);
 showToast('Error saving: ' + error.message, 'error');
+updateSyncIndicators('error');
+}
+}
+async function quickAddPracticeAndAssign() {
+const name = $('quickPracticeName').value.trim();
+if (!name) { showToast('Practice name required', 'error'); return; }
+try {
+updateSyncIndicators('syncing');
+const {data:newPract,error:pe} = await db.from('practices').insert({name}).select().single();
+if (pe) throw pe;
+const locData = {practice_id:newPract.id,label:'Main Office',address:$('quickPracticeAddr').value||null,city:$('quickPracticeCity').value||null,zip:$('quickPracticeZip').value||null,phone:$('quickPracticePhone').value||null};
+const {data:newLoc,error:le} = await db.from('practice_locations').insert(locData).select().single();
+if (le) throw le;
+const {error:ae} = await db.from('physician_location_assignments').insert({physician_id:currentPhysician.id,practice_location_id:newLoc.id,is_primary:false});
+if (ae) throw ae;
+await loadAllData();
+renderProfile();
+closeAssignLocationModal();
+showToast(`${name} created and assigned`, 'success');
+updateSyncIndicators('synced');
+} catch(e) {
+console.error('Quick add practice error:', e);
+showToast('Error: ' + e.message, 'error');
 updateSyncIndicators('error');
 }
 }
@@ -1257,7 +1326,7 @@ if (!confirm('FINAL WARNING: Click OK to permanently delete all data.')) return;
 try {
 updateSyncIndicators('syncing');
 showToast('Clearing database...', 'info');
-for(const t of ['contact_logs','physician_location_assignments','physician_addresses','physicians','practice_locations','practices']){
+for(const t of ['contact_logs','physician_location_assignments','physicians','practice_locations','practices']){
 const{error,count}=await db.from(t).delete().neq('id','00000000-0000-0000-0000-000000000000');
 console.log(`Deleted from ${t}: error=${error?.message||'none'}`);
 if(error) throw error;
