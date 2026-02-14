@@ -37,6 +37,9 @@ Append New Records from CSV <input type="file" accept=".csv" onchange="importCSV
 </label>
 <div style="font-size:0.7rem;color:#888;margin-bottom:0.75rem;text-align:center;">Adds new physicians without affecting existing data</div>
 <div id="importStatus" style="font-size:0.8rem;margin-bottom:0.5rem;color:#ccc;"></div>
+<h4 style="margin-top:1rem;color:#0ea5e9;">Data Export</h4>
+<p style="color:#aaa;font-size:0.8rem;margin-bottom:0.75rem;">Download your CRM data as CSV files.</p>
+<button style="background:#0ea5e9;color:white;border:none;padding:0.6rem 1rem;border-radius:6px;font-size:0.85rem;cursor:pointer;width:100%;font-weight:600;" onclick="openExportModal()">Export Data</button>
 <button class="btn-danger" onclick="clearDatabase()" style="margin-top:0.5rem;">Clear All Data</button>
 </div>
 </div>
@@ -1680,6 +1683,64 @@ showToast('Error: ' + e.message, 'error');
 updateSyncIndicators('error');
 }
 }
+function openExportModal(){document.getElementById('exportModal').classList.add('active');}
+function closeExportModal(){document.getElementById('exportModal').classList.remove('active');}
+function escCSV(val){if(val==null)return '';const s=String(val);if(s.includes(',')||s.includes('"')||s.includes('\n'))return '"'+s.replace(/"/g,'""')+'"';return s;}
+function downloadCSV(filename,headers,rows){const csv=[headers.join(','),...rows.map(r=>r.map(escCSV).join(','))].join('\n');const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=filename;document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);}
+function todayStamp(){return new Date().toISOString().slice(0,10);}
+async function exportCSV(type){
+const st=document.getElementById('exportStatus');st.style.display='block';st.style.background='#e0f2fe';st.style.color='#075985';st.textContent='Preparing export...';
+try{
+if(type==='physicians'||type==='all') await exportPhysicians();
+if(type==='contacts'||type==='all') await exportContacts();
+if(type==='practices'||type==='all') await exportPractices();
+st.style.background='#dcfce7';st.style.color='#166534';st.textContent='Export complete!';
+showToast('CSV exported successfully','success');
+}catch(e){st.style.background='#fee2e2';st.style.color='#991b1b';st.textContent='Export failed: '+e.message;showToast('Export error: '+e.message,'error');}
+}
+async function exportPhysicians(){
+const{data:allPhys,error}=await db.from('physicians').select('*').order('last_name');if(error)throw error;
+const{data:allAssign}=await db.from('physician_location_assignments').select('*, practice_locations(*, practices(name))');
+const am={};(allAssign||[]).forEach(a=>{if(!am[a.physician_id])am[a.physician_id]=[];am[a.physician_id].push(a);});
+const h=['Last Name','First Name','Practice','Tier','Specialty','Email','UM Connection','Patient Volume','Primary Address','Primary City','Primary ZIP','Primary Phone','Primary Fax','Office Hours','Best Days','Receptionist','Location Count','Last Contact','General Notes'];
+const rows=(allPhys||[]).map(p=>{const as=am[p.id]||[];const pl=(as.find(a=>a.is_primary)||as[0])?.practice_locations||{};
+return[p.last_name,p.first_name,pl.practices?.name||p.practice_name||'',p.priority||'',p.specialty||'',p.email||'',p.um_connection||'',p.patient_volume||p.mohs_volume||'',pl.address||'',pl.city||'',pl.zip||'',pl.phone||'',pl.fax||'',pl.office_hours||'',pl.best_days||'',pl.receptionist_name||'',as.length,p.last_contact||'',p.general_notes||''];});
+downloadCSV('physicians_export_'+todayStamp()+'.csv',h,rows);
+}
+async function exportContacts(){
+const{data:allLogs,error}=await db.from('contact_logs').select('*').order('contact_date',{ascending:false});if(error)throw error;
+const pm={};physicians.forEach(p=>pm[p.id]=p);
+const h=['Date','Time','Author','Physician Last Name','Physician First Name','Location','Notes'];
+const rows=(allLogs||[]).map(l=>{const p=pm[l.physician_id]||{};const loc=l.practice_location_id?getLocationLabel(l.practice_location_id):'';
+let notes=l.notes||'',time=l.contact_time||'';
+if(!time&&notes.startsWith('[')){const m=notes.match(/^\[(\d{1,2}:\d{2})\]\s*/);if(m){time=m[1];notes=notes.slice(m[0].length);}}
+return[l.contact_date,time,l.author||'',p.last_name||'',p.first_name||'',loc,notes];});
+downloadCSV('contact_logs_export_'+todayStamp()+'.csv',h,rows);
+}
+async function exportPractices(){
+const{data:allLocs,error}=await db.from('practice_locations').select('*, practices(name)').order('city');if(error)throw error;
+const h=['Practice Name','Location Label','Address','City','ZIP','Phone','Fax','Office Email','Office Hours','Office Staff','Receptionist','Best Days'];
+const rows=(allLocs||[]).map(l=>[l.practices?.name||'',l.label||'',l.address||'',l.city||'',l.zip||'',l.phone||'',l.fax||'',l.practice_email||'',l.office_hours||'',l.office_staff||'',l.receptionist_name||'',l.best_days||'']);
+downloadCSV('practices_locations_export_'+todayStamp()+'.csv',h,rows);
+}
 </script>
+<div class="modal" id="exportModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:100;padding:1rem;">
+<div style="background:white;border-radius:16px;width:100%;max-width:420px;margin:auto;box-shadow:0 20px 25px -5px rgba(0,0,0,0.2);">
+<div style="display:flex;justify-content:space-between;align-items:center;padding:1.5rem;border-bottom:1px solid #e5e5e5;">
+<h2 style="font-size:1.5rem;color:#0a4d3c;">Export Data</h2>
+<button onclick="closeExportModal()" style="background:none;border:none;font-size:2rem;cursor:pointer;color:#999;">&times;</button>
+</div>
+<div style="padding:1.5rem;">
+<p style="color:#666;margin-bottom:1rem;">Download CRM data as CSV files:</p>
+<div style="display:flex;flex-direction:column;gap:0.5rem;">
+<button onclick="exportCSV('physicians')" style="display:flex;align-items:center;gap:0.75rem;padding:0.875rem 1rem;background:#f9f9f9;border:2px solid #e5e5e5;border-radius:10px;cursor:pointer;text-align:left;width:100%;"><span style="font-size:1.5rem;">👨‍⚕️</span><div><strong style="color:#0a4d3c;">Physicians</strong><br><small style="color:#999;">All physicians with practice &amp; location info</small></div></button>
+<button onclick="exportCSV('contacts')" style="display:flex;align-items:center;gap:0.75rem;padding:0.875rem 1rem;background:#f9f9f9;border:2px solid #e5e5e5;border-radius:10px;cursor:pointer;text-align:left;width:100%;"><span style="font-size:1.5rem;">📋</span><div><strong style="color:#0a4d3c;">Contact Logs</strong><br><small style="color:#999;">All activity notes with dates &amp; locations</small></div></button>
+<button onclick="exportCSV('practices')" style="display:flex;align-items:center;gap:0.75rem;padding:0.875rem 1rem;background:#f9f9f9;border:2px solid #e5e5e5;border-radius:10px;cursor:pointer;text-align:left;width:100%;"><span style="font-size:1.5rem;">🏥</span><div><strong style="color:#0a4d3c;">Practices &amp; Locations</strong><br><small style="color:#999;">All practices with location details</small></div></button>
+<button onclick="exportCSV('all')" style="display:flex;align-items:center;gap:0.75rem;padding:0.875rem 1rem;background:#f0fdf4;border:2px solid #0a4d3c;border-radius:10px;cursor:pointer;text-align:left;width:100%;"><span style="font-size:1.5rem;">📦</span><div><strong style="color:#0a4d3c;">Export Everything</strong><br><small style="color:#999;">Downloads all three files at once</small></div></button>
+</div>
+<div id="exportStatus" style="display:none;margin-top:1rem;padding:0.75rem;border-radius:8px;text-align:center;font-size:0.85rem;"></div>
+</div>
+</div>
+</div>
 </body>
 </html>
