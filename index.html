@@ -337,6 +337,10 @@ Append New Records from CSV <input type="file" accept=".csv" onchange="importCSV
 </div>
 <div>
 <label>Notes *</label>
+<div style="display:flex;gap:0.5rem;margin-bottom:0.5rem;">
+<button type="button" onclick="prefixNote('Call: ')" style="padding:0.4rem 1rem;background:#0a4d3c;color:white;border:none;border-radius:6px;font-weight:600;font-size:0.85rem;cursor:pointer;">📞 Call</button>
+<button type="button" onclick="prefixNote('Visit: ')" style="padding:0.4rem 1rem;background:#f97316;color:white;border:none;border-radius:6px;font-weight:600;font-size:0.85rem;cursor:pointer;">🏥 Visit</button>
+</div>
 <textarea id="contactNotes" placeholder="What happened during this call/visit?" required rows="6"></textarea>
 </div>
 <div id="reminderRow" style="padding:0.75rem;background:#fffbeb;border:1px solid #fcd34d;border-radius:8px;">
@@ -1400,6 +1404,7 @@ updateSyncIndicators('error');
 async function removeAssignment(assignmentId) {
 await dbDel('physician_location_assignments',assignmentId,'Remove this location assignment?',async()=>{await loadAllData();renderProfile();});
 }
+function prefixNote(prefix){const ta=$('contactNotes');if(!ta.value.startsWith('Call: ')&&!ta.value.startsWith('Visit: ')){ta.value=prefix+ta.value;}else{ta.value=ta.value.replace(/^(Call|Visit): /,prefix);}ta.focus();}
 function openContactModal() {
 editingContactId = null;
 $('contactForm').reset();
