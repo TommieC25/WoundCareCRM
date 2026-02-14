@@ -40,14 +40,16 @@ Append New Records from CSV <input type="file" accept=".csv" onchange="importCSV
 <h4 style="margin-top:1rem;color:#0ea5e9;">Data Export</h4>
 <p style="color:#aaa;font-size:0.8rem;margin-bottom:0.75rem;">Download your CRM data as CSV files.</p>
 <button style="background:#0ea5e9;color:white;border:none;padding:0.6rem 1rem;border-radius:6px;font-size:0.85rem;cursor:pointer;width:100%;font-weight:600;" onclick="openExportModal()">Export Data</button>
-<button class="btn-danger" onclick="clearDatabase()" style="margin-top:0.5rem;">Clear All Data</button>
+<h4 style="margin-top:1rem;color:#f97316;">Analytics</h4>
+<button style="background:#f97316;color:white;border:none;padding:0.6rem 1rem;border-radius:6px;font-size:0.85rem;cursor:pointer;width:100%;font-weight:600;" onclick="setView('dashboard')">Territory Dashboard</button>
+<button class="btn-danger" onclick="clearDatabase()" style="margin-top:1rem;">Clear All Data</button>
 </div>
 </div>
 <div class="view-tabs">
 <button class="view-tab active" onclick="setView('physicians')" id="tabPhysicians">Physicians</button>
 <button class="view-tab" onclick="setView('practices')" id="tabPractices">Practices</button>
 <button class="view-tab" onclick="setView('activity')" id="tabActivity">Activity</button>
-<button class="view-tab" onclick="setView('dashboard')" id="tabDashboard">Dashboard</button>
+<button class="view-tab" onclick="setView('dashboard')" id="tabDashboard" style="display:none;"></button>
 </div>
 <div class="search-box">
 <div class="search-wrapper">
