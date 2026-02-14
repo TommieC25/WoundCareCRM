@@ -329,6 +329,24 @@ Append New Records from CSV <input type="file" accept=".csv" onchange="importCSV
 <label>Notes *</label>
 <textarea id="contactNotes" placeholder="What happened during this call/visit?" required rows="6"></textarea>
 </div>
+<div id="reminderRow" style="padding:0.75rem;background:#fffbeb;border:1px solid #fcd34d;border-radius:8px;">
+<label style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.5rem;cursor:pointer;text-transform:none;letter-spacing:0;font-size:0.9rem;color:#92400e;">
+<input type="checkbox" id="setReminder" onchange="$('reminderDays').style.display=this.checked?'flex':'none';if(this.checked)updateReminderPreview();" style="width:18px;height:18px;accent-color:#f59e0b;">
+Set Follow-Up Reminder
+</label>
+<div id="reminderDays" style="display:none;align-items:center;gap:0.5rem;">
+<select id="reminderDaysSelect" onchange="updateReminderPreview()" style="padding:0.5rem;font-size:0.85rem;border:1px solid #fcd34d;border-radius:6px;">
+<option value="1">1 day</option>
+<option value="2">2 days</option>
+<option value="3">3 days</option>
+<option value="5">5 days</option>
+<option value="7" selected>1 week</option>
+<option value="14">2 weeks</option>
+<option value="30">1 month</option>
+</select>
+<span style="font-size:0.8rem;color:#92400e;" id="reminderDatePreview"></span>
+</div>
+</div>
 </div>
 <button type="submit" class="btn-primary" id="contactSaveBtn" style="margin-top: 1rem;">Save Note</button>
 </form>
@@ -558,6 +576,45 @@ const pid=payload.new?.physician_id||payload.old?.physician_id;
 if(currentPhysician&&pid===currentPhysician.id) loadContactLogs(currentPhysician.id).then(()=>renderProfile());
 }).subscribe();
 }
+function calcBusinessDate(days) {
+const d = new Date();
+let added = 0;
+while (added < days) {
+d.setDate(d.getDate() + 1);
+if (d.getDay() !== 0 && d.getDay() !== 6) added++;
+}
+return d.toISOString().split('T')[0];
+}
+function updateReminderPreview() {
+const days = parseInt($('reminderDaysSelect')?.value || 7);
+const dt = calcBusinessDate(days);
+const d = new Date(dt + 'T12:00:00');
+const opts = {weekday:'short', month:'short', day:'numeric'};
+const el = $('reminderDatePreview');
+if (el) el.textContent = d.toLocaleDateString('en-US', opts);
+}
+function getUpcomingBusinessDays(count) {
+const result = [];
+const d = new Date();
+const today = d.toISOString().split('T')[0];
+let cursor = new Date(d);
+// If today is a weekday, include it
+if (cursor.getDay() !== 0 && cursor.getDay() !== 6) {
+result.push({date: today, label: 'Today'});
+}
+while (result.length < count) {
+cursor.setDate(cursor.getDate() + 1);
+if (cursor.getDay() === 0 || cursor.getDay() === 6) continue;
+const iso = cursor.toISOString().split('T')[0];
+const daysAway = result.length;
+let label;
+if (daysAway === 0) label = 'Today';
+else if (daysAway === 1) label = 'Tomorrow';
+else label = cursor.toLocaleDateString('en-US', {weekday:'long'});
+result.push({date: iso, label});
+}
+return result;
+}
 function setView(view) {
 currentView = view;
 $('tabPhysicians').classList.toggle('active', view === 'physicians');
@@ -725,6 +782,10 @@ $('mainContent').innerHTML = `
 <p>Select a ${currentView === 'physicians' ? 'physician' : 'practice'} from the list to view details</p>
 </div>
 <div class="section" style="margin-top:1rem;">
+<div class="section-header"><h3 style="color:#92400e;">Follow-Up Reminders</h3></div>
+<div id="remindersContent"><div class="loading">Loading reminders...</div></div>
+</div>
+<div class="section">
 <div class="section-header"><h3>Recent Activity</h3></div>
 <div id="recentActivityContent"><div class="loading">Loading recent activity...</div></div>
 </div>
@@ -735,6 +796,43 @@ ${mi('Physicians',physicians.length)}${mi('Practices',practices.length)}${mi('Lo
 </div>
 </div>
 `;
+// Load reminders
+try {
+const bizDays = getUpcomingBusinessDays(3);
+const startDate = bizDays[0].date;
+const endDate = bizDays[bizDays.length - 1].date;
+const {data:reminders,error:remErr} = await db.from('contact_logs').select('*').gte('reminder_date', startDate).lte('reminder_date', endDate).order('reminder_date',{ascending:true});
+const rc = $('remindersContent');
+if (remErr) { rc.innerHTML = '<div class="empty-notice">Could not load reminders</div>'; }
+else if (!reminders || reminders.length === 0) {
+rc.innerHTML = '<div class="empty-notice" style="color:#92400e;">No follow-ups scheduled for the next 3 business days.</div>';
+} else {
+let html = '';
+bizDays.forEach(bd => {
+const dayReminders = reminders.filter(r => r.reminder_date === bd.date);
+if (dayReminders.length === 0) return;
+html += `<div style="margin-bottom:0.75rem;"><div style="font-size:0.75rem;font-weight:700;color:#92400e;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:0.5rem;padding-bottom:0.25rem;border-bottom:2px solid #fcd34d;">${bd.label} — ${new Date(bd.date+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'})}</div>`;
+dayReminders.forEach(r => {
+const phys = physicians.find(p => p.id === r.physician_id);
+const physName = phys ? fmtName(phys) : 'Unknown';
+const tm = (r.notes||'').match(/^\[(\d{1,2}:\d{2}(?:\s*[APap][Mm])?)\]\s*/);
+const displayNotes = tm ? r.notes.replace(tm[0], '') : (r.notes||'');
+const preview = displayNotes.length > 100 ? displayNotes.substring(0,100) + '...' : displayNotes;
+html += `<div class="contact-entry" style="cursor:pointer;border-left-color:#f59e0b;margin-bottom:0.5rem;" onclick="viewPhysician('${r.physician_id}')">
+<div style="font-weight:600;color:#0a4d3c;font-size:0.9rem;">${physName}</div>
+<div style="font-size:0.8rem;color:#666;margin-top:0.25rem;">${preview}</div>
+<div style="font-size:0.7rem;color:#999;margin-top:0.25rem;">Note from ${r.contact_date}${r.author ? ' by ' + r.author : ''}</div>
+</div>`;
+});
+html += '</div>';
+});
+rc.innerHTML = html || '<div class="empty-notice" style="color:#92400e;">No follow-ups scheduled for the next 3 business days.</div>';
+}
+} catch(e) {
+const rc = $('remindersContent');
+if (rc) rc.innerHTML = '<div class="empty-notice">Could not load reminders</div>';
+}
+// Load recent activity
 try {
 const {data:recentLogs,error} = await db.from('contact_logs').select('*').order('created_at',{ascending:false}).limit(15);
 if (error) throw error;
@@ -888,6 +986,7 @@ return `
 <span class="contact-entry-date">${e.contact_date}${displayTime}${e.author ? ' - ' + e.author : ''}</span>
 ${e.practice_location_id ? '<span class="contact-entry-location">' + getLocationLabel(e.practice_location_id) + '</span>' : ''}
 <span class="contact-entry-timestamp">${formatTimestamp(e.created_at)}</span>
+${e.reminder_date ? `<span style="font-size:0.7rem;padding:0.15rem 0.5rem;background:#fef3c7;color:#92400e;border-radius:4px;margin-left:0.5rem;">Reminder: ${e.reminder_date}</span>` : ''}
 </div>
 <div class="contact-entry-actions">
 <button class="icon-btn" onclick="editNote('${e.id}')" title="Edit">✏️</button>
@@ -1272,6 +1371,9 @@ $('contactSaveBtn').textContent = 'Save Note';
 $('contactSaveBtn').className = 'btn-primary';
 setToday();
 populateLocationDropdown();
+$('setReminder').checked = false;
+$('reminderDays').style.display = 'none';
+$('reminderDatePreview').textContent = '';
 $('contactModal').classList.add('active');
 }
 function populateLocationDropdown() {
@@ -1304,7 +1406,9 @@ async function saveContact(e) {
 e.preventDefault();
 const tv=$('contactTime').value,nv=$('contactNotes').value;
 const locVal=$('contactLocation').value||null;
-const data={physician_id:currentPhysician.id,contact_date:$('contactDate').value,author:$('authorName').value,notes:tv?`[${tv}] ${nv}`:nv};
+const reminderOn=$('setReminder').checked;
+const reminderDate=reminderOn?calcBusinessDate(parseInt($('reminderDaysSelect').value)):null;
+const data={physician_id:currentPhysician.id,contact_date:$('contactDate').value,author:$('authorName').value,notes:tv?`[${tv}] ${nv}`:nv,reminder_date:reminderDate};
 await withSave('contactSaveBtn','Save Note',async()=>{
 if(editingContactId){const{error}=await db.from('contact_logs').update(data).eq('id',editingContactId);if(error)throw error;showToast('Note updated','success');
 }else{const{error}=await db.from('contact_logs').insert(data);if(error)throw error;showToast('Note added','success');}
@@ -1335,6 +1439,18 @@ notes = notes.replace(timeMatch[0], '');
 }
 $('contactTime').value = time;
 $('contactNotes').value = notes;
+// Populate reminder state
+if (log.reminder_date) {
+$('setReminder').checked = true;
+$('reminderDays').style.display = 'flex';
+const rd = new Date(log.reminder_date + 'T12:00:00');
+const opts = {weekday:'short', month:'short', day:'numeric'};
+$('reminderDatePreview').textContent = rd.toLocaleDateString('en-US', opts);
+} else {
+$('setReminder').checked = false;
+$('reminderDays').style.display = 'none';
+$('reminderDatePreview').textContent = '';
+}
 $('contactModal').classList.add('active');
 }
 async function deleteNote(logId) {
