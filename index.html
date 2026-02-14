@@ -615,17 +615,13 @@ const today = d.toISOString().split('T')[0];
 let cursor = new Date(d);
 // If today is a weekday, include it
 if (cursor.getDay() !== 0 && cursor.getDay() !== 6) {
-result.push({date: today, label: 'Today'});
+result.push({date: today, label: d.toLocaleDateString('en-US', {weekday:'short', month:'short', day:'numeric'})});
 }
 while (result.length < count) {
 cursor.setDate(cursor.getDate() + 1);
 if (cursor.getDay() === 0 || cursor.getDay() === 6) continue;
 const iso = cursor.toISOString().split('T')[0];
-const daysAway = result.length;
-let label;
-if (daysAway === 0) label = 'Today';
-else if (daysAway === 1) label = 'Tomorrow';
-else label = cursor.toLocaleDateString('en-US', {weekday:'long'});
+const label = cursor.toLocaleDateString('en-US', {weekday:'short', month:'short', day:'numeric'});
 result.push({date: iso, label});
 }
 return result;
@@ -854,7 +850,7 @@ let html = '';
 bizDays.forEach(bd => {
 const dayReminders = reminders.filter(r => r.reminder_date === bd.date);
 if (dayReminders.length === 0) return;
-html += `<div style="margin-bottom:0.75rem;"><div style="font-size:0.75rem;font-weight:700;color:#92400e;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:0.5rem;padding-bottom:0.25rem;border-bottom:2px solid #fcd34d;">${bd.label} — ${new Date(bd.date+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'})}</div>`;
+html += `<div style="margin-bottom:0.75rem;"><div style="font-size:0.75rem;font-weight:700;color:#92400e;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:0.5rem;padding-bottom:0.25rem;border-bottom:2px solid #fcd34d;">${bd.label}</div>`;
 dayReminders.forEach(r => {
 const phys = physicians.find(p => p.id === r.physician_id);
 const physName = phys ? fmtName(phys) : 'Unknown';
