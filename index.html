@@ -46,6 +46,7 @@ Append New Records from CSV <input type="file" accept=".csv" onchange="importCSV
 <div class="view-tabs">
 <button class="view-tab active" onclick="setView('physicians')" id="tabPhysicians">Physicians</button>
 <button class="view-tab" onclick="setView('practices')" id="tabPractices">Practices</button>
+<button class="view-tab" onclick="setView('activity')" id="tabActivity">Activity</button>
 </div>
 <div class="search-box">
 <div class="search-wrapper">
@@ -622,6 +623,17 @@ function setView(view) {
 currentView = view;
 $('tabPhysicians').classList.toggle('active', view === 'physicians');
 $('tabPractices').classList.toggle('active', view === 'practices');
+$('tabActivity').classList.toggle('active', view === 'activity');
+if(view==='activity'){
+$('searchInput').placeholder='Search activity...';
+$('addBtn').style.display='none';
+$('sortControls').style.display='none';
+$('physicianList').innerHTML='<li class="loading">Loading activity...</li>';
+currentPhysician=null;currentPractice=null;
+renderActivityView();
+return;
+}
+$('addBtn').style.display='';
 $('searchInput').placeholder = view === 'physicians' ? 'Search physicians...' : 'Search practices...';
 $('addBtn').textContent = view === 'physicians' ? '+ New Physician' : '+ New Practice';
 $('addBtn').onclick = view === 'physicians' ? openPhysicianModal : openPracticeModal;
@@ -691,26 +703,22 @@ $('physicianCount').textContent =
 function getFilteredPhysicians(search) {
 if (!search) return physicians;
 return physicians.filter(p => {
-if (p.first_name.toLowerCase().includes(search) || p.last_name.toLowerCase().includes(search)) return true;
-if ((p.specialty||'').toLowerCase().includes(search)) return true;
-if ((p.email||'').toLowerCase().includes(search)) return true;
-if ((p.general_notes||'').toLowerCase().includes(search)) return true;
-const assigns = physicianAssignments[p.id] || [];
-return assigns.some(a => {
-const loc = a.practice_locations || practiceLocations.find(l => l.id === a.practice_location_id) || {};
-const pName = loc.practices?.name || practices.find(pr => pr.id === loc.practice_id)?.name || '';
-return pName.toLowerCase().includes(search) || (loc.city||'').toLowerCase().includes(search) || (loc.zip||'').toLowerCase().includes(search) || (loc.address||'').toLowerCase().includes(search) || (loc.phone||'').toLowerCase().includes(search);
-});
+if ([p.first_name,p.last_name,p.specialty,p.email,p.general_notes,p.priority,p.um_connection,p.patient_volume,p.mohs_volume,p.practice_name].some(v=>(v||'').toLowerCase().includes(search))) return true;
+const logs=contactLogs[p.id]||[];
+if(logs.some(l=>(l.notes||'').toLowerCase().includes(search)||(l.author||'').toLowerCase().includes(search))) return true;
+const assigns=physicianAssignments[p.id]||[];
+return assigns.some(a=>{const loc=a.practice_locations||{};const pName=loc.practices?.name||'';
+return[pName,loc.city,loc.zip,loc.address,loc.phone,loc.fax,loc.practice_email,loc.office_hours,loc.office_staff,loc.receptionist_name,loc.best_days,loc.label].some(v=>(v||'').toLowerCase().includes(search));});
 });
 }
 function getFilteredPractices(search) {
 if (!search) return practices;
 return practices.filter(p => {
-if (p.name.toLowerCase().includes(search)) return true;
-if ((p.website||'').toLowerCase().includes(search)) return true;
-if ((p.general_notes||'').toLowerCase().includes(search)) return true;
-const locs = practiceLocations.filter(l => l.practice_id === p.id);
-return locs.some(l => (l.address||'').toLowerCase().includes(search) || (l.city||'').toLowerCase().includes(search) || (l.zip||'').toLowerCase().includes(search) || (l.phone||'').toLowerCase().includes(search));
+if([p.name,p.website,p.general_notes].some(v=>(v||'').toLowerCase().includes(search))) return true;
+const phys=physicians.filter(ph=>(physicianAssignments[ph.id]||[]).some(a=>a.practice_locations?.practice_id===p.id));
+if(phys.some(ph=>(ph.first_name+' '+ph.last_name).toLowerCase().includes(search))) return true;
+const locs=practiceLocations.filter(l=>l.practice_id===p.id);
+return locs.some(l=>[l.address,l.city,l.zip,l.phone,l.fax,l.practice_email,l.office_hours,l.office_staff,l.receptionist_name,l.best_days,l.label].some(v=>(v||'').toLowerCase().includes(search)));
 });
 }
 function filterList() {
@@ -1722,6 +1730,29 @@ const{data:allLocs,error}=await db.from('practice_locations').select('*, practic
 const h=['Practice Name','Location Label','Address','City','ZIP','Phone','Fax','Office Email','Office Hours','Office Staff','Receptionist','Best Days'];
 const rows=(allLocs||[]).map(l=>[l.practices?.name||'',l.label||'',l.address||'',l.city||'',l.zip||'',l.phone||'',l.fax||'',l.practice_email||'',l.office_hours||'',l.office_staff||'',l.receptionist_name||'',l.best_days||'']);
 downloadCSV('practices_locations_export_'+todayStamp()+'.csv',h,rows);
+}
+async function renderActivityView(){
+try{
+const{data:allLogs,error}=await db.from('contact_logs').select('*').order('contact_date',{ascending:false}).limit(200);
+if(error)throw error;
+const physMap={};physicians.forEach(p=>physMap[p.id]=p);
+const search=$('searchInput').value.toLowerCase();
+const filtered=search?allLogs.filter(l=>{const p=physMap[l.physician_id]||{};
+return(l.notes||'').toLowerCase().includes(search)||(l.author||'').toLowerCase().includes(search)||(p.first_name||'').toLowerCase().includes(search)||(p.last_name||'').toLowerCase().includes(search);
+}):allLogs;
+$('physicianList').innerHTML=filtered.length===0?'<li class="loading">No activity found</li>':
+filtered.map(l=>{const p=physMap[l.physician_id]||{};
+let time=l.contact_time||'';let notes=l.notes||'';
+if(!time&&notes.startsWith('[')){const m=notes.match(/^\[(\d{1,2}:\d{2})\]\s*/);if(m){time=m[1];notes=notes.slice(m[0].length);}}
+const preview=notes.length>60?notes.slice(0,60)+'...':notes;
+return`<li class="physician-item" onclick="viewPhysician('${l.physician_id}')">
+<div class="name">${p.first_name||''} ${p.last_name||''}</div>
+<div class="practice">${l.contact_date}${time?' '+time:''}${l.author?' - '+l.author:''}</div>
+<div style="font-size:0.75rem;color:#666;margin-top:0.25rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${preview}</div>
+</li>`;}).join('');
+$('physicianCount').textContent=filtered.length+' of '+allLogs.length+' activities';
+$('mainContent').innerHTML=`<div class="empty-state"><h2>Recent Activity</h2><p>Select an entry to view the full physician profile and notes</p></div>`;
+}catch(e){console.error('Activity view error:',e);$('physicianList').innerHTML='<li class="loading">Error loading activity</li>';}
 }
 </script>
 <div class="modal" id="exportModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:100;padding:1rem;">
