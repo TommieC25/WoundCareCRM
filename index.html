@@ -30,6 +30,7 @@
 <h1>Territory CRM <span id="desktopSyncIndicator" class="sync-indicator synced"></span></h1>
 <div class="subtitle">Miami Wound Care</div>
 <div class="count" id="physicianCount">Loading...</div>
+<button class="admin-btn" onclick="setView('map')" style="background:#0ea5e9;border-color:#0ea5e9;">🗺️ Map</button>
 <button class="admin-btn" onclick="toggleAdminPanel()">Admin Settings</button>
 <div class="admin-panel" id="adminPanel">
 <h4>Database Management</h4>
@@ -51,7 +52,7 @@ Append New Records from CSV <input type="file" accept=".csv" onchange="importCSV
 <button class="view-tab active" onclick="setView('physicians')" id="tabPhysicians">Physicians</button>
 <button class="view-tab" onclick="setView('practices')" id="tabPractices">Practices</button>
 <button class="view-tab" onclick="setView('activity')" id="tabActivity">Activity</button>
-<button class="view-tab" onclick="setView('map')" id="tabMap">Map</button>
+<button class="view-tab" onclick="setView('map')" id="tabMap" style="display:none;"></button>
 <button class="view-tab" onclick="setView('dashboard')" id="tabDashboard" style="display:none;"></button>
 </div>
 <div class="search-box">
