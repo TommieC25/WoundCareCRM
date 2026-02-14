@@ -816,7 +816,7 @@ $('mainContent').innerHTML = `
 ${associatedPractices.map(pr => pr.name).join(' | ') || 'No practice assigned'}
 </div>
 <div class="profile-meta">
-${mi('Priority',p.priority||'Not set')}${mi('Specialty',p.specialty||'Not set')}${mi('Degree',p.degree||'Not set')}${p.title?mi('Title',p.title):''}
+${mi('Priority',p.priority||'Not set')}${mi('Specialty',p.specialty||'Not set')}
 ${mi('UM Connection',p.um_connection||'None')}${mi('Candidate Patient Volume',p.patient_volume||p.mohs_volume||'Unknown')}${mi('Last Contact',p.last_contact||'Never')}${mi('Locations',assignments.length+' location'+(assignments.length!==1?'s':''))}
 </div>
 </div>
@@ -1085,7 +1085,6 @@ async function savePhysician(e) {
 e.preventDefault();
 const data = {first_name:$('firstName').value,last_name:$('lastName').value,email:$('physicianEmail').value||null,priority:$('priority').value||null,specialty:$('specialty').value||null,um_connection:$('umConnection').value||null,patient_volume:$('patientVolume').value||null,general_notes:$('physicianGeneralNotes').value||null};
 const degreeVal=$('degree').value||null;const titleVal=$('staffTitle').value||null;
-if(degreeVal)data.degree=degreeVal;if(titleVal)data.title=titleVal;
 await withSave('physicianSaveBtn','Save Physician',async()=>{
 if(editMode){const{error}=await db.from('physicians').update(data).eq('id',currentPhysician.id);if(error)throw error;Object.assign(currentPhysician,data);renderProfile();showToast('Physician updated','success');
 }else{
