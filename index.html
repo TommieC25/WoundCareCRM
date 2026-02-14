@@ -705,6 +705,9 @@ return 0;
 });
 }
 function ld(val,icon,content){return val?`<div class="location-detail"><span class="location-detail-icon">${icon}</span><span class="location-detail-value">${content||val}</span></div>`:''}
+function locAddr(loc){const a=(loc.address||'')+', '+(loc.city||'')+' '+(loc.zip||'');return`<a href="https://maps.apple.com/?q=${encodeURIComponent(a)}" target="_blank" style="color:#0a4d3c;text-decoration:underline;">${loc.address}${loc.city?', '+loc.city:''}${loc.zip?' '+loc.zip:''}</a>`}
+function locPhone(p){return`<a href="tel:${(p||'').replace(/\D/g,'')}">${p}</a>`}
+function locDetails(loc){return ld(loc.address,'📍',locAddr(loc))+ld(loc.phone,'📞',locPhone(loc.phone))+ld(loc.fax,'📠')+ld(loc.practice_email,'✉️',loc.practice_email?`<a href="mailto:${loc.practice_email}">${loc.practice_email}</a>`:'')+ld(loc.office_hours,'🕐')+ld(loc.office_staff,'👥')+ld(loc.receptionist_name,'👤')+ld(loc.best_days,'📅')}
 function mi(label,val){return `<div class="meta-item"><div class="meta-label">${label}</div><div class="meta-value">${val}</div></div>`}
 function ci(icon,label,val){return val?`<div class="contact-item"><div class="contact-icon">${icon}</div><div class="contact-item-content"><div class="contact-item-label">${label}</div><div class="contact-item-value">${val}</div></div></div>`:''}
 function getPrimaryLoc(physicianId) {
@@ -995,12 +998,7 @@ ${practiceName ? `<span class="practice-badge">${practiceName}</span>` : ''}
 <button class="icon-btn" onclick="removeAssignment('${assign.id}')" title="Remove">🗑️</button>
 </div>
 </div>
-<div class="location-details">
-${ld(loc.address,'📍',`<a href="https://maps.apple.com/?q=${encodeURIComponent((loc.address||'')+', '+(loc.city||'')+' '+(loc.zip||''))}" target="_blank" style="color:#0a4d3c;text-decoration:underline;">${loc.address}${loc.city?', '+loc.city:''}${loc.zip?' '+loc.zip:''}</a>`)}
-${ld(loc.phone,'📞',`<a href="tel:${(loc.phone||'').replace(/\D/g,'')}">${loc.phone}</a>`)}
-${ld(loc.fax,'📠')}${ld(loc.practice_email,'✉️',`<a href="mailto:${loc.practice_email}">${loc.practice_email}</a>`)}
-${ld(loc.office_hours,'🕐')}${ld(loc.office_staff,'👥')}${ld(loc.receptionist_name,'👤')}${ld(loc.best_days,'📅')}
-</div>
+<div class="location-details">${locDetails(loc)}</div>
 </div>
 `}).join('') +
 '</div>'
@@ -1085,11 +1083,7 @@ locations.map(loc => `
 <button class="icon-btn" onclick="deleteLocation('${loc.id}')" title="Delete">🗑️</button>
 </div>
 </div>
-<div class="location-details">
-${ld(loc.address,'📍',`<a href="https://maps.apple.com/?q=${encodeURIComponent((loc.address||'')+', '+(loc.city||'')+' '+(loc.zip||''))}" target="_blank" style="color:#0a4d3c;text-decoration:underline;">${loc.address}${loc.city?', '+loc.city:''}${loc.zip?' '+loc.zip:''}</a>`)}
-${ld(loc.phone,'📞',`<a href="tel:${(loc.phone||'').replace(/\D/g,'')}">${loc.phone}</a>`)}
-${ld(loc.fax,'📠')}
-</div>
+<div class="location-details">${locDetails(loc)}</div>
 </div>
 `).join('') +
 '</div>'
