@@ -10,6 +10,8 @@
  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
  <title>Territory CRM - Miami Wound Care</title>
  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+ <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"/>
+ <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
  <style>
 *{margin:0;padding:0;box-sizing:border-box}body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f5f5f5;-webkit-font-smoothing:antialiased;overflow-x:hidden}.app{display:flex;height:100vh}.connection-status{position:fixed;top:0;left:0;right:0;padding:0.5rem;text-align:center;font-size:0.75rem;font-weight:600;z-index:200;transition:all 0.3s}.connection-status.connected{background:#10b981;color:white}.connection-status.disconnected{background:#ef4444;color:white}.connection-status.syncing{background:#f59e0b;color:white}.connection-status.hidden{transform:translateY(-100%)}.mobile-header{display:none;background:#0a4d3c;color:white;padding:1rem;align-items:center;gap:1rem;position:sticky;top:0;z-index:60;box-shadow:0 2px 4px rgba(0,0,0,0.1)}.mobile-header h1{flex:1;font-size:1.25rem;font-weight:600}.menu-btn,.add-header-btn{background:none;border:none;color:white;font-size:1.5rem;cursor:pointer;padding:0.5rem;display:flex;align-items:center;justify-content:center;-webkit-tap-highlight-color:transparent}.sidebar{width:300px;background:#0a4d3c;color:white;display:flex;flex-direction:column;overflow-y:auto;transition:transform 0.3s}.sidebar-header{padding:1.5rem;border-bottom:1px solid rgba(255,255,255,0.1)}.sidebar-header h1{font-size:1.5rem;font-weight:700;margin-bottom:0.25rem}.sidebar-header .subtitle{font-size:0.75rem;opacity:0.7;text-transform:uppercase;letter-spacing:1px}.sidebar-header .count{font-size:0.85rem;margin-top:0.5rem;opacity:0.8}.search-box{padding:0.75rem 1rem;border-bottom:1px solid rgba(255,255,255,0.1)}.search-wrapper{position:relative;display:flex;align-items:center}.search-input{width:100%;padding:0.75rem;padding-right:2.5rem;border:none;border-radius:8px;background:rgba(255,255,255,0.1);color:white;font-size:0.9rem}.search-input::placeholder{color:rgba(255,255,255,0.5)}.search-input:focus{outline:none;background:rgba(255,255,255,0.15)}.search-clear{position:absolute;right:0.5rem;background:rgba(255,255,255,0.3);border:none;color:white;font-size:1.25rem;cursor:pointer;width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;padding:0;line-height:1;-webkit-tap-highlight-color:transparent;touch-action:manipulation}.sort-controls{padding:0.5rem 1rem;border-bottom:1px solid rgba(255,255,255,0.1);display:flex;gap:0.5rem;flex-wrap:wrap}.sort-btn{padding:0.4rem 0.75rem;background:rgba(255,255,255,0.1);border:none;border-radius:6px;color:white;font-size:0.75rem;cursor:pointer;transition:all 0.2s}.sort-btn:hover{background:rgba(255,255,255,0.2)}.sort-btn.active{background:#f97316}.physician-list{flex:1;padding:0.5rem;list-style:none;overflow-y:auto}.physician-item{padding:0.875rem;margin-bottom:0.5rem;background:rgba(255,255,255,0.1);border-radius:8px;cursor:pointer;transition:all 0.2s;border-left:3px solid transparent;-webkit-tap-highlight-color:transparent}.physician-item:active{transform:scale(0.98)}.physician-item.active{background:rgba(255,255,255,0.2);border-left-color:#f97316}.physician-item .name{font-weight:600;font-size:0.9rem;margin-bottom:0.25rem}.physician-item .practice{font-size:0.75rem;opacity:0.8}.physician-item .tier{font-size:0.65rem;margin-top:0.25rem;padding:0.125rem 0.5rem;background:rgba(249,115,22,0.3);border-radius:4px;display:inline-block}.physician-item .city-badge{font-size:0.65rem;margin-left:0.25rem;padding:0.125rem 0.5rem;background:rgba(255,255,255,0.2);border-radius:4px;display:inline-block}.add-physician-btn{margin:1rem;padding:1rem;background:#f97316;color:white;border:none;border-radius:8px;font-weight:600;font-size:1rem;cursor:pointer;-webkit-tap-highlight-color:transparent}.add-physician-btn:active{transform:scale(0.98)}.main-content{flex:1;overflow-y:auto;padding:1rem;-webkit-overflow-scrolling:touch}.empty-state{text-align:center;padding:4rem 2rem;color:#666}.empty-state h2{font-size:1.5rem;margin-bottom:1rem}.profile-header{background:white;padding:1.5rem;border-radius:12px;margin-bottom:1rem;box-shadow:0 1px 3px rgba(0,0,0,0.1)}.profile-name{font-size:1.75rem;font-weight:700;color:#0a4d3c;margin-bottom:0.5rem}.profile-practice{font-size:1rem;color:#666;margin-bottom:1rem}.profile-meta{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:1rem;padding-top:1rem;border-top:1px solid #e5e5e5}.meta-item{display:flex;flex-direction:column}.meta-label{font-size:0.7rem;text-transform:uppercase;color:#999;letter-spacing:0.5px;margin-bottom:0.25rem}.meta-value{font-weight:600;color:#0a4d3c;font-size:0.9rem}.section{background:white;padding:1.5rem;border-radius:12px;margin-bottom:1rem;box-shadow:0 1px 3px rgba(0,0,0,0.1)}.section-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;padding-bottom:0.75rem;border-bottom:2px solid #f0f0f0}.section-header h3{font-size:1.25rem;color:#0a4d3c}.edit-btn{padding:0.5rem 1rem;background:#0a4d3c;color:white;border:none;border-radius:6px;font-weight:600;font-size:0.85rem;cursor:pointer;-webkit-tap-highlight-color:transparent;touch-action:manipulation}.edit-btn:active{transform:scale(0.95)}.delete-btn{padding:0.5rem 1rem;background:#dc2626;color:white;border:none;border-radius:6px;font-weight:600;font-size:0.85rem;cursor:pointer;margin-left:0.5rem}.contact-grid{display:grid;gap:0.75rem}.contact-item{display:flex;gap:0.75rem;padding:0.875rem;background:#f9f9f9;border-radius:8px}.contact-icon{width:40px;height:40px;background:#0a4d3c;color:white;border-radius:8px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:1.25rem}.contact-item-content{flex:1}.contact-item-label{font-size:0.7rem;text-transform:uppercase;color:#999;letter-spacing:0.5px;margin-bottom:0.25rem}.contact-item-value{font-weight:500;color:#333;font-size:0.9rem}.contact-item-value a{color:#0a4d3c;text-decoration:none}.form-grid{display:grid;gap:1rem}.form-row{display:grid;grid-template-columns:1fr 1fr;gap:1rem}@media (max-width:500px){.form-row{grid-template-columns:1fr}}label{display:block;font-size:0.75rem;font-weight:600;color:#666;margin-bottom:0.25rem;text-transform:uppercase;letter-spacing:0.5px}input,textarea,select{width:100%;padding:0.875rem;border:2px solid #e5e5e5;border-radius:8px;font-size:1rem;font-family:inherit;-webkit-appearance:none}input:focus,textarea:focus,select:focus{outline:none;border-color:#0a4d3c}textarea{resize:vertical;min-height:100px}.btn-primary{width:100%;padding:1rem;background:#0a4d3c;color:white;border:none;border-radius:8px;font-weight:600;font-size:1rem;cursor:pointer;-webkit-tap-highlight-color:transparent;touch-action:manipulation}.btn-primary:active{transform:scale(0.98)}.btn-primary:disabled{background:#ccc;cursor:not-allowed}.btn-primary.saving{background:#f59e0b;pointer-events:none}.btn-primary.saved{background:#10b981}.contact-entries{display:flex;flex-direction:column;gap:0.75rem}.contact-entry{padding:1rem;background:#f9f9f9;border-left:4px solid #0a4d3c;border-radius:8px}.contact-entry-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem}.contact-entry-date{font-size:0.75rem;color:#999;text-transform:uppercase;letter-spacing:0.5px}.contact-entry-location{display:block;font-size:0.8rem;color:#0a4d3c;margin-top:0.25rem}.contact-entry-timestamp{font-size:0.7rem;color:#bbb;margin-left:0.5rem;font-style:italic}.contact-entry-actions{display:flex;gap:0.5rem}.icon-btn{background:none;border:none;font-size:1rem;cursor:pointer;padding:0.25rem;opacity:0.6;transition:opacity 0.2s;touch-action:manipulation;-webkit-tap-highlight-color:transparent}.icon-btn:hover{opacity:1}.contact-entry-notes{font-size:0.9rem;line-height:1.5;color:#333;white-space:pre-wrap}.modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:100;padding:1rem;overflow-y:auto;-webkit-overflow-scrolling:touch}.modal.active{display:flex;align-items:center;justify-content:center}.modal-content{background:white;border-radius:16px;width:100%;max-width:500px;max-height:90vh;overflow-y:auto;-webkit-overflow-scrolling:touch;box-shadow:0 20px 25px -5px rgba(0,0,0,0.2)}.modal-header{display:flex;justify-content:space-between;align-items:center;padding:1.5rem;border-bottom:1px solid #e5e5e5;position:sticky;top:0;background:white;border-radius:16px 16px 0 0}.modal-header h2{font-size:1.5rem;color:#0a4d3c}.close-btn{background:none;border:none;font-size:2rem;cursor:pointer;color:#999;padding:0;width:40px;height:40px;display:flex;align-items:center;justify-content:center;-webkit-tap-highlight-color:transparent}.modal-body{padding:1.5rem}.locations-grid{display:flex;flex-direction:column;gap:1rem}.location-card{background:#f9f9f9;border-radius:10px;padding:1rem;border-left:4px solid #0a4d3c}.location-card.primary{border-left-color:#f97316}.location-card-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:0.75rem}.location-label{font-weight:600;color:#0a4d3c;font-size:0.95rem}.location-badge{font-size:0.65rem;padding:0.2rem 0.5rem;background:#f97316;color:white;border-radius:4px;text-transform:uppercase;font-weight:600}.practice-badge{font-size:0.65rem;padding:0.2rem 0.5rem;background:#0a4d3c;color:white;border-radius:4px;margin-left:0.25rem}.location-actions{display:flex;gap:0.25rem}.location-details{display:grid;gap:0.5rem}.location-detail{display:flex;align-items:flex-start;gap:0.5rem;font-size:0.85rem}.location-detail-icon{flex-shrink:0;width:20px;text-align:center}.location-detail-value{color:#333}.location-detail-value a{color:#0a4d3c;text-decoration:none}.add-location-btn{display:flex;align-items:center;justify-content:center;gap:0.5rem;padding:1rem;background:rgba(10,77,60,0.05);border:2px dashed #0a4d3c;border-radius:10px;color:#0a4d3c;font-weight:600;cursor:pointer;transition:all 0.2s}.add-location-btn:hover{background:rgba(10,77,60,0.1)}.selector-section{margin-bottom:1rem;padding:1rem;background:#f0f9ff;border-radius:8px;border:1px solid #bae6fd}.selector-section h4{color:#0369a1;margin-bottom:0.75rem;font-size:0.9rem}.selector-options{display:flex;flex-direction:column;gap:0.5rem;max-height:200px;overflow-y:auto}.selector-option{display:flex;align-items:center;gap:0.5rem;padding:0.5rem;background:white;border-radius:6px;cursor:pointer;transition:all 0.2s;touch-action:manipulation;-webkit-tap-highlight-color:transparent}.selector-option:hover{background:#e0f2fe}.selector-option.selected{background:#0ea5e9;color:white}.selector-option input[type="checkbox"],.selector-option input[type="radio"]{width:18px;height:18px;margin:0;accent-color:#0ea5e9;cursor:pointer}.selector-option input[type="checkbox"]:checked{background-color:#0ea5e9}.selector-option input[type="checkbox"]{-webkit-appearance:none;-moz-appearance:none;appearance:none;border:2px solid #0ea5e9;border-radius:3px;background:#e0f2fe;position:relative;flex-shrink:0;pointer-events:none}.selector-option input[type="checkbox"]:checked{background-color:#0ea5e9;border-color:#0ea5e9}.selector-option input[type="checkbox"]:checked::after{content:'✓';position:absolute;color:white;font-size:14px;font-weight:bold;top:50%;left:50%;transform:translate(-50%,-50%)}.selector-option-label{flex:1;font-size:0.85rem}.selector-option-sub{font-size:0.75rem;opacity:0.7}.btn-secondary{padding:0.5rem 1rem;background:#e5e5e5;color:#333;border:none;border-radius:6px;font-weight:600;font-size:0.85rem;cursor:pointer;margin-top:0.5rem;touch-action:manipulation;-webkit-tap-highlight-color:transparent}.btn-secondary:hover{background:#d5d5d5}@media (max-width:768px){.app{flex-direction:column}.mobile-header{display:flex}.sidebar{position:fixed;top:0;left:0;bottom:0;z-index:50;transform:translateX(-100%);box-shadow:2px 0 8px rgba(0,0,0,0.1)}.sidebar.open{transform:translateX(0)}.main-content{padding:0.5rem}.profile-name{font-size:1.5rem}.section{padding:1rem}}.loading{text-align:center;padding:3rem;color:#666}.empty-notice{text-align:center;padding:2rem;color:#999;font-style:italic}.sync-indicator{display:inline-block;width:8px;height:8px;border-radius:50%;margin-left:0.5rem;animation:pulse 1.5s infinite}.sync-indicator.synced{background:#10b981}.sync-indicator.syncing{background:#f59e0b;animation:pulse 0.5s infinite}.sync-indicator.error{background:#ef4444}@keyframes pulse{0%,100%{opacity:1}50%{opacity:0.5}}.toast-container{position:fixed;bottom:1rem;right:1rem;z-index:300;display:flex;flex-direction:column;gap:0.5rem}.toast{padding:1rem 1.5rem;border-radius:8px;color:white;font-weight:500;box-shadow:0 4px 12px rgba(0,0,0,0.15);animation:slideIn 0.3s ease}.toast.success{background:#10b981}.toast.error{background:#ef4444}.toast.info{background:#3b82f6}@keyframes slideIn{from{transform:translateX(100%);opacity:0}to{transform:translateX(0);opacity:1}}.view-tabs{display:flex;gap:0.5rem;padding:0.5rem 1rem;border-bottom:1px solid rgba(255,255,255,0.1)}.view-tab{padding:0.5rem 1rem;background:rgba(255,255,255,0.1);border:none;border-radius:6px;color:white;font-size:0.8rem;cursor:pointer;transition:all 0.2s}.view-tab:hover{background:rgba(255,255,255,0.2)}.view-tab.active{background:#f97316}.admin-btn{background:rgba(255,255,255,0.1);border:1px solid rgba(255,255,255,0.2);color:white;padding:0.4rem 0.75rem;border-radius:6px;font-size:0.75rem;cursor:pointer;margin-top:0.5rem;transition:all 0.2s}.admin-btn:hover{background:rgba(255,255,255,0.2)}.admin-panel{background:#1a1a2e;border:1px solid #333;border-radius:8px;padding:1rem;margin-top:1rem;display:none}.admin-panel.show{display:block}.admin-panel h4{color:#f97316;margin-bottom:0.75rem;font-size:0.9rem}.admin-panel p{color:#aaa;font-size:0.8rem;margin-bottom:0.75rem}.btn-danger{background:#dc2626;color:white;border:none;padding:0.6rem 1rem;border-radius:6px;font-size:0.85rem;cursor:pointer;width:100%;margin-bottom:0.5rem;transition:all 0.2s}.btn-danger:hover{background:#b91c1c}.btn-warning{background:#f59e0b;color:white;border:none;padding:0.6rem 1rem;border-radius:6px;font-size:0.85rem;cursor:pointer;width:100%;transition:all 0.2s}.btn-warning:hover{background:#d97706}
 </style>
@@ -49,6 +51,7 @@ Append New Records from CSV <input type="file" accept=".csv" onchange="importCSV
 <button class="view-tab active" onclick="setView('physicians')" id="tabPhysicians">Physicians</button>
 <button class="view-tab" onclick="setView('practices')" id="tabPractices">Practices</button>
 <button class="view-tab" onclick="setView('activity')" id="tabActivity">Activity</button>
+<button class="view-tab" onclick="setView('map')" id="tabMap">Map</button>
 <button class="view-tab" onclick="setView('dashboard')" id="tabDashboard" style="display:none;"></button>
 </div>
 <div class="search-box">
@@ -627,6 +630,7 @@ currentView = view;
 $('tabPhysicians').classList.toggle('active', view === 'physicians');
 $('tabPractices').classList.toggle('active', view === 'practices');
 $('tabActivity').classList.toggle('active', view === 'activity');
+$('tabMap').classList.toggle('active', view === 'map');
 if(view==='activity'){
 $('searchInput').placeholder='Search activity...';
 $('addBtn').style.display='none';
@@ -634,6 +638,15 @@ $('sortControls').style.display='none';
 $('physicianList').innerHTML='<li class="loading">Loading activity...</li>';
 currentPhysician=null;currentPractice=null;
 renderActivityView();
+return;
+}
+if(view==='map'){
+$('searchInput').parentElement.parentElement.style.display='none';
+$('addBtn').style.display='none';
+$('sortControls').style.display='none';
+$('physicianList').innerHTML='';
+currentPhysician=null;currentPractice=null;
+renderMapView();
 return;
 }
 $('tabDashboard').classList.toggle('active', view === 'dashboard');
@@ -982,7 +995,7 @@ ${practiceName ? `<span class="practice-badge">${practiceName}</span>` : ''}
 </div>
 </div>
 <div class="location-details">
-${ld(loc.address,'📍',`${loc.address}${loc.city?', '+loc.city:''}${loc.zip?' '+loc.zip:''}`)}
+${ld(loc.address,'📍',`<a href="https://maps.apple.com/?q=${encodeURIComponent((loc.address||'')+', '+(loc.city||'')+' '+(loc.zip||''))}" target="_blank" style="color:#0a4d3c;text-decoration:underline;">${loc.address}${loc.city?', '+loc.city:''}${loc.zip?' '+loc.zip:''}</a>`)}
 ${ld(loc.phone,'📞',`<a href="tel:${(loc.phone||'').replace(/\D/g,'')}">${loc.phone}</a>`)}
 ${ld(loc.fax,'📠')}${ld(loc.practice_email,'✉️',`<a href="mailto:${loc.practice_email}">${loc.practice_email}</a>`)}
 ${ld(loc.office_hours,'🕐')}${ld(loc.office_staff,'👥')}${ld(loc.receptionist_name,'👤')}${ld(loc.best_days,'📅')}
@@ -1072,7 +1085,7 @@ locations.map(loc => `
 </div>
 </div>
 <div class="location-details">
-${ld(loc.address,'📍',`${loc.address}${loc.city?', '+loc.city:''}${loc.zip?' '+loc.zip:''}`)}
+${ld(loc.address,'📍',`<a href="https://maps.apple.com/?q=${encodeURIComponent((loc.address||'')+', '+(loc.city||'')+' '+(loc.zip||''))}" target="_blank" style="color:#0a4d3c;text-decoration:underline;">${loc.address}${loc.city?', '+loc.city:''}${loc.zip?' '+loc.zip:''}</a>`)}
 ${ld(loc.phone,'📞',`<a href="tel:${(loc.phone||'').replace(/\D/g,'')}">${loc.phone}</a>`)}
 ${ld(loc.fax,'📠')}
 </div>
@@ -1813,6 +1826,48 @@ ${card('Most Contacted',mostContacted)}
 ${card('Never Contacted ('+neverContacted.length+')',neverHTML||'<div style="color:#10b981;padding:0.5rem 0;">All physicians contacted!</div>')}
 </div>`;
 $('physicianCount').textContent='Territory Dashboard';
+}
+let territoryMap=null;
+async function renderMapView(){
+$('mainContent').innerHTML='<div id="mapContainer" style="height:calc(100vh - 2rem);border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.1);"></div>';
+$('physicianCount').textContent='Territory Map';
+if(territoryMap){territoryMap.remove();territoryMap=null;}
+territoryMap=L.map('mapContainer').setView([25.76,-80.19],11);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'OpenStreetMap',maxZoom:18}).addTo(territoryMap);
+const geocodeCache={};
+const locs=practiceLocations.filter(l=>l.address&&l.city);
+let plotted=0;
+const statusEl=document.createElement('div');
+statusEl.style.cssText='position:absolute;top:10px;right:10px;z-index:1000;background:white;padding:0.5rem 1rem;border-radius:8px;font-size:0.8rem;box-shadow:0 2px 4px rgba(0,0,0,0.2);';
+document.getElementById('mapContainer').appendChild(statusEl);
+statusEl.textContent='Plotting '+locs.length+' locations...';
+for(const loc of locs){
+const addr=loc.address+', '+loc.city+', FL '+(loc.zip||'');
+const practiceName=loc.practices?.name||practices.find(p=>p.id===loc.practice_id)?.name||'';
+const assignedPhys=physicians.filter(p=>(physicianAssignments[p.id]||[]).some(a=>a.practice_location_id===loc.id));
+const physNames=assignedPhys.map(p=>p.first_name+' '+p.last_name).join(', ');
+try{
+let coords=geocodeCache[addr];
+if(!coords){
+const r=await fetch('https://nominatim.openstreetmap.org/search?format=json&q='+encodeURIComponent(addr)+'&limit=1');
+const d=await r.json();
+if(d&&d[0]){coords={lat:parseFloat(d[0].lat),lng:parseFloat(d[0].lon)};geocodeCache[addr]=coords;}
+await new Promise(ok=>setTimeout(ok,300));
+}
+if(coords){
+const popup='<strong>'+(practiceName||loc.label||'Office')+'</strong><br>'
++addr+'<br>'
++(physNames?'<em>'+physNames+'</em><br>':'')
++'<a href="https://maps.apple.com/?q='+encodeURIComponent(addr)+'" target="_blank" style="color:#0a4d3c;">Get Directions</a>';
+L.marker([coords.lat,coords.lng]).addTo(territoryMap).bindPopup(popup);
+plotted++;
+}
+}catch(e){console.log('Geocode error for '+addr,e);}
+statusEl.textContent='Plotted '+plotted+' of '+locs.length+'...';
+}
+statusEl.textContent=plotted+' locations mapped';
+setTimeout(()=>statusEl.remove(),3000);
+if(plotted>0)territoryMap.invalidateSize();
 }
 </script>
 <div class="modal" id="exportModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.5);z-index:100;padding:1rem;">
