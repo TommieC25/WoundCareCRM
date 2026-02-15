@@ -341,6 +341,12 @@ Append New Records from CSV <input type="file" accept=".csv" onchange="importCSV
 <option value="">Select location...</option>
 </select>
 </div>
+<div id="alsoAttendedRow" style="display:none;">
+<label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer;text-transform:none;letter-spacing:0;font-size:0.9rem;color:#0a4d3c;" onclick="var el=$('alsoAttendedList');el.style.display=el.style.display==='none'?'block':'none';">
+Also Present (log for multiple physicians) <span style="font-size:0.7rem;opacity:0.7;">tap to expand</span>
+</label>
+<div id="alsoAttendedList" style="display:none;max-height:150px;overflow-y:auto;border:1px solid #e5e5e5;border-radius:8px;padding:0.5rem;margin-top:0.25rem;"></div>
+</div>
 <div>
 <label>Notes *</label>
 <div style="display:flex;gap:0.5rem;margin-bottom:0.5rem;">
@@ -714,7 +720,17 @@ function locAddr(loc){const a=(loc.address||'')+', '+(loc.city||'')+' '+(loc.zip
 function locPhone(p){return`<a href="tel:${(p||'').replace(/\D/g,'')}">${p}</a>`}
 function locDetails(loc){return ld(loc.address,'📍',locAddr(loc))+ld(loc.phone,'📞',locPhone(loc.phone))+ld(loc.fax,'📠')+ld(loc.practice_email,'✉️',loc.practice_email?`<a href="mailto:${loc.practice_email}">${loc.practice_email}</a>`:'')+ld(loc.office_hours,'🕐')+ld(loc.office_staff,'👥')+ld(loc.receptionist_name,'👤')+ld(loc.best_days,'📅')}
 function mi(label,val){return `<div class="meta-item"><div class="meta-label">${label}</div><div class="meta-value">${val}</div></div>`}
+function parseNoteTime(notes){const tm=(notes||'').match(/^\[(\d{1,2}:\d{2}(?:\s*[APap][Mm])?)\]\s*/);return tm?{time:' '+tm[1],text:notes.replace(tm[0],'')}:{time:'',text:notes||''};}
+function renderLogEntry(e,opts={}){const{time,text}=parseNoteTime(e.notes);const preview=opts.full?text:(text.length>120?text.substring(0,120)+'...':text);
+const physLine=opts.physName?`<span style="font-weight:600;color:#0a4d3c;display:block;margin-top:0.25rem;">${opts.physName}</span>`:'';
+const locLine=e.practice_location_id?'<span class="contact-entry-location">'+getLocationLabel(e.practice_location_id)+'</span>':'';
+const tsLine=opts.showTimestamp?`<span class="contact-entry-timestamp">${formatTimestamp(e.created_at)}</span>`:'';
+const reminderLine=e.reminder_date?`<span style="font-size:0.7rem;padding:0.15rem 0.5rem;background:#fef3c7;color:#92400e;border-radius:4px;margin-left:0.5rem;">Reminder: ${e.reminder_date}</span>`:'';
+const actions=opts.editable?`<div class="contact-entry-actions"><button class="icon-btn" onclick="editNote('${e.id}')" title="Edit">✏️</button><button class="icon-btn" onclick="deleteNote('${e.id}')" title="Delete">🗑️</button></div>`:'';
+const click=opts.onClick?` style="cursor:pointer" onclick="${opts.onClick}"`:'';
+return `<div class="contact-entry"${click}><div class="contact-entry-header"><div><span class="contact-entry-date">${e.contact_date}${time}${e.author?' - '+e.author:''}</span>${physLine}${locLine}${tsLine}${reminderLine}</div>${actions}</div><div class="contact-entry-notes">${preview}</div></div>`;}
 function ci(icon,label,val){return val?`<div class="contact-item"><div class="contact-icon">${icon}</div><div class="contact-item-content"><div class="contact-item-label">${label}</div><div class="contact-item-value">${val}</div></div></div>`:''}
+function getPracticeName(practiceId){const p=practices.find(pr=>pr.id===practiceId);return p?p.name:'';}
 function getPrimaryLoc(physicianId) {
 const a = physicianAssignments[physicianId] || [];
 const assign = a.find(x => x.is_primary) || a[0];
@@ -795,7 +811,7 @@ const assignments = physicianAssignments[p.id] || [];
 const primaryAssign = assignments.find(a => a.is_primary) || assignments[0];
 const pLoc = primaryAssign?.practice_locations || (primaryAssign ? practiceLocations.find(l => l.id === primaryAssign.practice_location_id) : null) || {};
 const cityDisplay = pLoc.city || '';
-const practiceName = pLoc.practices?.name || (pLoc.practice_id ? practices.find(pr => pr.id === pLoc.practice_id)?.name : '') || p.practice_name || '';
+const practiceName = pLoc.practices?.name || getPracticeName(pLoc.practice_id) || p.practice_name || '';
 const locationCount = assignments.length;
 return `
 <li class="physician-item ${currentPhysician?.id === p.id ? 'active' : ''}"
@@ -895,23 +911,7 @@ return;
 }
 container.innerHTML = '<div class="contact-entries">' + recentLogs.map(e => {
 const phys = physicians.find(p => p.id === e.physician_id);
-const physName = phys ? fmtName(phys) : 'Unknown';
-const tm = (e.notes||'').match(/^\[(\d{1,2}:\d{2}(?:\s*[APap][Mm])?)\]\s*/);
-const displayTime = tm ? ' ' + tm[1] : '';
-const displayNotes = tm ? e.notes.replace(tm[0], '') : (e.notes||'');
-const preview = displayNotes.length > 120 ? displayNotes.substring(0,120) + '...' : displayNotes;
-return `
-<div class="contact-entry" style="cursor:pointer" onclick="viewPhysician('${e.physician_id}')">
-<div class="contact-entry-header">
-<div>
-<span class="contact-entry-date">${e.contact_date}${displayTime}${e.author ? ' - ' + e.author : ''}</span>
-<span style="font-weight:600;color:#0a4d3c;display:block;margin-top:0.25rem;">${physName}</span>
-${e.practice_location_id ? '<span class="contact-entry-location">' + getLocationLabel(e.practice_location_id) + '</span>' : ''}
-</div>
-</div>
-<div class="contact-entry-notes">${preview}</div>
-</div>
-`;
+return renderLogEntry(e,{physName:phys?fmtName(phys):'Unknown',onClick:`viewPhysician('${e.physician_id}')`});
 }).join('') + '</div>';
 } catch(e) {
 const container = $('recentActivityContent');
@@ -995,7 +995,7 @@ ${assignments.length === 0 ?
 assignments.map(assign => {
 const loc = assign.practice_locations || practiceLocations.find(l => l.id === assign.practice_location_id);
 if (!loc) return '';
-const practiceName = loc.practices?.name || practices.find(pr => pr.id === loc.practice_id)?.name || '';
+const practiceName = loc.practices?.name || getPracticeName(loc.practice_id);
 return `
 <div class="location-card ${assign.is_primary ? 'primary' : ''}">
 <div class="location-card-header">
@@ -1021,29 +1021,7 @@ ${practiceName ? `<span class="practice-badge">${practiceName}</span>` : ''}
 </div>
 ${logs.length === 0 ?
 '<div class="empty-notice">No contact history yet. Click + Add Note to record your first call or visit.</div>' :
-'<div class="contact-entries">' +
-logs.map(e => {
-const tm = (e.notes||'').match(/^\[(\d{1,2}:\d{2}(?:\s*[APap][Mm])?)\]\s*/);
-const displayTime = tm ? ' ' + tm[1] : '';
-const displayNotes = tm ? e.notes.replace(tm[0], '') : (e.notes||'');
-return `
-<div class="contact-entry">
-<div class="contact-entry-header">
-<div>
-<span class="contact-entry-date">${e.contact_date}${displayTime}${e.author ? ' - ' + e.author : ''}</span>
-${e.practice_location_id ? '<span class="contact-entry-location">' + getLocationLabel(e.practice_location_id) + '</span>' : ''}
-<span class="contact-entry-timestamp">${formatTimestamp(e.created_at)}</span>
-${e.reminder_date ? `<span style="font-size:0.7rem;padding:0.15rem 0.5rem;background:#fef3c7;color:#92400e;border-radius:4px;margin-left:0.5rem;">Reminder: ${e.reminder_date}</span>` : ''}
-</div>
-<div class="contact-entry-actions">
-<button class="icon-btn" onclick="editNote('${e.id}')" title="Edit">✏️</button>
-<button class="icon-btn" onclick="deleteNote('${e.id}')" title="Delete">🗑️</button>
-</div>
-</div>
-<div class="contact-entry-notes">${displayNotes}</div>
-</div>
-`;}).join('') +
-'</div>'
+'<div class="contact-entries">' + logs.map(e => renderLogEntry(e,{editable:true,showTimestamp:true,full:true})).join('') + '</div>'
 }
 </div>
 `;
@@ -1151,19 +1129,7 @@ return;
 }
 el.innerHTML = '<div class="contact-entries">' + logs.map(e => {
 const phys = physicians.find(p => p.id === e.physician_id);
-const physName = phys ? fmtName(phys) : 'Unknown';
-const tm = (e.notes||'').match(/^\[(\d{1,2}:\d{2}(?:\s*[APap][Mm])?)\]\s*/);
-const displayTime = tm ? ' ' + tm[1] : '';
-const displayNotes = tm ? e.notes.replace(tm[0], '') : (e.notes||'');
-const preview = displayNotes.length > 120 ? displayNotes.substring(0,120) + '...' : displayNotes;
-return `<div class="contact-entry">
-<div class="contact-entry-header"><div>
-<span class="contact-entry-date">${e.contact_date}${displayTime}${e.author ? ' - ' + e.author : ''}</span>
-<span style="font-weight:600;color:#0a4d3c;display:block;margin-top:0.25rem;">${physName}</span>
-${e.practice_location_id ? '<span class="contact-entry-location">' + getLocationLabel(e.practice_location_id) + '</span>' : ''}
-</div></div>
-<div class="contact-entry-notes">${preview}</div>
-</div>`;
+return renderLogEntry(e,{physName:phys?fmtName(phys):'Unknown'});
 }).join('') + '</div>';
 } catch(e) {
 const el = $('practiceActivityContent');
@@ -1178,7 +1144,6 @@ $('authorName').value = 'Tom';
 $('contactSaveBtn').textContent = 'Save Note';
 $('contactSaveBtn').className = 'btn-primary';
 setToday();
-// Populate location dropdown with practice locations
 const locations = practiceLocations.filter(l => l.practice_id === currentPractice.id);
 const select = $('contactLocation');
 select.innerHTML = locations.length === 1
@@ -1186,7 +1151,7 @@ select.innerHTML = locations.length === 1
 : '<option value="">Select location...</option>' + locations.map(l => `<option value="${l.id}">${l.address || l.label || 'Office'}, ${l.city || ''}</option>`).join('');
 $('locationSelectRow').style.display = locations.length <= 1 ? 'none' : 'block';
 if (locations.length === 1) select.value = locations[0].id;
-// Add physician selector for practice-level logging
+// Multi-physician checkbox selector
 const practPhys = physicians.filter(ph => {
 const assigns = physicianAssignments[ph.id] || [];
 return assigns.some(a => locations.some(l => l.id === a.practice_location_id));
@@ -1198,11 +1163,16 @@ physRow.id = 'practicePhysSelectRow';
 $('locationSelectRow').parentElement.insertBefore(physRow, $('locationSelectRow'));
 }
 if (practPhys.length > 0) {
-physRow.innerHTML = '<label>Physician</label><select id="practiceContactPhysician" style="width:100%;padding:0.875rem;border:2px solid #e5e5e5;border-radius:8px;font-size:1rem;">' +
-(practPhys.length > 1 ? '<option value="">Select physician...</option>' : '') +
-practPhys.map(p => `<option value="${p.id}">${fmtName(p)}</option>`).join('') + '</select>';
+physRow.innerHTML = `<label>Physicians Present (select all that apply)</label>
+<div id="practicePhysCheckboxes" style="max-height:180px;overflow-y:auto;border:2px solid #e5e5e5;border-radius:8px;padding:0.5rem;">
+${practPhys.map(p => `<div class="selector-option" style="margin-bottom:0.25rem;" onclick="var c=this.querySelector('input');c.checked=!c.checked;">
+<input type="checkbox" value="${p.id}" class="practice-phys-cb">
+<span class="selector-option-label">${fmtName(p)}</span>
+</div>`).join('')}
+</div>
+<div style="font-size:0.75rem;color:#666;margin-top:0.25rem;">${practPhys.length} physician${practPhys.length!==1?'s':''} at this practice</div>`;
 physRow.style.display = 'block';
-if (practPhys.length === 1) $('practiceContactPhysician').value = practPhys[0].id;
+if (practPhys.length === 1) physRow.querySelector('.practice-phys-cb').checked = true;
 } else {
 physRow.innerHTML = '<div class="empty-notice" style="color:#dc2626;">No physicians at this practice. Assign a physician first.</div>';
 physRow.style.display = 'block';
@@ -1210,24 +1180,30 @@ physRow.style.display = 'block';
 $('setReminder').checked = false;
 $('reminderDays').style.display = 'none';
 $('reminderDatePreview').textContent = '';
-// Temporarily override the form submission for practice context
 $('contactForm').onsubmit = function(ev) { savePracticeContact(ev); return false; };
 $('contactModal').classList.add('active');
 }
 async function savePracticeContact(e) {
 e.preventDefault();
-const physSelect = $('practiceContactPhysician');
-if (!physSelect || !physSelect.value) { showToast('Please select a physician', 'error'); return; }
+const cbs = document.querySelectorAll('.practice-phys-cb:checked');
+const selectedPhysIds = [...cbs].map(cb => cb.value);
+if (selectedPhysIds.length === 0) { showToast('Please select at least one physician', 'error'); return; }
 const tv = $('contactTime').value, nv = $('contactNotes').value;
 const locVal = $('contactLocation').value || null;
 const reminderOn = $('setReminder').checked;
 const reminderDate = reminderOn ? calcBusinessDate(parseInt($('reminderDaysSelect').value)) : null;
-const data = {physician_id: physSelect.value, contact_date: $('contactDate').value, author: $('authorName').value, notes: tv ? `[${tv}] ${nv}` : nv, practice_location_id: locVal, reminder_date: reminderDate};
+const noteText = tv ? `[${tv}] ${nv}` : nv;
+const dateVal = $('contactDate').value, authorVal = $('authorName').value;
+// Build entries for all selected physicians
+const entries = selectedPhysIds.map(pid => ({physician_id:pid,contact_date:dateVal,author:authorVal,notes:noteText,practice_location_id:locVal,reminder_date:reminderDate}));
 await withSave('contactSaveBtn', 'Save Note', async() => {
-const {error} = await db.from('contact_logs').insert(data);
+const {error} = await db.from('contact_logs').insert(entries);
 if (error) throw error;
-await db.from('physicians').update({last_contact: data.contact_date}).eq('id', data.physician_id);
-showToast('Call logged', 'success');
+// Update last_contact for all
+for (const pid of selectedPhysIds) {
+await db.from('physicians').update({last_contact:dateVal}).eq('id',pid);
+}
+showToast(`Call logged for ${selectedPhysIds.length} physician${selectedPhysIds.length!==1?'s':''}`, 'success');
 await loadAllData();
 renderPracticeProfile();
 await loadPracticeActivity(currentPractice.id);
@@ -1241,7 +1217,8 @@ $('newPracticeFields').style.display='none';$('locationSelector').style.display=
 $('physicianSaveBtn').textContent='Save Physician';$('physicianSaveBtn').className='btn-primary';
 populatePracticeOptions();$('physicianModal').classList.add('active');
 }
-function closePhysicianModal(){$('physicianModal').classList.remove('active');}
+function closeModal(id){$(id).classList.remove('active');}
+function closePhysicianModal(){closeModal('physicianModal');}
 function populatePracticeOptions() {
 const container = $('practiceOptions');
 const search = ($('practiceSearchInput')?.value || '').toLowerCase();
@@ -1372,7 +1349,7 @@ async function deletePhysician() {
 await dbDel('physicians',currentPhysician.id,`Delete ${fmtName(currentPhysician)}?`,async()=>{physicians=physicians.filter(p=>p.id!==currentPhysician.id);currentPhysician=null;renderList();renderEmptyState();});
 }
 function openPracticeModal(){editingPracticeId=null;$('practiceModalTitle').textContent='Add Practice';$('practiceForm').reset();$('practiceEmail').value='';$('practiceAddressSection').style.display='';$('practiceSaveBtn').textContent='Save Practice';$('practiceSaveBtn').className='btn-primary';$('practiceModal').classList.add('active');}
-function closePracticeModal(){$('practiceModal').classList.remove('active');}
+function closePracticeModal(){closeModal('practiceModal');}
 function editPractice(){editingPracticeId=currentPractice.id;$('practiceModalTitle').textContent='Edit Practice';setFields({practiceName:currentPractice.name,practiceWebsite:currentPractice.website||'',practiceNotes:currentPractice.general_notes||'',practiceEmail:currentPractice.email||''});$('practiceAddressSection').style.display='none';$('practiceSaveBtn').textContent='Save Practice';$('practiceSaveBtn').className='btn-primary';$('practiceModal').classList.add('active');}
 function editPracticeFromProfile(practiceId){
 const pr=practices.find(p=>p.id===practiceId);if(!pr)return;
@@ -1409,9 +1386,7 @@ select.innerHTML = '<option value="">-- Select Practice --</option>' +
 practices.map(p => `<option value="${p.id}" ${p.id === practiceId ? 'selected' : ''}>${p.name}</option>`).join('');
 $('locationModal').classList.add('active');
 }
-function closeLocationModal() {
-$('locationModal').classList.remove('active');
-}
+function closeLocationModal(){closeModal('locationModal');}
 function editLocationDetails(locationId) {
 const loc=practiceLocations.find(l=>l.id===locationId);if(!loc)return;
 editingLocationId=locationId;$('locationModalTitle').textContent='Edit Location';
@@ -1455,9 +1430,7 @@ ${locations.map(loc => `
 }).join('') || '<div class="empty-notice">No locations available. Create a practice and location first.</div>';
 $('assignLocationModal').classList.add('active');
 }
-function closeAssignLocationModal() {
-$('assignLocationModal').classList.remove('active');
-}
+function closeAssignLocationModal(){closeModal('assignLocationModal');}
 function toggleAssignLocation(locationId, element) {
 const checkbox = element.querySelector('input[type="checkbox"]');
 checkbox.checked = !checkbox.checked;
@@ -1535,6 +1508,10 @@ $('contactSaveBtn').textContent = 'Save Note';
 $('contactSaveBtn').className = 'btn-primary';
 setToday();
 populateLocationDropdown();
+populateAlsoAttended();
+// Hide practicePhysSelectRow if it was left visible from practice modal
+const pr = $('practicePhysSelectRow'); if (pr) pr.style.display = 'none';
+$('contactForm').onsubmit = function(ev) { saveContact(ev); return false; };
 $('setReminder').checked = false;
 $('reminderDays').style.display = 'none';
 $('reminderDatePreview').textContent = '';
@@ -1563,21 +1540,56 @@ if (locations.length === 1) {
 select.value = locations[0].id;
 }
 }
-function closeContactModal() {
-$('contactModal').classList.remove('active');
+function populateAlsoAttended() {
+const row = $('alsoAttendedRow');
+const list = $('alsoAttendedList');
+if (!row || !list || !currentPhysician) { if(row) row.style.display='none'; return; }
+// Find other physicians at the same practice locations
+const myAssigns = physicianAssignments[currentPhysician.id] || [];
+const myLocIds = myAssigns.map(a => a.practice_location_id);
+const colleagues = physicians.filter(p => {
+if (p.id === currentPhysician.id) return false;
+const theirAssigns = physicianAssignments[p.id] || [];
+return theirAssigns.some(a => myLocIds.includes(a.practice_location_id));
+});
+if (colleagues.length === 0) { row.style.display = 'none'; return; }
+row.style.display = 'block';
+list.style.display = 'none'; // collapsed by default
+list.innerHTML = colleagues.map(p => `<div class="selector-option" style="margin-bottom:0.25rem;" onclick="var c=this.querySelector('input');c.checked=!c.checked;">
+<input type="checkbox" value="${p.id}" class="also-attended-cb">
+<span class="selector-option-label">${fmtName(p)}</span>
+</div>`).join('');
 }
+function closeContactModal(){closeModal('contactModal');}
 async function saveContact(e) {
 e.preventDefault();
 const tv=$('contactTime').value,nv=$('contactNotes').value;
 const locVal=$('contactLocation').value||null;
 const reminderOn=$('setReminder').checked;
 const reminderDate=reminderOn?calcBusinessDate(parseInt($('reminderDaysSelect').value)):null;
-const data={physician_id:currentPhysician.id,contact_date:$('contactDate').value,author:$('authorName').value,notes:tv?`[${tv}] ${nv}`:nv,practice_location_id:locVal,reminder_date:reminderDate};
+const noteText=tv?`[${tv}] ${nv}`:nv;
+const dateVal=$('contactDate').value,authorVal=$('authorName').value;
+const data={physician_id:currentPhysician.id,contact_date:dateVal,author:authorVal,notes:noteText,practice_location_id:locVal,reminder_date:reminderDate};
+// Collect "also attended" physicians
+const alsoCbs=document.querySelectorAll('.also-attended-cb:checked');
+const alsoIds=[...alsoCbs].map(cb=>cb.value);
 await withSave('contactSaveBtn','Save Note',async()=>{
 if(editingContactId){const{error}=await db.from('contact_logs').update(data).eq('id',editingContactId);if(error)throw error;showToast('Note updated','success');
-}else{const{error}=await db.from('contact_logs').insert(data);if(error)throw error;showToast('Note added','success');}
-await db.from('physicians').update({last_contact:data.contact_date}).eq('id',currentPhysician.id);
-currentPhysician.last_contact=data.contact_date;await loadContactLogs(currentPhysician.id);renderProfile();setTimeout(()=>closeContactModal(),500);
+}else{
+// Insert for primary physician
+const{error}=await db.from('contact_logs').insert(data);if(error)throw error;
+// Insert for also-attended physicians
+if(alsoIds.length>0){
+const alsoEntries=alsoIds.map(pid=>({physician_id:pid,contact_date:dateVal,author:authorVal,notes:noteText,practice_location_id:locVal,reminder_date:reminderDate}));
+const{error:ae}=await db.from('contact_logs').insert(alsoEntries);
+if(ae)console.error('Also-attended insert error:',ae);
+for(const pid of alsoIds){await db.from('physicians').update({last_contact:dateVal}).eq('id',pid);}
+}
+const total=1+alsoIds.length;
+showToast(`Note logged for ${total} physician${total>1?'s':''}`,'success');
+}
+await db.from('physicians').update({last_contact:dateVal}).eq('id',currentPhysician.id);
+currentPhysician.last_contact=dateVal;await loadContactLogs(currentPhysician.id);renderProfile();setTimeout(()=>closeContactModal(),500);
 });
 }
 async function editNote(logId) {
@@ -1768,7 +1780,7 @@ function toggleAssignPhys(physId, element) {
 const cb = element.querySelector('input[type="checkbox"]');
 cb.checked = !cb.checked;
 }
-function closeAssignPhysicianModal() { $('assignPhysicianModal').classList.remove('active'); }
+function closeAssignPhysicianModal(){closeModal('assignPhysicianModal');}
 async function quickAddPhysician() {
 const first = $('quickPhysFirst').value.trim();
 const last = $('quickPhysLast').value.trim();
@@ -1845,7 +1857,7 @@ updateSyncIndicators('error');
 }
 }
 function openExportModal(){document.getElementById('exportModal').classList.add('active');}
-function closeExportModal(){document.getElementById('exportModal').classList.remove('active');}
+function closeExportModal(){closeModal('exportModal');}
 function escCSV(val){if(val==null)return '';const s=String(val);if(s.includes(',')||s.includes('"')||s.includes('\n'))return '"'+s.replace(/"/g,'""')+'"';return s;}
 function downloadCSV(filename,headers,rows){const csv=[headers.join(','),...rows.map(r=>r.map(escCSV).join(','))].join('\n');const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=filename;document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);}
 function todayStamp(){return new Date().toISOString().slice(0,10);}
