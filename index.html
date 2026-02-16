@@ -1087,7 +1087,7 @@ ${mi('Locations',locations.length)}${mi('Physicians',practicePhysicians.length)}
 <button class="delete-btn" onclick="deletePractice()">Delete</button>
 </div>
 </div>
-<div class="contact-grid">${ci('✉️','Email',p.email?`<a href="mailto:${p.email}">${p.email}</a>`:'')}${ci('📝','Notes',p.general_notes)||(!p.email?'<div class="empty-notice">No details for this practice</div>':'')}</div>
+<div class="contact-grid">${(()=>{const pLocs=practiceLocations.filter(l=>l.practice_id===p.id);const pEmail=pLocs.map(l=>l.practice_email).find(Boolean)||'';return ci('✉️','Email',pEmail?`<a href="mailto:${pEmail}">${pEmail}</a>`:'')+ci('📝','Notes',p.general_notes)||((!pEmail&&!p.general_notes)?'<div class="empty-notice">No details for this practice</div>':'');})()}</div>
 </div>
 <div class="section">
 <div class="section-header">
@@ -1385,11 +1385,11 @@ await dbDel('physicians',currentPhysician.id,`Delete ${fmtName(currentPhysician)
 }
 function openPracticeModal(){editingPracticeId=null;locationsToDelete=[];$('practiceModalTitle').textContent='Add Practice';$('practiceForm').reset();$('practiceEmail').value='';$('practiceAddressSection').style.display='';$('practiceLocationsEditSection').style.display='none';$('practiceSaveBtn').textContent='Save Practice';$('practiceSaveBtn').className='btn-primary';$('practiceModal').classList.add('active');}
 function closePracticeModal(){closeModal('practiceModal');}
-function editPractice(){editingPracticeId=currentPractice.id;locationsToDelete=[];$('practiceModalTitle').textContent='Edit Practice';setFields({practiceName:currentPractice.name,practiceWebsite:currentPractice.website||'',practiceNotes:currentPractice.general_notes||'',practiceEmail:currentPractice.email||''});$('practiceAddressSection').style.display='none';populateLocationEditCards(currentPractice.id);$('practiceLocationsEditSection').style.display='';$('practiceSaveBtn').textContent='Save Practice';$('practiceSaveBtn').className='btn-primary';$('practiceModal').classList.add('active');}
+function editPractice(){editingPracticeId=currentPractice.id;locationsToDelete=[];$('practiceModalTitle').textContent='Edit Practice';const pLocs=practiceLocations.filter(l=>l.practice_id===currentPractice.id);const pEmail=pLocs.map(l=>l.practice_email).find(Boolean)||'';setFields({practiceName:currentPractice.name,practiceWebsite:currentPractice.website||'',practiceNotes:currentPractice.general_notes||'',practiceEmail:pEmail});$('practiceAddressSection').style.display='none';populateLocationEditCards(currentPractice.id);$('practiceLocationsEditSection').style.display='';$('practiceSaveBtn').textContent='Save Practice';$('practiceSaveBtn').className='btn-primary';$('practiceModal').classList.add('active');}
 function editPracticeFromProfile(practiceId){
 const pr=practices.find(p=>p.id===practiceId);if(!pr)return;
 editingPracticeId=pr.id;locationsToDelete=[];$('practiceModalTitle').textContent='Edit Practice';
-setFields({practiceName:pr.name,practiceWebsite:pr.website||'',practiceNotes:pr.general_notes||'',practiceEmail:pr.email||''});
+const prLocs=practiceLocations.filter(l=>l.practice_id===pr.id);const prEmail=prLocs.map(l=>l.practice_email).find(Boolean)||'';setFields({practiceName:pr.name,practiceWebsite:pr.website||'',practiceNotes:pr.general_notes||'',practiceEmail:prEmail});
 $('practiceAddressSection').style.display='none';populateLocationEditCards(pr.id);$('practiceLocationsEditSection').style.display='';$('practiceSaveBtn').textContent='Save Practice';$('practiceSaveBtn').className='btn-primary';$('practiceModal').classList.add('active');
 }
 let locEditCounter = 0;
@@ -1474,7 +1474,7 @@ best_days: getData('best_days')
 }
 async function savePractice(e) {
 e.preventDefault();
-const data={name:$('practiceName').value,website:$('practiceWebsite').value||null,email:$('practiceEmail').value||null,general_notes:$('practiceNotes').value||null};
+const data={name:$('practiceName').value,website:$('practiceWebsite').value||null,general_notes:$('practiceNotes').value||null};
 await withSave('practiceSaveBtn','Save Practice',async()=>{
 if(editingPracticeId){
 const{error}=await db.from('practices').update(data).eq('id',editingPracticeId);if(error)throw error;
@@ -1497,7 +1497,8 @@ locationsToDelete = [];
 showToast('Practice updated','success');
 }else{const{data:newPract,error}=await db.from('practices').insert(data).select().single();if(error)throw error;
 const addr=$('practiceAddress').value,city=$('practiceCity').value,zip=$('practiceZip').value,ph=$('practicePhone').value,fx=$('practiceFax').value;
-if(addr||city){const locData={practice_id:newPract.id,label:'Main Office',address:addr||null,city:city||null,zip:zip||null,phone:ph||null,fax:fx||null};const{error:le}=await db.from('practice_locations').insert(locData);if(le)console.error('Location insert error:',le);}
+const pEmail=$('practiceEmail').value||null;
+if(addr||city){const locData={practice_id:newPract.id,label:'Main Office',address:addr||null,city:city||null,zip:zip||null,phone:ph||null,fax:fx||null,practice_email:pEmail};const{error:le}=await db.from('practice_locations').insert(locData);if(le)console.error('Location insert error:',le);}
 showToast('Practice added','success');}
 await loadAllData();if(currentPractice){currentPractice=practices.find(p=>p.id===currentPractice.id);renderPracticeProfile();}
 if(currentPhysician){renderProfile();}
