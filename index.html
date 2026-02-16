@@ -794,7 +794,7 @@ $('physicianCount').textContent =
 function getFilteredPhysicians(search) {
 if (!search) return physicians;
 return physicians.filter(p => {
-if ([p.first_name,p.last_name,p.specialty,p.email,p.general_notes,p.priority,p.um_connection,p.patient_volume,p.mohs_volume,p.practice_name].some(v=>(v||'').toLowerCase().includes(search))) return true;
+if ([p.first_name,p.last_name,p.specialty,p.email,p.general_notes,p.priority,p.academic_connection,p.patient_volume,p.mohs_volume,p.practice_name].some(v=>(v||'').toLowerCase().includes(search))) return true;
 const logs=contactLogs[p.id]||[];
 if(logs.some(l=>(l.notes||'').toLowerCase().includes(search)||(l.author||'').toLowerCase().includes(search))) return true;
 const assigns=physicianAssignments[p.id]||[];
@@ -1002,7 +1002,7 @@ ${associatedPractices.length > 0 ? associatedPractices.map(pr => `<span style="c
 </div>
 <div class="profile-meta">
 ${mi('Priority',p.priority||'Not set')}${mi('Specialty',p.specialty||'Not set')}${mi('Degree',p.degree||'—')}${p.title?mi('Title',p.title):''}
-${mi('Academic Connection',p.um_connection||'None')}${mi('Candidate Patient Volume',p.patient_volume||p.mohs_volume||'Unknown')}${mi('Last Contact',p.last_contact||'Never')}${mi('Locations',assignments.length+' location'+(assignments.length!==1?'s':''))}
+${mi('Academic Connection',p.academic_connection||'None')}${mi('Candidate Patient Volume',p.patient_volume||p.mohs_volume||'Unknown')}${mi('Last Contact',p.last_contact||'Never')}${mi('Locations',assignments.length+' location'+(assignments.length!==1?'s':''))}
 </div>
 </div>
 <div class="section">
@@ -1344,13 +1344,13 @@ openLocationModal(practiceId);
 }
 function editPhysicianInfo() {
 editMode=true;const p=currentPhysician;$('modalTitle').textContent='Edit Physician';
-setFields({firstName:p.first_name,lastName:p.last_name,physicianEmail:p.email||'',priority:p.priority||'',specialty:p.specialty||'',umConnection:p.um_connection||'',patientVolume:p.patient_volume||p.mohs_volume||'',physicianGeneralNotes:p.general_notes||'',degree:p.degree||'',staffTitle:p.title||''});
+setFields({firstName:p.first_name,lastName:p.last_name,physicianEmail:p.email||'',priority:p.priority||'',specialty:p.specialty||'',umConnection:p.academic_connection||'',patientVolume:p.patient_volume||p.mohs_volume||'',physicianGeneralNotes:p.general_notes||'',degree:p.degree||'',staffTitle:p.title||''});
 $('practiceSelector').style.display='none';$('locationSelector').style.display='none';
 $('physicianSaveBtn').textContent='Save Physician';$('physicianSaveBtn').className='btn-primary';$('physicianModal').classList.add('active');
 }
 async function savePhysician(e) {
 e.preventDefault();
-const data = {first_name:$('firstName').value,last_name:$('lastName').value,email:$('physicianEmail').value||null,priority:$('priority').value||null,specialty:$('specialty').value||null,um_connection:$('umConnection').value||null,patient_volume:$('patientVolume').value||null,general_notes:$('physicianGeneralNotes').value||null};
+const data = {first_name:$('firstName').value,last_name:$('lastName').value,email:$('physicianEmail').value||null,priority:$('priority').value||null,specialty:$('specialty').value||null,academic_connection:$('umConnection').value||null,patient_volume:$('patientVolume').value||null,general_notes:$('physicianGeneralNotes').value||null};
 const degreeVal=$('degree').value||null;const titleVal=$('staffTitle').value||null;
 data.degree=degreeVal;data.title=titleVal;
 await withSave('physicianSaveBtn','Save Physician',async()=>{
@@ -1820,7 +1820,7 @@ if(np)practiceMap[name]=np.id;
 const physMap=new Map();
 rows.forEach(r=>{
 const key=`${(r.first_name||'').toLowerCase()}|${(r.last_name||'').toLowerCase()}`;
-if(!physMap.has(key))physMap.set(key,{phys:{first_name:r.first_name,last_name:r.last_name,email:r.email||null,priority:r.priority||null,um_connection:r.academic_connection||r.um_connection||null,specialty:r.specialty||null,general_notes:r.general_notes||null},locs:[]});
+if(!physMap.has(key))physMap.set(key,{phys:{first_name:r.first_name,last_name:r.last_name,email:r.email||null,priority:r.priority||null,academic_connection:r.academic_connection||r.um_connection||null,specialty:r.specialty||null,general_notes:r.general_notes||null},locs:[]});
 const e=physMap.get(key);
 if(r.address&&r.address!=='[Research needed]')e.locs.push({practice_id:practiceMap[r.practice_name],address:r.address,city:r.city,zip:r.zip,phone:r.phone,fax:r.fax,label:r.city||'Office',is_primary:e.locs.length===0});
 });
@@ -2032,7 +2032,7 @@ const{data:allAssign}=await db.from('physician_location_assignments').select('*,
 const am={};(allAssign||[]).forEach(a=>{if(!am[a.physician_id])am[a.physician_id]=[];am[a.physician_id].push(a);});
 const h=['Last Name','First Name','Practice','Tier','Specialty','Email','Academic Connection','Patient Volume','Primary Address','Primary City','Primary ZIP','Primary Phone','Primary Fax','Office Hours','Best Days','Receptionist','Location Count','Last Contact','General Notes'];
 const rows=(allPhys||[]).map(p=>{const as=am[p.id]||[];const pl=(as.find(a=>a.is_primary)||as[0])?.practice_locations||{};
-return[p.last_name,p.first_name,pl.practices?.name||p.practice_name||'',p.priority||'',p.specialty||'',p.email||'',p.um_connection||'',p.patient_volume||p.mohs_volume||'',pl.address||'',pl.city||'',pl.zip||'',pl.phone||'',pl.fax||'',pl.office_hours||'',pl.best_days||'',pl.receptionist_name||'',as.length,p.last_contact||'',p.general_notes||''];});
+return[p.last_name,p.first_name,pl.practices?.name||p.practice_name||'',p.priority||'',p.specialty||'',p.email||'',p.academic_connection||'',p.patient_volume||p.mohs_volume||'',pl.address||'',pl.city||'',pl.zip||'',pl.phone||'',pl.fax||'',pl.office_hours||'',pl.best_days||'',pl.receptionist_name||'',as.length,p.last_contact||'',p.general_notes||''];});
 downloadCSV('physicians_export_'+todayStamp()+'.csv',h,rows);
 }
 async function exportContacts(){
