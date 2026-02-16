@@ -167,8 +167,8 @@ Append New Records from CSV <input type="file" accept=".csv" onchange="importCSV
 </div>
 </div>
 <div>
-<label>UM Connection</label>
-<input type="text" id="umConnection">
+<label>Academic Connection</label>
+<input type="text" id="umConnection" placeholder="e.g., UM, Barry University">
 </div>
 <div>
 <label>Candidate Patient Volume</label>
@@ -1002,7 +1002,7 @@ ${associatedPractices.length > 0 ? associatedPractices.map(pr => `<span style="c
 </div>
 <div class="profile-meta">
 ${mi('Priority',p.priority||'Not set')}${mi('Specialty',p.specialty||'Not set')}${mi('Degree',p.degree||'—')}${p.title?mi('Title',p.title):''}
-${mi('UM Connection',p.um_connection||'None')}${mi('Candidate Patient Volume',p.patient_volume||p.mohs_volume||'Unknown')}${mi('Last Contact',p.last_contact||'Never')}${mi('Locations',assignments.length+' location'+(assignments.length!==1?'s':''))}
+${mi('Academic Connection',p.um_connection||'None')}${mi('Candidate Patient Volume',p.patient_volume||p.mohs_volume||'Unknown')}${mi('Last Contact',p.last_contact||'Never')}${mi('Locations',assignments.length+' location'+(assignments.length!==1?'s':''))}
 </div>
 </div>
 <div class="section">
@@ -1820,7 +1820,7 @@ if(np)practiceMap[name]=np.id;
 const physMap=new Map();
 rows.forEach(r=>{
 const key=`${(r.first_name||'').toLowerCase()}|${(r.last_name||'').toLowerCase()}`;
-if(!physMap.has(key))physMap.set(key,{phys:{first_name:r.first_name,last_name:r.last_name,email:r.email||null,priority:r.priority||null,um_connection:r.um_connection||null,specialty:r.specialty||null,general_notes:r.general_notes||null},locs:[]});
+if(!physMap.has(key))physMap.set(key,{phys:{first_name:r.first_name,last_name:r.last_name,email:r.email||null,priority:r.priority||null,um_connection:r.academic_connection||r.um_connection||null,specialty:r.specialty||null,general_notes:r.general_notes||null},locs:[]});
 const e=physMap.get(key);
 if(r.address&&r.address!=='[Research needed]')e.locs.push({practice_id:practiceMap[r.practice_name],address:r.address,city:r.city,zip:r.zip,phone:r.phone,fax:r.fax,label:r.city||'Office',is_primary:e.locs.length===0});
 });
@@ -2030,7 +2030,7 @@ async function exportPhysicians(){
 const{data:allPhys,error}=await db.from('physicians').select('*').order('last_name');if(error)throw error;
 const{data:allAssign}=await db.from('physician_location_assignments').select('*, practice_locations(*, practices(name))');
 const am={};(allAssign||[]).forEach(a=>{if(!am[a.physician_id])am[a.physician_id]=[];am[a.physician_id].push(a);});
-const h=['Last Name','First Name','Practice','Tier','Specialty','Email','UM Connection','Patient Volume','Primary Address','Primary City','Primary ZIP','Primary Phone','Primary Fax','Office Hours','Best Days','Receptionist','Location Count','Last Contact','General Notes'];
+const h=['Last Name','First Name','Practice','Tier','Specialty','Email','Academic Connection','Patient Volume','Primary Address','Primary City','Primary ZIP','Primary Phone','Primary Fax','Office Hours','Best Days','Receptionist','Location Count','Last Contact','General Notes'];
 const rows=(allPhys||[]).map(p=>{const as=am[p.id]||[];const pl=(as.find(a=>a.is_primary)||as[0])?.practice_locations||{};
 return[p.last_name,p.first_name,pl.practices?.name||p.practice_name||'',p.priority||'',p.specialty||'',p.email||'',p.um_connection||'',p.patient_volume||p.mohs_volume||'',pl.address||'',pl.city||'',pl.zip||'',pl.phone||'',pl.fax||'',pl.office_hours||'',pl.best_days||'',pl.receptionist_name||'',as.length,p.last_contact||'',p.general_notes||''];});
 downloadCSV('physicians_export_'+todayStamp()+'.csv',h,rows);
