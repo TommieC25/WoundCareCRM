@@ -488,6 +488,9 @@ Set Follow-Up Reminder
 </div>
 <script>
 const SUPABASE_URL = 'https://xhdjywibdjzbczfjmctp.supabase.co';
+// Google Sheet: Field Routing (persistent reference, auto-republishes)
+// View: https://docs.google.com/spreadsheets/d/1zcVCVIciyScC3IcclfuBy4T4ogdcNSBVlxn6ZmYeiG0/edit?gid=150527751
+// CSV: https://docs.google.com/spreadsheets/d/e/2PACX-1vSgKpcd74ISyaPdczn444-3z14Cmy7hObV3h5zY73q0lswJxlPeWIgaSGntQ1HKQUduefWDAz07rAwd/pub?gid=150527751&single=true&output=csv
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhoZGp5d2liZGp6YmN6ZmptY3RwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk3NzE4MTYsImV4cCI6MjA4NTM0NzgxNn0.vHAfeYTVbu2Isu5AoFONvzrtJ2sS3YwF00QRe3LNrbU';
 const { createClient } = window.supabase;
 const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -2131,17 +2134,37 @@ $('routingExportModal').classList.add('active');
 }
 function closeRoutingExport() { closeModal('routingExportModal'); }
 function getRoutingCSVHeaders() {
-return ['Physician First Name','Physician Last Name','Degree','Specialty','Priority Tier','Practice Name','Location Label','Address','City','ZIP','Phone','Fax','Office Email','Office Hours','Receptionist','Best Days','UM Connection','Patient Volume','General Notes'];
+// Matches Google Sheet: Routing(Field Use) tab exactly
+return ['CALL','AS?','Rank','Physician First Name','Physician Last Name','First Last','Status','Specialty','Facility (full name)','Address','City','Zip','Phone Number','Vol','County','Notes'];
 }
 function routingRowToCSV(r) {
 const p = r.phys;
 const l = r.loc;
 const pr = r.practice;
+const practiceName = pr?.name || l?.practices?.name || '';
 if (r.type === 'loc-only') {
 // Practice/location with no physician — placeholder instructions
-return ['(Enter HCP first name)','(Enter HCP last name)','','','',pr?.name||l?.practices?.name||'',l?.label||'',l?.address||'',l?.city||'',l?.zip||'',l?.phone||'',l?.fax||'',l?.practice_email||'',l?.office_hours||'',l?.receptionist_name||'',l?.best_days||'','','',''];
+return ['','','','(Enter HCP first name)','(Enter HCP last name)','','','',practiceName,l?.address||'',l?.city||'',l?.zip||'',l?.phone||'','',l?.city?guessCounty(l.city):'',l?.practice_email?'Email: '+l.practice_email:''];
 }
-return [p?.first_name||'',p?.last_name||'',p?.degree||'',p?.specialty||'',p?.priority||'',pr?.name||l?.practices?.name||'',l?.label||'',l?.address||'',l?.city||'',l?.zip||'',l?.phone||'',l?.fax||'',l?.practice_email||'',l?.office_hours||'',l?.receptionist_name||'',l?.best_days||'',p?.um_connection||'',p?.patient_volume||p?.mohs_volume||'',p?.general_notes||''];
+const firstName = p?.first_name || '';
+const lastName = p?.last_name || '';
+const firstLast = (firstName + ' ' + lastName).trim();
+const rank = p?.priority || '';
+const vol = p?.patient_volume || p?.mohs_volume || '';
+const county = l?.city ? guessCounty(l.city) : '';
+const notes = p?.general_notes || '';
+return ['','',rank,firstName,lastName,firstLast,'',p?.specialty||'',practiceName,l?.address||'',l?.city||'',l?.zip||'',l?.phone||'',vol,county,notes];
+}
+function guessCounty(city) {
+if (!city) return '';
+const c = city.toLowerCase();
+const mdCities = ['miami','hialeah','homestead','key biscayne','coral gables','south miami','palmetto bay','doral','north miami','aventura','miami beach','miami gardens','miami lakes','opa-locka','sunny isles','key largo'];
+const brCities = ['fort lauderdale','hollywood','pembroke pines','coral springs','deerfield beach','plantation','davie','weston','tamarac','lauderdale lakes','coconut creek','pompano beach','cooper city'];
+const pbCities = ['west palm beach','boca raton','boynton beach','delray beach','palm beach gardens','jupiter','lake worth','wellington','royal palm beach','belle glade','palm city','atlantis','north palm beach'];
+if (mdCities.some(mc => c.includes(mc))) return 'Miami-Dade';
+if (brCities.some(bc => c.includes(bc))) return 'Broward';
+if (pbCities.some(pc => c.includes(pc))) return 'Palm Beach';
+return '';
 }
 function routingExportSelected(onlyNew) {
 const checkboxes = document.querySelectorAll('#routingExportList input[type="checkbox"]');
