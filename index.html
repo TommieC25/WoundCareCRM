@@ -167,8 +167,8 @@ Append New Records from CSV <input type="file" accept=".csv" onchange="importCSV
 </div>
 </div>
 <div>
-<label>UM Connection</label>
-<input type="text" id="umConnection">
+<label>Academic Connection</label>
+<input type="text" id="umConnection" placeholder="e.g., UM, Barry University">
 </div>
 <div>
 <label>Candidate Patient Volume</label>
@@ -794,7 +794,7 @@ $('physicianCount').textContent =
 function getFilteredPhysicians(search) {
 if (!search) return physicians;
 return physicians.filter(p => {
-if ([p.first_name,p.last_name,p.specialty,p.email,p.general_notes,p.priority,p.um_connection,p.patient_volume,p.mohs_volume,p.practice_name].some(v=>(v||'').toLowerCase().includes(search))) return true;
+if ([p.first_name,p.last_name,p.specialty,p.email,p.general_notes,p.priority,p.academic_connection||p.um_connection,p.patient_volume,p.mohs_volume,p.practice_name].some(v=>(v||'').toLowerCase().includes(search))) return true;
 const logs=contactLogs[p.id]||[];
 if(logs.some(l=>(l.notes||'').toLowerCase().includes(search)||(l.author||'').toLowerCase().includes(search))) return true;
 const assigns=physicianAssignments[p.id]||[];
@@ -1002,7 +1002,7 @@ ${associatedPractices.length > 0 ? associatedPractices.map(pr => `<span style="c
 </div>
 <div class="profile-meta">
 ${mi('Priority',p.priority||'Not set')}${mi('Specialty',p.specialty||'Not set')}${mi('Degree',p.degree||'—')}${p.title?mi('Title',p.title):''}
-${mi('UM Connection',p.um_connection||'None')}${mi('Candidate Patient Volume',p.patient_volume||p.mohs_volume||'Unknown')}${mi('Last Contact',p.last_contact||'Never')}${mi('Locations',assignments.length+' location'+(assignments.length!==1?'s':''))}
+${mi('Academic Connection',p.academic_connection||p.um_connection||'None')}${mi('Candidate Patient Volume',p.patient_volume||p.mohs_volume||'Unknown')}${mi('Last Contact',p.last_contact||'Never')}${mi('Locations',assignments.length+' location'+(assignments.length!==1?'s':''))}
 </div>
 </div>
 <div class="section">
@@ -1040,6 +1040,7 @@ ${assign.is_primary ? '<span class="location-badge">Primary</span>' : ''}
 ${practiceName ? `<span class="practice-badge">${practiceName}</span>` : ''}
 </div>
 <div class="location-actions">
+<button class="icon-btn" onclick="editLocationDetails('${loc.id}')" title="Edit">✏️</button>
 <button class="icon-btn" onclick="removeAssignment('${assign.id}')" title="Remove">🗑️</button>
 </div>
 </div>
@@ -1087,7 +1088,7 @@ ${mi('Locations',locations.length)}${mi('Physicians',practicePhysicians.length)}
 <button class="delete-btn" onclick="deletePractice()">Delete</button>
 </div>
 </div>
-<div class="contact-grid">${ci('✉️','Email',p.email?`<a href="mailto:${p.email}">${p.email}</a>`:'')}${ci('📝','Notes',p.general_notes)||(!p.email?'<div class="empty-notice">No details for this practice</div>':'')}</div>
+<div class="contact-grid">${(()=>{const pLocs=practiceLocations.filter(l=>l.practice_id===p.id);const pEmail=pLocs.map(l=>l.practice_email).find(Boolean)||'';return ci('✉️','Email',pEmail?`<a href="mailto:${pEmail}">${pEmail}</a>`:'')+ci('📝','Notes',p.general_notes)||((!pEmail&&!p.general_notes)?'<div class="empty-notice">No details for this practice</div>':'');})()}</div>
 </div>
 <div class="section">
 <div class="section-header">
@@ -1344,13 +1345,13 @@ openLocationModal(practiceId);
 }
 function editPhysicianInfo() {
 editMode=true;const p=currentPhysician;$('modalTitle').textContent='Edit Physician';
-setFields({firstName:p.first_name,lastName:p.last_name,physicianEmail:p.email||'',priority:p.priority||'',specialty:p.specialty||'',umConnection:p.um_connection||'',patientVolume:p.patient_volume||p.mohs_volume||'',physicianGeneralNotes:p.general_notes||'',degree:p.degree||'',staffTitle:p.title||''});
+setFields({firstName:p.first_name,lastName:p.last_name,physicianEmail:p.email||'',priority:p.priority||'',specialty:p.specialty||'',umConnection:p.academic_connection||p.um_connection||'',patientVolume:p.patient_volume||p.mohs_volume||'',physicianGeneralNotes:p.general_notes||'',degree:p.degree||'',staffTitle:p.title||''});
 $('practiceSelector').style.display='none';$('locationSelector').style.display='none';
 $('physicianSaveBtn').textContent='Save Physician';$('physicianSaveBtn').className='btn-primary';$('physicianModal').classList.add('active');
 }
 async function savePhysician(e) {
 e.preventDefault();
-const data = {first_name:$('firstName').value,last_name:$('lastName').value,email:$('physicianEmail').value||null,priority:$('priority').value||null,specialty:$('specialty').value||null,um_connection:$('umConnection').value||null,patient_volume:$('patientVolume').value||null,general_notes:$('physicianGeneralNotes').value||null};
+const data = {first_name:$('firstName').value,last_name:$('lastName').value,email:$('physicianEmail').value||null,priority:$('priority').value||null,specialty:$('specialty').value||null,academic_connection:$('umConnection').value||null,patient_volume:$('patientVolume').value||null,general_notes:$('physicianGeneralNotes').value||null};
 const degreeVal=$('degree').value||null;const titleVal=$('staffTitle').value||null;
 data.degree=degreeVal;data.title=titleVal;
 await withSave('physicianSaveBtn','Save Physician',async()=>{
@@ -1385,11 +1386,11 @@ await dbDel('physicians',currentPhysician.id,`Delete ${fmtName(currentPhysician)
 }
 function openPracticeModal(){editingPracticeId=null;locationsToDelete=[];$('practiceModalTitle').textContent='Add Practice';$('practiceForm').reset();$('practiceEmail').value='';$('practiceAddressSection').style.display='';$('practiceLocationsEditSection').style.display='none';$('practiceSaveBtn').textContent='Save Practice';$('practiceSaveBtn').className='btn-primary';$('practiceModal').classList.add('active');}
 function closePracticeModal(){closeModal('practiceModal');}
-function editPractice(){editingPracticeId=currentPractice.id;locationsToDelete=[];$('practiceModalTitle').textContent='Edit Practice';setFields({practiceName:currentPractice.name,practiceWebsite:currentPractice.website||'',practiceNotes:currentPractice.general_notes||'',practiceEmail:currentPractice.email||''});$('practiceAddressSection').style.display='none';populateLocationEditCards(currentPractice.id);$('practiceLocationsEditSection').style.display='';$('practiceSaveBtn').textContent='Save Practice';$('practiceSaveBtn').className='btn-primary';$('practiceModal').classList.add('active');}
+function editPractice(){editingPracticeId=currentPractice.id;locationsToDelete=[];$('practiceModalTitle').textContent='Edit Practice';const pLocs=practiceLocations.filter(l=>l.practice_id===currentPractice.id);const pEmail=pLocs.map(l=>l.practice_email).find(Boolean)||'';setFields({practiceName:currentPractice.name,practiceWebsite:currentPractice.website||'',practiceNotes:currentPractice.general_notes||'',practiceEmail:pEmail});$('practiceAddressSection').style.display='none';populateLocationEditCards(currentPractice.id);$('practiceLocationsEditSection').style.display='';$('practiceSaveBtn').textContent='Save Practice';$('practiceSaveBtn').className='btn-primary';$('practiceModal').classList.add('active');}
 function editPracticeFromProfile(practiceId){
 const pr=practices.find(p=>p.id===practiceId);if(!pr)return;
 editingPracticeId=pr.id;locationsToDelete=[];$('practiceModalTitle').textContent='Edit Practice';
-setFields({practiceName:pr.name,practiceWebsite:pr.website||'',practiceNotes:pr.general_notes||'',practiceEmail:pr.email||''});
+const prLocs=practiceLocations.filter(l=>l.practice_id===pr.id);const prEmail=prLocs.map(l=>l.practice_email).find(Boolean)||'';setFields({practiceName:pr.name,practiceWebsite:pr.website||'',practiceNotes:pr.general_notes||'',practiceEmail:prEmail});
 $('practiceAddressSection').style.display='none';populateLocationEditCards(pr.id);$('practiceLocationsEditSection').style.display='';$('practiceSaveBtn').textContent='Save Practice';$('practiceSaveBtn').className='btn-primary';$('practiceModal').classList.add('active');
 }
 let locEditCounter = 0;
@@ -1474,7 +1475,7 @@ best_days: getData('best_days')
 }
 async function savePractice(e) {
 e.preventDefault();
-const data={name:$('practiceName').value,website:$('practiceWebsite').value||null,email:$('practiceEmail').value||null,general_notes:$('practiceNotes').value||null};
+const data={name:$('practiceName').value,website:$('practiceWebsite').value||null,general_notes:$('practiceNotes').value||null};
 await withSave('practiceSaveBtn','Save Practice',async()=>{
 if(editingPracticeId){
 const{error}=await db.from('practices').update(data).eq('id',editingPracticeId);if(error)throw error;
@@ -1497,7 +1498,8 @@ locationsToDelete = [];
 showToast('Practice updated','success');
 }else{const{data:newPract,error}=await db.from('practices').insert(data).select().single();if(error)throw error;
 const addr=$('practiceAddress').value,city=$('practiceCity').value,zip=$('practiceZip').value,ph=$('practicePhone').value,fx=$('practiceFax').value;
-if(addr||city){const locData={practice_id:newPract.id,label:'Main Office',address:addr||null,city:city||null,zip:zip||null,phone:ph||null,fax:fx||null};const{error:le}=await db.from('practice_locations').insert(locData);if(le)console.error('Location insert error:',le);}
+const pEmail=$('practiceEmail').value||null;
+if(addr||city){const locData={practice_id:newPract.id,label:'Main Office',address:addr||null,city:city||null,zip:zip||null,phone:ph||null,fax:fx||null,practice_email:pEmail};const{error:le}=await db.from('practice_locations').insert(locData);if(le)console.error('Location insert error:',le);}
 showToast('Practice added','success');}
 await loadAllData();if(currentPractice){currentPractice=practices.find(p=>p.id===currentPractice.id);renderPracticeProfile();}
 if(currentPhysician){renderProfile();}
@@ -1554,7 +1556,7 @@ const data={practice_id:$('locationPracticeId').value,label:$('locationLabel').v
 await withSave('locationSaveBtn','Save Location',async()=>{
 if(editingLocationId){const{error}=await db.from('practice_locations').update(data).eq('id',editingLocationId);if(error)throw error;showToast('Location updated','success');
 }else{const{error}=await db.from('practice_locations').insert(data);if(error)throw error;showToast('Location added','success');}
-await loadAllData();if(currentPractice)renderPracticeProfile();setTimeout(()=>closeLocationModal(),500);
+await loadAllData();if(currentPractice)renderPracticeProfile();if(currentPhysician)renderProfile();setTimeout(()=>closeLocationModal(),500);
 });
 }
 async function deleteLocation(locationId) {
@@ -1819,7 +1821,7 @@ if(np)practiceMap[name]=np.id;
 const physMap=new Map();
 rows.forEach(r=>{
 const key=`${(r.first_name||'').toLowerCase()}|${(r.last_name||'').toLowerCase()}`;
-if(!physMap.has(key))physMap.set(key,{phys:{first_name:r.first_name,last_name:r.last_name,email:r.email||null,priority:r.priority||null,um_connection:r.um_connection||null,specialty:r.specialty||null,general_notes:r.general_notes||null},locs:[]});
+if(!physMap.has(key))physMap.set(key,{phys:{first_name:r.first_name,last_name:r.last_name,email:r.email||null,priority:r.priority||null,academic_connection:r.academic_connection||r.um_connection||null,specialty:r.specialty||null,general_notes:r.general_notes||null},locs:[]});
 const e=physMap.get(key);
 if(r.address&&r.address!=='[Research needed]')e.locs.push({practice_id:practiceMap[r.practice_name],address:r.address,city:r.city,zip:r.zip,phone:r.phone,fax:r.fax,label:r.city||'Office',is_primary:e.locs.length===0});
 });
@@ -2029,9 +2031,9 @@ async function exportPhysicians(){
 const{data:allPhys,error}=await db.from('physicians').select('*').order('last_name');if(error)throw error;
 const{data:allAssign}=await db.from('physician_location_assignments').select('*, practice_locations(*, practices(name))');
 const am={};(allAssign||[]).forEach(a=>{if(!am[a.physician_id])am[a.physician_id]=[];am[a.physician_id].push(a);});
-const h=['Last Name','First Name','Practice','Tier','Specialty','Email','UM Connection','Patient Volume','Primary Address','Primary City','Primary ZIP','Primary Phone','Primary Fax','Office Hours','Best Days','Receptionist','Location Count','Last Contact','General Notes'];
+const h=['Last Name','First Name','Practice','Tier','Specialty','Email','Academic Connection','Patient Volume','Primary Address','Primary City','Primary ZIP','Primary Phone','Primary Fax','Office Hours','Best Days','Receptionist','Location Count','Last Contact','General Notes'];
 const rows=(allPhys||[]).map(p=>{const as=am[p.id]||[];const pl=(as.find(a=>a.is_primary)||as[0])?.practice_locations||{};
-return[p.last_name,p.first_name,pl.practices?.name||p.practice_name||'',p.priority||'',p.specialty||'',p.email||'',p.um_connection||'',p.patient_volume||p.mohs_volume||'',pl.address||'',pl.city||'',pl.zip||'',pl.phone||'',pl.fax||'',pl.office_hours||'',pl.best_days||'',pl.receptionist_name||'',as.length,p.last_contact||'',p.general_notes||''];});
+return[p.last_name,p.first_name,pl.practices?.name||p.practice_name||'',p.priority||'',p.specialty||'',p.email||'',p.academic_connection||'',p.patient_volume||p.mohs_volume||'',pl.address||'',pl.city||'',pl.zip||'',pl.phone||'',pl.fax||'',pl.office_hours||'',pl.best_days||'',pl.receptionist_name||'',as.length,p.last_contact||'',p.general_notes||''];});
 downloadCSV('physicians_export_'+todayStamp()+'.csv',h,rows);
 }
 async function exportContacts(){
