@@ -983,6 +983,7 @@ return `${loc.address}, ${loc.city}`;
 }
 function renderProfile() {
 const p = currentPhysician;
+if (!p) return;
 const logs = contactLogs[p.id] || [];
 const assignments = physicianAssignments[p.id] || [];
 const practiceIds = [...new Set(assignments.map(a => {
@@ -1124,7 +1125,7 @@ ${practicePhysicians.length === 0 ?
 '<div class="empty-notice">No physicians assigned to this practice yet.</div>' :
 '<div class="contact-grid">' +
 practicePhysicians.map(phys => `
-<div class="contact-item" style="cursor: pointer;" onclick="viewPhysician('${phys.id}'); setView('physicians');">
+<div class="contact-item" style="cursor: pointer;" onclick="setView('physicians');viewPhysician('${phys.id}')">
 <div class="contact-icon">👨‍⚕️</div>
 <div class="contact-item-content">
 <div class="contact-item-label">${phys.priority || 'No tier'}</div>
@@ -1350,7 +1351,7 @@ const data = {first_name:$('firstName').value,last_name:$('lastName').value,emai
 const degreeVal=$('degree').value||null;const titleVal=$('staffTitle').value||null;
 data.degree=degreeVal;data.title=titleVal;
 await withSave('physicianSaveBtn','Save Physician',async()=>{
-if(editMode){const{error}=await db.from('physicians').update(data).eq('id',currentPhysician.id);if(error)throw error;Object.assign(currentPhysician,data);renderProfile();showToast('Physician updated','success');
+if(editMode){if(!currentPhysician){showToast('Error: physician context lost. Close and try again.','error');return;}const{error}=await db.from('physicians').update(data).eq('id',currentPhysician.id);if(error)throw error;Object.assign(currentPhysician,data);renderProfile();showToast('Physician updated','success');
 }else{
 let practiceId=selectedPracticeId;const npn=$('newPracticeName').value;
 if(npn&&!practiceId){const{data:np,error:pe}=await db.from('practices').insert({name:npn}).select().single();if(pe)throw pe;practiceId=np.id;practices.push(np);}
