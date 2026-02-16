@@ -1040,6 +1040,7 @@ ${assign.is_primary ? '<span class="location-badge">Primary</span>' : ''}
 ${practiceName ? `<span class="practice-badge">${practiceName}</span>` : ''}
 </div>
 <div class="location-actions">
+<button class="icon-btn" onclick="editLocationDetails('${loc.id}')" title="Edit">✏️</button>
 <button class="icon-btn" onclick="removeAssignment('${assign.id}')" title="Remove">🗑️</button>
 </div>
 </div>
@@ -1555,7 +1556,7 @@ const data={practice_id:$('locationPracticeId').value,label:$('locationLabel').v
 await withSave('locationSaveBtn','Save Location',async()=>{
 if(editingLocationId){const{error}=await db.from('practice_locations').update(data).eq('id',editingLocationId);if(error)throw error;showToast('Location updated','success');
 }else{const{error}=await db.from('practice_locations').insert(data);if(error)throw error;showToast('Location added','success');}
-await loadAllData();if(currentPractice)renderPracticeProfile();setTimeout(()=>closeLocationModal(),500);
+await loadAllData();if(currentPractice)renderPracticeProfile();if(currentPhysician)renderProfile();setTimeout(()=>closeLocationModal(),500);
 });
 }
 async function deleteLocation(locationId) {
