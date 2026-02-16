@@ -194,10 +194,17 @@ Append New Records from CSV <input type="file" accept=".csv" onchange="importCSV
 <form id="locationForm" onsubmit="saveLocation(event)">
 <div class="form-grid">
 <div class="selector-section" id="locationPracticeSelector">
-<h4>Select Practice for this Location</h4>
+<h4>Practice for this Location</h4>
 <select id="locationPracticeId" required style="width: 100%;">
 <option value="">-- Select Practice --</option>
 </select>
+<div id="locationPracticeEditRow" style="display:none;margin-top:0.5rem;">
+<label style="font-size:0.7rem;color:#0369a1;">Practice Name (editable)</label>
+<div style="display:flex;gap:0.5rem;align-items:center;">
+<input type="text" id="locationPracticeNameEdit" style="flex:1;" placeholder="Edit practice name...">
+<button type="button" class="edit-btn" onclick="saveInlinePracticeName()" style="font-size:0.75rem;white-space:nowrap;padding:0.625rem 0.75rem;">Rename</button>
+</div>
+</div>
 </div>
 <div class="form-row">
 <div>
@@ -1491,6 +1498,7 @@ $('locationSaveBtn').className = 'btn-primary';
 const select = $('locationPracticeId');
 select.innerHTML = '<option value="">-- Select Practice --</option>' +
 practices.map(p => `<option value="${p.id}" ${p.id === practiceId ? 'selected' : ''}>${p.name}</option>`).join('');
+$('locationPracticeEditRow').style.display='none';
 $('locationModal').classList.add('active');
 }
 function closeLocationModal(){closeModal('locationModal');}
@@ -1500,7 +1508,26 @@ editingLocationId=locationId;$('locationModalTitle').textContent='Edit Location'
 setFields({locationPracticeId:loc.practice_id,locationLabel:loc.label||'',locationIsPrimary:'false',locationAddress:loc.address||'',locationCity:loc.city||'',locationZip:loc.zip||'',locationPhone:loc.phone||'',locationFax:loc.fax||'',locationEmail:loc.practice_email||'',locationHours:loc.office_hours||'',locationStaff:loc.office_staff||'',locationReceptionist:loc.receptionist_name||'',locationBestDays:loc.best_days||''});
 $('locationSaveBtn').textContent='Save Location';$('locationSaveBtn').className='btn-primary';
 $('locationPracticeId').innerHTML='<option value="">-- Select Practice --</option>'+practices.map(p=>`<option value="${p.id}" ${p.id===loc.practice_id?'selected':''}>${p.name}</option>`).join('');
+const pr=practices.find(p=>p.id===loc.practice_id);
+$('locationPracticeNameEdit').value=pr?pr.name:'';
+$('locationPracticeEditRow').style.display='';
 $('locationModal').classList.add('active');
+}
+async function saveInlinePracticeName() {
+const newName = $('locationPracticeNameEdit').value.trim();
+if (!newName) { showToast('Practice name cannot be empty', 'error'); return; }
+const practiceId = $('locationPracticeId').value;
+if (!practiceId) { showToast('No practice selected', 'error'); return; }
+try {
+const {error} = await db.from('practices').update({name: newName}).eq('id', practiceId);
+if (error) throw error;
+const pr = practices.find(p => p.id === practiceId);
+if (pr) pr.name = newName;
+// Update the dropdown option text
+const opt = $('locationPracticeId').querySelector(`option[value="${practiceId}"]`);
+if (opt) opt.textContent = newName;
+showToast('Practice renamed to "' + newName + '"', 'success');
+} catch(e) { showToast('Error renaming practice: ' + e.message, 'error'); }
 }
 async function saveLocation(e) {
 e.preventDefault();
