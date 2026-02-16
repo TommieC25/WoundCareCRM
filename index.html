@@ -440,6 +440,19 @@ Set Follow-Up Reminder
 </div>
 <div class="form-row" style="margin-bottom:0.5rem;">
 <div>
+<select id="quickPhysDegree" style="padding:0.5rem;font-size:0.85rem;">
+<option value="">Degree</option>
+<option value="MD">MD</option>
+<option value="DO">DO</option>
+<option value="DPM">DPM</option>
+<option value="PA-C">PA-C</option>
+<option value="NP">NP</option>
+<option value="RN">RN</option>
+<option value="PhD">PhD</option>
+<option value="Other">Other</option>
+</select>
+</div>
+<div>
 <select id="quickPhysSpecialty" style="padding:0.5rem;font-size:0.85rem;">
 <option value="">Specialty</option>
 <option value="Dermatology">Dermatology</option>
@@ -450,6 +463,8 @@ Set Follow-Up Reminder
 <option value="Other">Other</option>
 </select>
 </div>
+</div>
+<div class="form-row" style="margin-bottom:0.5rem;">
 <div>
 <select id="quickPhysPriority" style="padding:0.5rem;font-size:0.85rem;">
 <option value="">Priority</option>
@@ -1923,7 +1938,7 @@ const locId = $('assignPhysLocationSelect').value;
 if (!locId) { showToast('Select a location first', 'error'); return; }
 try {
 updateSyncIndicators('syncing');
-const data = {first_name:first,last_name:last,specialty:$('quickPhysSpecialty').value||null,priority:$('quickPhysPriority').value||null};
+const data = {first_name:first,last_name:last,degree:$('quickPhysDegree').value||null,specialty:$('quickPhysSpecialty').value||null,priority:$('quickPhysPriority').value||null};
 const {data:newPhys,error} = await db.from('physicians').insert(data).select().single();
 if (error) throw error;
 // Assign to selected location
@@ -1933,6 +1948,7 @@ await loadAllData();
 // Clear quick-add fields
 $('quickPhysFirst').value = '';
 $('quickPhysLast').value = '';
+$('quickPhysDegree').value = '';
 $('quickPhysSpecialty').value = '';
 $('quickPhysPriority').value = '';
 renderPracticeProfile();
