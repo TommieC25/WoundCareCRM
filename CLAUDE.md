@@ -5,7 +5,7 @@ Single-page territory CRM for Miami wound care sales. One file: `index.html` (~2
 
 ## Git & Deployment
 - **Default branch: `main`** (NOT master)
-- Push to `claude/` feature branch, then user creates PR via Claude Code UI button and merges on GitHub
+- Push to `claude/` feature branch → create PR → merge — **Claude should handle all steps autonomously** (do NOT ask user to create PRs or merge manually)
 - After merge, GitHub Pages auto-deploys from `main`
 - User does a hard refresh in browser to pick up changes
 
@@ -55,5 +55,11 @@ Expects columns: first_name, last_name, email, priority, specialty, degree, titl
 
 ## User Preferences
 - User is Tom (tom@dynamicoach.com), operates on iPad primarily
-- Wants minimal manual intervention — push, PR, merge should be as automated as possible
-- Field routing sheet syncs with Google Sheets for daily field use
+- **NEVER ask Tom to do manual steps** — push, PR creation, merging, file access — handle EVERYTHING autonomously. Tom is paying for Claude Code to do the work. If something can't be automated, explain why and offer the closest alternative.
+- Field routing sheet syncs with Google Sheets for daily field use via Apps Script (`google-apps-script/FieldRoutingSync.gs`)
+
+## Google Sheets Integration
+- Field Routing auto-syncs via Google Apps Script that queries Supabase REST API directly
+- Sheet: https://docs.google.com/spreadsheets/d/1zcVCVIciyScC3IcclfuBy4T4ogdcNSBVlxn6ZmYeiG0/edit?gid=150527751
+- Apps Script installed in the sheet with onOpen + hourly triggers
+- Manual-entry columns (ORIG, CALL, AS?, Duplicate?) are preserved across syncs
