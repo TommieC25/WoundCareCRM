@@ -517,6 +517,7 @@ let cachedLatestActivity = {};
 document.addEventListener('DOMContentLoaded', async () => {
 setToday();
 await loadAllData();
+await runVolumeMigration();
 setupRealtimeSubscription();
 // Prevent background scroll when modals are open (iPad fix)
 document.querySelectorAll('.modal').forEach(modal => {
@@ -615,6 +616,42 @@ console.error('Error loading data:', error);
 updateSyncIndicators('error');
 showToast('Error loading data: ' + error.message, 'error');
 }
+}
+async function runVolumeMigration() {
+if (localStorage.getItem('volumeMigration20260217')) return;
+const volData = {
+'Amy|DeGirolamo': 95, 'Mario Adrian|Cala': 84, 'Nathalie|Mendez': 84,
+'Michelle|Detweiler': 90, 'Kimberly|Bullock': 74, 'James A.|Green': 76,
+'Pritesh|Patel': 87, 'Pollyanna|Reeves': 76, 'Jignesh|Desai': 82,
+'Ashley|Bowles': 88, 'Alan|MacGill': 95, 'Nathan D.|Vela': 92,
+'Kyle|Kinmon': 90, 'Jacqueline M.|Brill': 85, 'Richard|Seda': 75,
+'Jaime|Carbonell': 85, 'Bamidele|Olupona': 78, 'Julio C.|Ortiz': 80,
+'Robert|Garnet': 80, 'Naila|Esmail': 72, 'Tamara D.|Fishman': 77,
+'Jim|François': 75, 'Charlton|Adler': 72, 'Shanika L.|Hill': 93,
+'Ashot|Oganesyan': 78, 'Juliette|Perez': 88, 'Katherine|Machado': 83,
+'Alexandra M.|Andes': 96, 'Holly|Seigle': 86, 'Carlo A.|Messina': 75,
+'Christina Pena|Garcia': 70, 'Neil H.|Strauss': 100, 'Daniel|Pero': 72,
+'Tiffany|Cerda': 85, 'Frankie|Kirk': 80, 'Joshua P.|Daly': 85,
+'Jean|Louis-Charles': 80, 'Xavier|Sanchez': 81, 'Aldo M.|Gonzalez': 81,
+'Eric|Schorr': 75, 'Brett|Fried': 75, 'Stephanie|Garzon': 82,
+'Robyn|Hall': 78, 'Jonathan M.|Cutler': 80, 'Vishnu|Seecharan': 78,
+'Suzanne|Fuchs': 78
+};
+let updated = 0;
+for (const p of physicians) {
+const key = `${p.first_name}|${p.last_name}`;
+if (volData[key] !== undefined && p.patient_volume != String(volData[key])) {
+const { error } = await db.from('physicians').update({ patient_volume: String(volData[key]) }).eq('id', p.id);
+if (!error) updated++;
+else console.warn('Volume migration failed for', key, error);
+}
+}
+if (updated > 0) {
+await loadAllData();
+showToast(`Volume data updated for ${updated} physician(s)`, 'info');
+}
+localStorage.setItem('volumeMigration20260217', 'done');
+console.log(`Volume migration complete: ${updated} updated`);
 }
 async function loadContactLogs(physicianId) {
 try {
