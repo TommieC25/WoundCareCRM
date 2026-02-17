@@ -25,6 +25,7 @@
 var SUPABASE_URL = 'https://xhdjywibdjzbczfjmctp.supabase.co';
 var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhoZGp5d2liZGp6YmN6ZmptY3RwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk3NzE4MTYsImV4cCI6MjA4NTM0NzgxNn0.vHAfeYTVbu2Isu5AoFONvzrtJ2sS3YwF00QRe3LNrbU';
 var SHEET_NAME = 'Routing(Field Use)'; // Name of the tab to write to
+var NEEDS_ZIP_SHEET = 'Needs Zip';     // Tab for rows missing zip — research/update queue
 
 // === HEADERS ===
 var HEADERS = [
@@ -172,8 +173,8 @@ function syncFieldRouting() {
   // Restore manual-entry columns from previous data
   rows = restoreManualColumns_(rows, existingManualData);
 
-  // Exclude rows with no zip code — they're not useful for field routing
-  // and sort to the top (empty string < any zip), breaking the route order
+  // Split rows: ones with zip go to main routing tab, ones without go to "Needs Zip" tab
+  var noZipRows = rows.filter(function(r) { return String(r[13] || '').trim() === ''; });
   rows = rows.filter(function(r) { return String(r[13] || '').trim() !== ''; });
 
   // Sort rows: Zip (asc), Address (asc), Vol (desc) — field routing order
@@ -222,7 +223,55 @@ function syncFieldRouting() {
     }
   }
 
-  Logger.log('Synced ' + rows.length + ' rows at ' + timestamp);
+  // === Write "Needs Zip" tab — rows missing zip code for research/update ===
+  writeNeedsZipSheet_(ss, noZipRows, timestamp);
+
+  Logger.log('Synced ' + rows.length + ' routing rows + ' + noZipRows.length + ' needs-zip rows at ' + timestamp);
+}
+
+// === NEEDS ZIP TAB ===
+
+/**
+ * Writes rows missing zip codes to a separate "Needs Zip" tab.
+ * Once you update the physician/location in the CRM with a zip,
+ * the row auto-migrates to the main Routing tab on next sync.
+ */
+function writeNeedsZipSheet_(ss, noZipRows, timestamp) {
+  var nzSheet = ss.getSheetByName(NEEDS_ZIP_SHEET);
+  if (!nzSheet) {
+    nzSheet = ss.insertSheet(NEEDS_ZIP_SHEET);
+    // Position it after the main routing tab
+    var mainIdx = ss.getSheetByName(SHEET_NAME).getIndex();
+    ss.setActiveSheet(nzSheet);
+    ss.moveActiveSheet(mainIdx + 1);
+  }
+
+  // Use same headers as main sheet
+  nzSheet.getRange(1, 1, 1, HEADERS.length).setValues([HEADERS]);
+  nzSheet.getRange(1, 1, 1, HEADERS.length).setFontWeight('bold');
+
+  // Sort by Last Name (idx 5) then First Name (idx 4) for easy scanning
+  noZipRows.sort(function(a, b) {
+    var lastA = String(a[5] || '').toLowerCase(), lastB = String(b[5] || '').toLowerCase();
+    if (lastA !== lastB) return lastA < lastB ? -1 : 1;
+    var firstA = String(a[4] || '').toLowerCase(), firstB = String(b[4] || '').toLowerCase();
+    return firstA < firstB ? -1 : firstA > firstB ? 1 : 0;
+  });
+
+  if (noZipRows.length > 0) {
+    nzSheet.getRange(2, 1, noZipRows.length, HEADERS.length).setValues(noZipRows);
+  }
+
+  // Clear leftover rows from previous sync
+  var lastRow = nzSheet.getLastRow();
+  var dataEndRow = noZipRows.length + 1;
+  if (lastRow > dataEndRow) {
+    nzSheet.getRange(dataEndRow + 1, 1, lastRow - dataEndRow, HEADERS.length).clearContent();
+  }
+
+  // Timestamp
+  nzSheet.getRange(noZipRows.length + 3, 1).setValue('Last synced: ' + timestamp + '  |  Add zip codes in CRM → rows move to Routing tab automatically');
+  nzSheet.getRange(noZipRows.length + 3, 1).setFontColor('#999999').setFontSize(9);
 }
 
 // === ROW BUILDER ===
