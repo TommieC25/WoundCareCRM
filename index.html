@@ -41,6 +41,12 @@ Append New Records from CSV <input type="file" accept=".csv" onchange="importCSV
 </label>
 <div style="font-size:0.7rem;color:#888;margin-bottom:0.75rem;text-align:center;">Adds new physicians without affecting existing data</div>
 <div id="importStatus" style="font-size:0.8rem;margin-bottom:0.5rem;color:#ccc;"></div>
+<h4 style="margin-top:1rem;color:#f97316;">Advanced Solution Import</h4>
+<p style="color:#aaa;font-size:0.8rem;margin-bottom:0.75rem;">Upload CSV with "First Last" and "AS?" columns to bulk-set AS designations.</p>
+<label style="display:block;margin-bottom:0.5rem;padding:0.75rem;background:#f97316;color:white;border-radius:8px;font-weight:600;text-align:center;cursor:pointer;font-size:0.95rem;">
+Import AS List <input type="file" accept=".csv" onchange="importASList(this.files[0])" style="display:none">
+</label>
+<div id="asImportStatus" style="font-size:0.8rem;margin-bottom:0.5rem;color:#ccc;"></div>
 <h4 style="margin-top:1rem;color:#0ea5e9;">Data Export</h4>
 <p style="color:#aaa;font-size:0.8rem;margin-bottom:0.75rem;">Download your CRM data as CSV files.</p>
 <button style="background:#0ea5e9;color:white;border:none;padding:0.6rem 1rem;border-radius:6px;font-size:0.85rem;cursor:pointer;width:100%;font-weight:600;" onclick="openExportModal()">Export Data</button>
@@ -1041,7 +1047,9 @@ ${associatedPractices.length > 0 ? associatedPractices.map(pr => `<span style="c
 </div>
 <div class="profile-meta">
 ${mi('Priority',p.priority||'Not set')}${mi('Specialty',p.specialty||'Not set')}${mi('Degree',p.degree||'—')}${p.title?mi('Title',p.title):''}
-${mi('Academic Connection',p.academic_connection||p.um_connection||'None')}${mi('Candidate Patient Volume',p.patient_volume||p.mohs_volume||'Unknown')}${mi('Last Contact',p.last_contact||'Never')}${mi('Locations',assignments.length+' location'+(assignments.length!==1?'s':''))}
+${mi('Academic Connection',p.academic_connection||p.um_connection||'None')}${mi('Candidate Patient Volume',p.patient_volume||p.mohs_volume||'Unknown')}
+<div class="meta-item"><span class="meta-label">Advanced Solution</span><label style="display:inline-flex;align-items:center;gap:0.4rem;cursor:pointer;padding:0.25rem 0.6rem;border-radius:6px;background:${p.advanced_solution?'#f97316':'#e5e5e5'};color:${p.advanced_solution?'white':'#666'};font-size:0.8rem;font-weight:700;transition:all 0.2s;" onclick="toggleAdvancedSolution(event)"><input type="checkbox" ${p.advanced_solution?'checked':''} style="width:16px;height:16px;accent-color:#f97316;cursor:pointer;margin:0;" onchange="toggleAdvancedSolution(event)">${p.advanced_solution?'YES':'NO'}</label></div>
+${mi('Last Contact',p.last_contact||'Never')}${mi('Locations',assignments.length+' location'+(assignments.length!==1?'s':''))}
 </div>
 </div>
 <div class="section">
@@ -1381,6 +1389,18 @@ showToast('Practice created: ' + npn, 'success');
 }
 closePhysicianModal();
 openLocationModal(practiceId);
+}
+async function toggleAdvancedSolution(e) {
+e.preventDefault();e.stopPropagation();
+if(!currentPhysician) return;
+const newVal = !currentPhysician.advanced_solution;
+const{error}=await db.from('physicians').update({advanced_solution:newVal}).eq('id',currentPhysician.id);
+if(error){showToast('Error updating AS: '+error.message,'error');return;}
+currentPhysician.advanced_solution=newVal;
+const idx=physicians.findIndex(p=>p.id===currentPhysician.id);
+if(idx>=0) physicians[idx].advanced_solution=newVal;
+renderProfile();
+showToast(newVal?'Marked as Advanced Solution':'Removed Advanced Solution','success');
 }
 function editPhysicianInfo() {
 editMode=true;const p=currentPhysician;$('modalTitle').textContent='Edit Physician';
@@ -1886,6 +1906,50 @@ showToast(`Imported ${physMap.size} physicians`,'success');
 updateSyncIndicators('synced');
 }catch(e){console.error('Import error:',e);status('Error: '+e.message);showToast('Import failed: '+e.message,'error');updateSyncIndicators('error');}
 }
+async function importASList(file) {
+if(!file)return;
+const status=s=>{const el=$('asImportStatus');if(el)el.textContent=s;};
+status('Reading CSV...');
+try{
+const text=await file.text();
+const lines=text.split('\n').filter(l=>l.trim());
+const headers=lines[0].split(',').map(h=>h.trim().toLowerCase().replace(/[?"]/g,'').replace(/\s+/g,'_'));
+// Find relevant columns
+const flIdx=headers.indexOf('first_last');
+const fnIdx=headers.indexOf('physician_first_name');
+const lnIdx=headers.indexOf('physician_last_name');
+const asIdx=headers.findIndex(h=>h==='as'||h==='as_');
+if(asIdx<0){status('Error: No "AS?" column found in CSV');showToast('CSV must have an "AS?" column','error');return;}
+if(flIdx<0&&(fnIdx<0||lnIdx<0)){status('Error: Need "First Last" or "Physician First Name"+"Physician Last Name" columns');showToast('CSV must have name columns','error');return;}
+const rows=[];
+for(let i=1;i<lines.length;i++){
+const vals=[];let cur='',inQ=false;
+for(const ch of lines[i]){if(ch==='"'){inQ=!inQ;}else if(ch===','&&!inQ){vals.push(cur.trim());cur='';}else{cur+=ch;}}
+vals.push(cur.trim());
+rows.push(vals);
+}
+let updated=0,notFound=0;
+for(const vals of rows){
+const asVal=(vals[asIdx]||'').trim().toUpperCase();
+const isAS=asVal==='Y'||asVal==='YES'||asVal==='TRUE'||asVal==='1';
+let firstName='',lastName='';
+if(flIdx>=0){const parts=(vals[flIdx]||'').trim().split(/\s+/);firstName=parts[0]||'';lastName=parts.slice(1).join(' ')||'';}
+else{firstName=(vals[fnIdx]||'').trim();lastName=(vals[lnIdx]||'').trim();}
+if(!firstName&&!lastName)continue;
+const match=physicians.find(p=>p.first_name.toLowerCase()===firstName.toLowerCase()&&p.last_name.toLowerCase()===lastName.toLowerCase());
+if(match){
+if(match.advanced_solution!==isAS){
+const{error}=await db.from('physicians').update({advanced_solution:isAS}).eq('id',match.id);
+if(!error){match.advanced_solution=isAS;updated++;}
+}
+}else{notFound++;}
+}
+await loadAllData();
+status(`Done! Updated ${updated} physician(s).${notFound?' '+notFound+' not matched.':''}`);
+showToast(`AS updated for ${updated} physician(s)`,'success');
+if(currentPhysician)renderProfile();
+}catch(e){console.error('AS import error:',e);status('Error: '+e.message);showToast('AS import failed: '+e.message,'error');}
+}
 async function clearDatabase() {
 const confirmMsg = 'Are you sure you want to DELETE ALL DATA?\n\nThis will remove:\n- All physicians\n- All practices\n- All locations\n- All contact logs\n\nThis cannot be undone!';
 if (!confirm(confirmMsg)) return;
@@ -2226,8 +2290,9 @@ const rank = p?.priority || '';
 const vol = p?.patient_volume || p?.mohs_volume || '';
 const county = l?.city ? guessCounty(l.city) : '';
 const notes = p?.general_notes || '';
+const asVal = p?.advanced_solution ? 'Y' : '';
 // ORIG, CALL, AS?, Rank, First, Last, First Last, Degree, Status, Specialty, Facility, Address, City, Zip, Phone, Vol, County, Notes
-return ['','','',rank,firstName,lastName,firstLast,degree,status,p?.specialty||'',practiceName,l?.address||'',l?.city||'',l?.zip||'',l?.phone||'',vol,county,notes];
+return ['','',asVal,rank,firstName,lastName,firstLast,degree,status,p?.specialty||'',practiceName,l?.address||'',l?.city||'',l?.zip||'',l?.phone||'',vol,county,notes];
 }
 function guessCounty(city) {
 if (!city) return '';

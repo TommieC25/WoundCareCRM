@@ -35,7 +35,7 @@ var HEADERS = [
 ];
 
 // Manual-entry column indices (preserved across syncs)
-var MANUAL_COLS = [0, 1, 2]; // ORIG, CALL, AS?
+var MANUAL_COLS = [0, 1]; // ORIG, CALL
 
 // === TRIGGERS ===
 
@@ -80,7 +80,8 @@ function onOpen() {
  * Fetches all data from Supabase and updates the Field Routing sheet.
  * Writes data in-place — does NOT clear the sheet, so column widths,
  * formatting, and filter views are preserved.
- * Preserves values in ORIG, CALL, and AS? columns (manual-entry columns).
+ * Preserves values in ORIG and CALL columns (manual-entry columns).
+ * AS? column is populated from CRM data (advanced_solution field).
  */
 function syncFieldRouting() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -242,11 +243,12 @@ function buildRow_(phys, loc, practice, activity, type) {
   var vol = phys ? (phys.patient_volume || phys.mohs_volume || '') : '';
   var county = loc && loc.city ? guessCounty_(loc.city) : '';
   var notes = phys ? phys.general_notes || '' : '';
+  var asVal = phys && phys.advanced_solution ? 'Y' : '';
 
   return [
     '',                             // ORIG (manual)
     '',                             // CALL (manual)
-    '',                             // AS? (manual)
+    asVal,                          // AS? (from CRM)
     rank,                           // Rank
     firstName,                      // Physician First Name
     lastName,                       // Physician Last Name
@@ -266,7 +268,7 @@ function buildRow_(phys, loc, practice, activity, type) {
 }
 
 // === PRESERVE MANUAL COLUMNS ===
-// ORIG (col 0), CALL (col 1), AS? (col 2) are manual-entry.
+// ORIG (col 0) and CALL (col 1) are manual-entry.
 // We match rows by "First Last" + "Facility" to restore these values after sync.
 
 function readManualColumns_(sheet) {
@@ -283,7 +285,6 @@ function readManualColumns_(sheet) {
   var colFacility = indexOf_(headers, 'Facility (full name)');
   var colOrig = indexOf_(headers, 'ORIG');
   var colCall = indexOf_(headers, 'CALL');
-  var colAs = indexOf_(headers, 'AS?');
 
   if (colFirstLast < 0 || colFacility < 0) return {};
 
@@ -293,8 +294,7 @@ function readManualColumns_(sheet) {
     if (key) {
       manual[key] = {
         orig: colOrig >= 0 ? row[colOrig] : '',
-        call: colCall >= 0 ? row[colCall] : '',
-        as: colAs >= 0 ? row[colAs] : ''
+        call: colCall >= 0 ? row[colCall] : ''
       };
     }
   }
@@ -307,7 +307,6 @@ function restoreManualColumns_(rows, manual) {
     if (key && manual[key]) {
       rows[i][0] = manual[key].orig || '';  // ORIG
       rows[i][1] = manual[key].call || '';  // CALL
-      rows[i][2] = manual[key].as || '';    // AS?
     }
   }
   return rows;
