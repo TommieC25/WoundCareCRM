@@ -165,6 +165,16 @@ function syncFieldRouting() {
   // Restore manual-entry columns from previous data
   rows = restoreManualColumns_(rows, existingManualData);
 
+  // Sort rows: Zip (asc), Address (asc), Vol (desc) — field routing order
+  rows.sort(function(a, b) {
+    var zipA = String(a[13] || ''), zipB = String(b[13] || '');
+    if (zipA !== zipB) return zipA < zipB ? -1 : 1;
+    var addrA = String(a[11] || '').toLowerCase(), addrB = String(b[11] || '').toLowerCase();
+    if (addrA !== addrB) return addrA < addrB ? -1 : 1;
+    var volA = Number(a[15]) || 0, volB = Number(b[15]) || 0;
+    return volB - volA; // descending
+  });
+
   // --- Write to sheet IN-PLACE (no clearContents, preserves formatting) ---
 
   // Write headers (row 1)
