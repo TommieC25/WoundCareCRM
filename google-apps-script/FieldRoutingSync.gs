@@ -6,6 +6,12 @@
  *   - On open (when anyone opens the spreadsheet)
  *   - Every hour (via time-driven trigger)
  *
+ * PRESERVES: column widths, formatting, sort order, filter views.
+ * Only cell values in the data range are updated.
+ *
+ * TIP: Use Data → Filter Views to create a persistent custom sort.
+ *      Filter Views survive data refreshes automatically.
+ *
  * SETUP:
  *   1. Open your Google Sheet
  *   2. Extensions → Apps Script
@@ -20,13 +26,16 @@ var SUPABASE_URL = 'https://xhdjywibdjzbczfjmctp.supabase.co';
 var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhoZGp5d2liZGp6YmN6ZmptY3RwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk3NzE4MTYsImV4cCI6MjA4NTM0NzgxNn0.vHAfeYTVbu2Isu5AoFONvzrtJ2sS3YwF00QRe3LNrbU';
 var SHEET_NAME = 'Routing(Field Use)'; // Name of the tab to write to
 
-// === HEADERS (must match CRM export exactly) ===
+// === HEADERS ===
 var HEADERS = [
   'ORIG','CALL','AS?','Rank','Physician First Name','Physician Last Name',
-  'First Last','Degree','Duplicate?','Status','Specialty',
+  'First Last','Degree','Status','Specialty',
   'Facility (full name)','Address','City','Zip','Phone Number',
   'Vol','County','Notes'
 ];
+
+// Manual-entry column indices (preserved across syncs)
+var MANUAL_COLS = [0, 1, 2]; // ORIG, CALL, AS?
 
 // === TRIGGERS ===
 
@@ -68,8 +77,10 @@ function onOpen() {
 // === MAIN SYNC FUNCTION ===
 
 /**
- * Fetches all data from Supabase and rebuilds the Field Routing sheet.
- * Preserves values in ORIG, CALL, AS?, and Duplicate? columns (manual-entry columns).
+ * Fetches all data from Supabase and updates the Field Routing sheet.
+ * Writes data in-place — does NOT clear the sheet, so column widths,
+ * formatting, and filter views are preserved.
+ * Preserves values in ORIG, CALL, and AS? columns (manual-entry columns).
  */
 function syncFieldRouting() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -153,27 +164,36 @@ function syncFieldRouting() {
   // Restore manual-entry columns from previous data
   rows = restoreManualColumns_(rows, existingManualData);
 
-  // Write to sheet
-  sheet.clearContents();
+  // --- Write to sheet IN-PLACE (no clearContents, preserves formatting) ---
 
   // Write headers (row 1)
   sheet.getRange(1, 1, 1, HEADERS.length).setValues([HEADERS]);
   sheet.getRange(1, 1, 1, HEADERS.length).setFontWeight('bold');
 
-  // Write data rows
+  // Write data rows (overwrite in-place)
   if (rows.length > 0) {
     sheet.getRange(2, 1, rows.length, HEADERS.length).setValues(rows);
   }
 
-  // Auto-resize columns
-  for (var c = 1; c <= HEADERS.length; c++) {
-    sheet.autoResizeColumn(c);
+  // Clear any leftover rows from a previous larger dataset
+  var lastRow = sheet.getLastRow();
+  var dataEndRow = rows.length + 1; // row 1 = headers
+  if (lastRow > dataEndRow) {
+    sheet.getRange(dataEndRow + 1, 1, lastRow - dataEndRow, HEADERS.length).clearContent();
+  }
+
+  // Clear any leftover columns if the sheet previously had more columns (e.g. old Duplicate? column)
+  var lastCol = sheet.getLastColumn();
+  if (lastCol > HEADERS.length) {
+    sheet.getRange(1, HEADERS.length + 1, lastRow, lastCol - HEADERS.length).clearContent();
   }
 
   // Add last-synced timestamp
   var timestamp = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm:ss');
   sheet.getRange(rows.length + 3, 1).setValue('Last synced: ' + timestamp);
   sheet.getRange(rows.length + 3, 1).setFontColor('#999999').setFontSize(9);
+
+  // NO autoResizeColumn — preserves your custom column widths
 
   Logger.log('Synced ' + rows.length + ' rows at ' + timestamp);
 }
@@ -200,7 +220,7 @@ function buildRow_(phys, loc, practice, activity, type) {
     return [
       '', '', '', '',                                    // ORIG, CALL, AS?, Rank
       '(Enter HCP first name)', '(Enter HCP last name)', // First, Last
-      '', '', '',                                         // First Last, Degree, Duplicate?
+      '', '',                                             // First Last, Degree
       status, '',                                         // Status, Specialty
       practiceName,                                       // Facility
       loc ? loc.address || '' : '',                       // Address
@@ -232,7 +252,6 @@ function buildRow_(phys, loc, practice, activity, type) {
     lastName,                       // Physician Last Name
     firstLast,                      // First Last
     degree,                         // Degree
-    '',                             // Duplicate? (manual)
     status,                         // Status
     specialty,                      // Specialty
     practiceName,                   // Facility (full name)
@@ -247,23 +266,35 @@ function buildRow_(phys, loc, practice, activity, type) {
 }
 
 // === PRESERVE MANUAL COLUMNS ===
-// ORIG (col 0), CALL (col 1), AS? (col 2), Duplicate? (col 8) are manual-entry.
+// ORIG (col 0), CALL (col 1), AS? (col 2) are manual-entry.
 // We match rows by "First Last" + "Facility" to restore these values after sync.
 
 function readManualColumns_(sheet) {
   var lastRow = sheet.getLastRow();
   if (lastRow < 2) return {};
-  var data = sheet.getRange(2, 1, lastRow - 1, HEADERS.length).getValues();
+  var lastCol = sheet.getLastColumn();
+  if (lastCol < 1) return {};
+  var data = sheet.getRange(2, 1, lastRow - 1, lastCol).getValues();
   var manual = {};
+
+  // Find column indices dynamically from header row
+  var headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
+  var colFirstLast = indexOf_(headers, 'First Last');
+  var colFacility = indexOf_(headers, 'Facility (full name)');
+  var colOrig = indexOf_(headers, 'ORIG');
+  var colCall = indexOf_(headers, 'CALL');
+  var colAs = indexOf_(headers, 'AS?');
+
+  if (colFirstLast < 0 || colFacility < 0) return {};
+
   for (var i = 0; i < data.length; i++) {
     var row = data[i];
-    var key = makeRowKey_(row[6], row[11]); // First Last + Facility
+    var key = makeRowKey_(row[colFirstLast], row[colFacility]);
     if (key) {
       manual[key] = {
-        orig: row[0],
-        call: row[1],
-        as: row[2],
-        duplicate: row[8]
+        orig: colOrig >= 0 ? row[colOrig] : '',
+        call: colCall >= 0 ? row[colCall] : '',
+        as: colAs >= 0 ? row[colAs] : ''
       };
     }
   }
@@ -272,12 +303,11 @@ function readManualColumns_(sheet) {
 
 function restoreManualColumns_(rows, manual) {
   for (var i = 0; i < rows.length; i++) {
-    var key = makeRowKey_(rows[i][6], rows[i][11]); // First Last + Facility
+    var key = makeRowKey_(rows[i][6], rows[i][10]); // First Last (idx 6) + Facility (idx 10)
     if (key && manual[key]) {
       rows[i][0] = manual[key].orig || '';  // ORIG
       rows[i][1] = manual[key].call || '';  // CALL
       rows[i][2] = manual[key].as || '';    // AS?
-      rows[i][8] = manual[key].duplicate || ''; // Duplicate?
     }
   }
   return rows;
@@ -288,6 +318,13 @@ function makeRowKey_(firstLast, facility) {
   var fac = String(facility || '').trim().toLowerCase();
   if (!fl && !fac) return '';
   return fl + '|||' + fac;
+}
+
+function indexOf_(arr, val) {
+  for (var i = 0; i < arr.length; i++) {
+    if (arr[i] === val) return i;
+  }
+  return -1;
 }
 
 // === COUNTY HELPER (mirrors CRM guessCounty) ===
