@@ -518,6 +518,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 setToday();
 await loadAllData();
 await runVolumeMigration();
+await runASMigration();
 setupRealtimeSubscription();
 // Prevent background scroll when modals are open (iPad fix)
 document.querySelectorAll('.modal').forEach(modal => {
@@ -652,6 +653,38 @@ showToast(`Volume data updated for ${updated} physician(s)`, 'info');
 }
 localStorage.setItem('volumeMigration20260217', 'done');
 console.log(`Volume migration complete: ${updated} updated`);
+}
+async function runASMigration() {
+if (localStorage.getItem('asMigration20260217')) return;
+const asPhysicians = new Set([
+'Neil H.|Strauss','Alexandra M.|Andes','Amy|DeGirolamo','Alan|MacGill',
+'Shanika L.|Hill','Nathan D.|Vela','Michelle|Detweiler','Kyle|Kinmon',
+'Juliette|Perez','Ashley|Bowles','Pritesh|Patel','Holly|Seigle',
+'Jacqueline M.|Brill','Jaime|Carbonell','Tiffany|Cerda','Joshua P.|Daly',
+'Mario Adrian|Cala','Nathalie|Mendez','Katherine|Machado','Jignesh|Desai',
+'Stephanie|Garzon','Xavier|Sanchez','Aldo M.|Gonzalez','Julio C.|Ortiz',
+'Robert|Garnet','Frankie|Kirk','Jean|Louis-Charles','Jonathan M.|Cutler',
+'Bamidele|Olupona','Ashot|Oganesyan','Robyn|Hall','Vishnu|Seecharan',
+'Suzanne|Fuchs','Tamara D.|Fishman','James A.|Green','Pollyanna|Reeves',
+'Richard|Seda','Jim|François','Carlo A.|Messina','Eric|Schorr',
+'Brett|Fried','Kimberly|Bullock','Naila|Esmail','Charlton|Adler',
+'Daniel|Pero','Christina Pena|Garcia'
+]);
+let updated = 0;
+for (const p of physicians) {
+const key = `${p.first_name}|${p.last_name}`;
+if (asPhysicians.has(key) && !p.advanced_solution) {
+const { error } = await db.from('physicians').update({ advanced_solution: true }).eq('id', p.id);
+if (!error) { p.advanced_solution = true; updated++; }
+else console.warn('AS migration failed for', key, error);
+}
+}
+if (updated > 0) {
+await loadAllData();
+showToast(`Advanced Solution set for ${updated} physician(s)`, 'info');
+}
+localStorage.setItem('asMigration20260217', 'done');
+console.log(`AS migration complete: ${updated} updated`);
 }
 async function loadContactLogs(physicianId) {
 try {
@@ -1041,7 +1074,9 @@ ${associatedPractices.length > 0 ? associatedPractices.map(pr => `<span style="c
 </div>
 <div class="profile-meta">
 ${mi('Priority',p.priority||'Not set')}${mi('Specialty',p.specialty||'Not set')}${mi('Degree',p.degree||'—')}${p.title?mi('Title',p.title):''}
-${mi('Academic Connection',p.academic_connection||p.um_connection||'None')}${mi('Candidate Patient Volume',p.patient_volume||p.mohs_volume||'Unknown')}${mi('Last Contact',p.last_contact||'Never')}${mi('Locations',assignments.length+' location'+(assignments.length!==1?'s':''))}
+${mi('Academic Connection',p.academic_connection||p.um_connection||'None')}${mi('Candidate Patient Volume',p.patient_volume||p.mohs_volume||'Unknown')}
+<div class="meta-item"><span class="meta-label">Advanced Solution</span><label style="display:inline-flex;align-items:center;gap:0.4rem;cursor:pointer;padding:0.25rem 0.6rem;border-radius:6px;background:${p.advanced_solution?'#f97316':'#e5e5e5'};color:${p.advanced_solution?'white':'#666'};font-size:0.8rem;font-weight:700;transition:all 0.2s;" onclick="toggleAdvancedSolution(event)"><input type="checkbox" ${p.advanced_solution?'checked':''} style="width:16px;height:16px;accent-color:#f97316;cursor:pointer;margin:0;" onchange="toggleAdvancedSolution(event)">${p.advanced_solution?'YES':'NO'}</label></div>
+${mi('Last Contact',p.last_contact||'Never')}${mi('Locations',assignments.length+' location'+(assignments.length!==1?'s':''))}
 </div>
 </div>
 <div class="section">
@@ -1381,6 +1416,18 @@ showToast('Practice created: ' + npn, 'success');
 }
 closePhysicianModal();
 openLocationModal(practiceId);
+}
+async function toggleAdvancedSolution(e) {
+e.preventDefault();e.stopPropagation();
+if(!currentPhysician) return;
+const newVal = !currentPhysician.advanced_solution;
+const{error}=await db.from('physicians').update({advanced_solution:newVal}).eq('id',currentPhysician.id);
+if(error){showToast('Error updating AS: '+error.message,'error');return;}
+currentPhysician.advanced_solution=newVal;
+const idx=physicians.findIndex(p=>p.id===currentPhysician.id);
+if(idx>=0) physicians[idx].advanced_solution=newVal;
+renderProfile();
+showToast(newVal?'Marked as Advanced Solution':'Removed Advanced Solution','success');
 }
 function editPhysicianInfo() {
 editMode=true;const p=currentPhysician;$('modalTitle').textContent='Edit Physician';
@@ -2226,8 +2273,9 @@ const rank = p?.priority || '';
 const vol = p?.patient_volume || p?.mohs_volume || '';
 const county = l?.city ? guessCounty(l.city) : '';
 const notes = p?.general_notes || '';
+const asVal = p?.advanced_solution ? 'Y' : '';
 // ORIG, CALL, AS?, Rank, First, Last, First Last, Degree, Status, Specialty, Facility, Address, City, Zip, Phone, Vol, County, Notes
-return ['','','',rank,firstName,lastName,firstLast,degree,status,p?.specialty||'',practiceName,l?.address||'',l?.city||'',l?.zip||'',l?.phone||'',vol,county,notes];
+return ['','',asVal,rank,firstName,lastName,firstLast,degree,status,p?.specialty||'',practiceName,l?.address||'',l?.city||'',l?.zip||'',l?.phone||'',vol,county,notes];
 }
 function guessCounty(city) {
 if (!city) return '';
