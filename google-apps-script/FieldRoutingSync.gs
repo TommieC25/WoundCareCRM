@@ -249,7 +249,7 @@ function buildRow_(phys, loc, practice, activity, type) {
       loc ? loc.address || '' : '',                       // Address
       loc ? loc.city || '' : '',                          // City
       loc ? loc.zip || '' : '',                           // Zip
-      loc ? loc.phone || '' : '',                         // Phone
+      fmtPhone_(loc ? loc.phone : ''),                    // Phone
       '',                                                 // Vol
       loc && loc.city ? guessCounty_(loc.city) : '',     // County
       loc && loc.practice_email ? 'Email: ' + loc.practice_email : '' // Notes
@@ -282,7 +282,7 @@ function buildRow_(phys, loc, practice, activity, type) {
     loc ? loc.address || '' : '',   // Address
     loc ? loc.city || '' : '',      // City
     loc ? loc.zip || '' : '',       // Zip
-    loc ? loc.phone || '' : '',     // Phone Number
+    fmtPhone_(loc ? loc.phone : ''), // Phone Number
     vol,                            // Vol
     county,                         // County
     notes                           // Notes
@@ -346,6 +346,16 @@ function indexOf_(arr, val) {
     if (arr[i] === val) return i;
   }
   return -1;
+}
+
+// === PHONE FORMAT HELPER ===
+
+function fmtPhone_(p) {
+  if (!p) return '';
+  var d = String(p).replace(/\D/g, '');
+  if (d.length === 11 && d.charAt(0) === '1') d = d.substring(1);
+  if (d.length === 10) return d.substring(0, 3) + '-' + d.substring(3, 6) + '-' + d.substring(6);
+  return p;
 }
 
 // === COUNTY HELPER (mirrors CRM guessCounty) ===
