@@ -90,6 +90,13 @@ function syncFieldRouting() {
     sheet = ss.insertSheet(SHEET_NAME);
   }
 
+  // Save current column widths before sync
+  var savedWidths = [];
+  var maxCol = Math.max(sheet.getLastColumn(), HEADERS.length);
+  for (var w = 1; w <= maxCol; w++) {
+    savedWidths.push(sheet.getColumnWidth(w));
+  }
+
   // Read existing manual-entry columns before overwriting
   var existingManualData = readManualColumns_(sheet);
 
@@ -204,7 +211,12 @@ function syncFieldRouting() {
   sheet.getRange(rows.length + 3, 1).setValue('Last synced: ' + timestamp);
   sheet.getRange(rows.length + 3, 1).setFontColor('#999999').setFontSize(9);
 
-  // NO autoResizeColumn — preserves your custom column widths
+  // Restore column widths to exactly what they were before sync
+  for (var w = 0; w < savedWidths.length && w < HEADERS.length; w++) {
+    if (savedWidths[w] > 0) {
+      sheet.setColumnWidth(w + 1, savedWidths[w]);
+    }
+  }
 
   Logger.log('Synced ' + rows.length + ' rows at ' + timestamp);
 }
