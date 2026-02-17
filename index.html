@@ -2163,7 +2163,7 @@ $('routingExportModal').classList.add('active');
 function closeRoutingExport() { closeModal('routingExportModal'); }
 function getRoutingCSVHeaders() {
 // Matches Google Sheet: Routing(Field Use) tab exactly
-return ['CALL','AS?','Rank','Physician First Name','Physician Last Name','First Last','Status','Specialty','Facility (full name)','Address','City','Zip','Phone Number','Vol','County','Notes'];
+return ['ORIG','CALL','AS?','Rank','Physician First Name','Physician Last Name','First Last','Degree','Duplicate?','Status','Specialty','Facility (full name)','Address','City','Zip','Phone Number','Vol','County','Notes'];
 }
 function routingRowToCSV(r) {
 const p = r.phys;
@@ -2179,16 +2179,18 @@ status = r.activity.contact_date + ': ' + preview;
 }
 if (r.type === 'loc-only') {
 // Practice/location with no physician — placeholder instructions
-return ['','','','(Enter HCP first name)','(Enter HCP last name)','',status,'',practiceName,l?.address||'',l?.city||'',l?.zip||'',l?.phone||'','',l?.city?guessCounty(l.city):'',l?.practice_email?'Email: '+l.practice_email:''];
+return ['','','','','(Enter HCP first name)','(Enter HCP last name)','','','',status,'',practiceName,l?.address||'',l?.city||'',l?.zip||'',l?.phone||'','',l?.city?guessCounty(l.city):'',l?.practice_email?'Email: '+l.practice_email:''];
 }
 const firstName = p?.first_name || '';
 const lastName = p?.last_name || '';
 const firstLast = (firstName + ' ' + lastName).trim();
+const degree = p?.degree || '';
 const rank = p?.priority || '';
 const vol = p?.patient_volume || p?.mohs_volume || '';
 const county = l?.city ? guessCounty(l.city) : '';
 const notes = p?.general_notes || '';
-return ['','',rank,firstName,lastName,firstLast,status,p?.specialty||'',practiceName,l?.address||'',l?.city||'',l?.zip||'',l?.phone||'',vol,county,notes];
+// ORIG, CALL, AS?, Rank, First, Last, First Last, Degree, Duplicate?, Status, Specialty, Facility, Address, City, Zip, Phone, Vol, County, Notes
+return ['','','',rank,firstName,lastName,firstLast,degree,'',status,p?.specialty||'',practiceName,l?.address||'',l?.city||'',l?.zip||'',l?.phone||'',vol,county,notes];
 }
 function guessCounty(city) {
 if (!city) return '';
