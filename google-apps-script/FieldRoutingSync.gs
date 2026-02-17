@@ -172,6 +172,10 @@ function syncFieldRouting() {
   // Restore manual-entry columns from previous data
   rows = restoreManualColumns_(rows, existingManualData);
 
+  // Exclude rows with no zip code — they're not useful for field routing
+  // and sort to the top (empty string < any zip), breaking the route order
+  rows = rows.filter(function(r) { return String(r[13] || '').trim() !== ''; });
+
   // Sort rows: Zip (asc), Address (asc), Vol (desc) — field routing order
   rows.sort(function(a, b) {
     var zipA = String(a[13] || ''), zipB = String(b[13] || '');
