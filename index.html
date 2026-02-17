@@ -823,8 +823,9 @@ return 0;
 }
 function ld(val,icon,content){return val?`<div class="location-detail"><span class="location-detail-icon">${icon}</span><span class="location-detail-value">${content||val}</span></div>`:''}
 function locAddr(loc){const a=(loc.address||'')+', '+(loc.city||'')+' '+(loc.zip||'');return`<a href="https://maps.apple.com/?q=${encodeURIComponent(a)}" target="_blank" style="color:#0a4d3c;text-decoration:underline;">${loc.address}${loc.city?', '+loc.city:''}${loc.zip?' '+loc.zip:''}</a>`}
-function locPhone(p){return`<a href="tel:${(p||'').replace(/\D/g,'')}">${p}</a>`}
-function locDetails(loc){return ld(loc.address,'📍',locAddr(loc))+ld(loc.phone,'📞',locPhone(loc.phone))+ld(loc.fax,'📠')+ld(loc.practice_email,'✉️',loc.practice_email?`<a href="mailto:${loc.practice_email}">${loc.practice_email}</a>`:'')+ld(loc.office_hours,'🕐')+ld(loc.office_staff,'👥')+ld(loc.receptionist_name,'👤')+ld(loc.best_days,'📅')}
+function fmtPhone(p){if(!p)return'';var d=(p+'').replace(/\D/g,'');if(d.length===11&&d[0]==='1')d=d.substring(1);if(d.length===10)return d.substring(0,3)+'-'+d.substring(3,6)+'-'+d.substring(6);return p;}
+function locPhone(p){var f=fmtPhone(p);return`<a href="tel:${(p||'').replace(/\D/g,'')}">${f||p}</a>`}
+function locDetails(loc){return ld(loc.address,'📍',locAddr(loc))+ld(loc.phone,'📞',locPhone(loc.phone))+ld(loc.fax,'📠',fmtPhone(loc.fax))+ld(loc.practice_email,'✉️',loc.practice_email?`<a href="mailto:${loc.practice_email}">${loc.practice_email}</a>`:'')+ld(loc.office_hours,'🕐')+ld(loc.office_staff,'👥')+ld(loc.receptionist_name,'👤')+ld(loc.best_days,'📅')}
 function mi(label,val){return `<div class="meta-item"><div class="meta-label">${label}</div><div class="meta-value">${val}</div></div>`}
 function parseNoteTime(notes){const tm=(notes||'').match(/^\[(\d{1,2}:\d{2}(?:\s*[APap][Mm])?)\]\s*/);return tm?{time:' '+tm[1],text:notes.replace(tm[0],'')}:{time:'',text:notes||''};}
 function renderLogEntry(e,opts={}){const{time,text}=parseNoteTime(e.notes);const preview=opts.full?text:(text.length>120?text.substring(0,120)+'...':text);
@@ -2123,7 +2124,7 @@ const latestLog={};(allLogs||[]).forEach(l=>{if(!latestLog[l.physician_id])lates
 const h=['Last Name','First Name','Degree','Practice','Tier','Specialty','Email','Academic Connection','Patient Volume','Primary Address','Primary City','Primary ZIP','Primary Phone','Primary Fax','Office Hours','Best Days','Receptionist','Location Count','Last Contact','Status','General Notes'];
 const rows=(allPhys||[]).map(p=>{const as=am[p.id]||[];const pl=(as.find(a=>a.is_primary)||as[0])?.practice_locations||{};
 const log=latestLog[p.id];const statusNote=log?(log.notes||'').replace(/^\[\d{1,2}:\d{2}\]\s*/,''):'';const statusPreview=statusNote.length>80?statusNote.substring(0,80)+'...':statusNote;const status=log?log.contact_date+': '+statusPreview:'';
-return[p.last_name,p.first_name,p.degree||'',pl.practices?.name||p.practice_name||'',p.priority||'',p.specialty||'',p.email||'',p.academic_connection||'',p.patient_volume||p.mohs_volume||'',pl.address||'',pl.city||'',pl.zip||'',pl.phone||'',pl.fax||'',pl.office_hours||'',pl.best_days||'',pl.receptionist_name||'',as.length,p.last_contact||'',status,p.general_notes||''];});
+return[p.last_name,p.first_name,p.degree||'',pl.practices?.name||p.practice_name||'',p.priority||'',p.specialty||'',p.email||'',p.academic_connection||'',p.patient_volume||p.mohs_volume||'',pl.address||'',pl.city||'',pl.zip||'',fmtPhone(pl.phone),fmtPhone(pl.fax),pl.office_hours||'',pl.best_days||'',pl.receptionist_name||'',as.length,p.last_contact||'',status,p.general_notes||''];});
 downloadCSV('physicians_export_'+todayStamp()+'.csv',h,rows);
 }
 async function exportContacts(){
@@ -2139,7 +2140,7 @@ downloadCSV('contact_logs_export_'+todayStamp()+'.csv',h,rows);
 async function exportPractices(){
 const{data:allLocs,error}=await db.from('practice_locations').select('*, practices(name)').order('city');if(error)throw error;
 const h=['Practice Name','Location Label','Address','City','ZIP','Phone','Fax','Office Email','Office Hours','Office Staff','Receptionist','Best Days'];
-const rows=(allLocs||[]).map(l=>[l.practices?.name||'',l.label||'',l.address||'',l.city||'',l.zip||'',l.phone||'',l.fax||'',l.practice_email||'',l.office_hours||'',l.office_staff||'',l.receptionist_name||'',l.best_days||'']);
+const rows=(allLocs||[]).map(l=>[l.practices?.name||'',l.label||'',l.address||'',l.city||'',l.zip||'',fmtPhone(l.phone),fmtPhone(l.fax),l.practice_email||'',l.office_hours||'',l.office_staff||'',l.receptionist_name||'',l.best_days||'']);
 downloadCSV('practices_locations_export_'+todayStamp()+'.csv',h,rows);
 }
 // === Field Routing Export ===
@@ -2263,7 +2264,7 @@ status = r.activity.contact_date + ': ' + preview;
 }
 if (r.type === 'loc-only') {
 // Practice/location with no physician — placeholder instructions
-return ['','','','','(Enter HCP first name)','(Enter HCP last name)','','',status,'',practiceName,l?.address||'',l?.city||'',l?.zip||'',l?.phone||'','',l?.city?guessCounty(l.city):'',l?.practice_email?'Email: '+l.practice_email:''];
+return ['','','','','(Enter HCP first name)','(Enter HCP last name)','','',status,'',practiceName,l?.address||'',l?.city||'',l?.zip||'',fmtPhone(l?.phone),'',l?.city?guessCounty(l.city):'',l?.practice_email?'Email: '+l.practice_email:''];
 }
 const firstName = p?.first_name || '';
 const lastName = p?.last_name || '';
@@ -2275,7 +2276,7 @@ const county = l?.city ? guessCounty(l.city) : '';
 const notes = p?.general_notes || '';
 const asVal = p?.advanced_solution ? 'Y' : '';
 // ORIG, CALL, AS?, Rank, First, Last, First Last, Degree, Status, Specialty, Facility, Address, City, Zip, Phone, Vol, County, Notes
-return ['','',asVal,rank,firstName,lastName,firstLast,degree,status,p?.specialty||'',practiceName,l?.address||'',l?.city||'',l?.zip||'',l?.phone||'',vol,county,notes];
+return ['','',asVal,rank,firstName,lastName,firstLast,degree,status,p?.specialty||'',practiceName,l?.address||'',l?.city||'',l?.zip||'',fmtPhone(l?.phone),vol,county,notes];
 }
 function guessCounty(city) {
 if (!city) return '';
