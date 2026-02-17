@@ -62,4 +62,36 @@ Expects columns: first_name, last_name, email, priority, specialty, degree, titl
 - Field Routing auto-syncs via Google Apps Script that queries Supabase REST API directly
 - Sheet: https://docs.google.com/spreadsheets/d/1zcVCVIciyScC3IcclfuBy4T4ogdcNSBVlxn6ZmYeiG0/edit?gid=150527751
 - Apps Script installed in the sheet with onOpen + hourly triggers
-- Manual-entry columns (ORIG, CALL, AS?, Duplicate?) are preserved across syncs
+- Manual-entry columns (ORIG, CALL) are preserved across syncs; AS? is populated from CRM data
+- Rows are pre-sorted by Zip → Address → Vol(desc) for field routing order
+- Column widths are saved before sync and restored after
+- Phone numbers are normalized to dash format (305-385-9494) via `fmtPhone_()` in Apps Script
+
+## Claude Code Session Handoff Protocol
+
+**READ THIS FIRST on every new session / conversation compaction.**
+
+### Git Environment Constraints (KNOWN — do NOT re-discover)
+1. **Push access**: ONLY `claude/*` branches work. Pushing to `main` returns **403**. Do not attempt it.
+2. **`gh` CLI**: Installed but has **NO authentication credentials**. Do not attempt `gh pr create`, `gh auth login`, or any `gh` command — they will all fail.
+3. **GitHub REST API**: The local git proxy at `127.0.0.1` only handles git protocol (`/git/...` paths). It does **NOT** expose the GitHub REST API. Do not attempt `curl` to create PRs, list issues, or any GitHub API endpoint through the proxy.
+4. **No GitHub token**: There is no `GITHUB_TOKEN`, `GH_TOKEN`, or any GitHub API credential in the environment. Do not search for one (env vars, file descriptors, `.netrc`, credential helpers — none exist).
+5. **PR creation is impossible in this environment**. Accept this and move on. Tell Tom the branch is pushed and give him the compare URL: `https://github.com/TommieC25/WoundCareCRM/compare/main...<branch-name>`
+
+### What TO Do for Git
+- Commit and push to the assigned `claude/` branch — this works fine
+- If a PR merge is needed: tell Tom the branch is pushed, provide the compare URL, and move on
+- Do NOT waste credits trying workarounds (proxy paths, token hunting, `gh` auth, API calls)
+
+### Session Handoff Checklist
+When picking up from a compacted/previous conversation:
+1. Read `CLAUDE.md` (this file) first
+2. Run `git log --oneline -10` and `git branch -a` to understand current state
+3. Check `git diff --stat origin/main...HEAD` to see what's pending
+4. Do the actual work requested — don't re-explore known constraints
+5. When providing code for Tom to copy-paste (e.g., Apps Script), output it as a **plain code block** — never use `<details>` collapse tags (they don't render on iPad)
+
+### Output Rules for Tom (iPad User)
+- No `<details>` / `<summary>` HTML tags — they collapse and can't be expanded on iPad
+- No "see above" references — always include the actual content inline
+- Keep code blocks plain and complete — Tom needs to select-all and copy

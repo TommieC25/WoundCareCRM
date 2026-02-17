@@ -90,6 +90,13 @@ function syncFieldRouting() {
     sheet = ss.insertSheet(SHEET_NAME);
   }
 
+  // Save current column widths before sync
+  var savedWidths = [];
+  var maxCol = Math.max(sheet.getLastColumn(), HEADERS.length);
+  for (var w = 1; w <= maxCol; w++) {
+    savedWidths.push(sheet.getColumnWidth(w));
+  }
+
   // Read existing manual-entry columns before overwriting
   var existingManualData = readManualColumns_(sheet);
 
@@ -165,6 +172,16 @@ function syncFieldRouting() {
   // Restore manual-entry columns from previous data
   rows = restoreManualColumns_(rows, existingManualData);
 
+  // Sort rows: Zip (asc), Address (asc), Vol (desc) — field routing order
+  rows.sort(function(a, b) {
+    var zipA = String(a[13] || ''), zipB = String(b[13] || '');
+    if (zipA !== zipB) return zipA < zipB ? -1 : 1;
+    var addrA = String(a[11] || '').toLowerCase(), addrB = String(b[11] || '').toLowerCase();
+    if (addrA !== addrB) return addrA < addrB ? -1 : 1;
+    var volA = Number(a[15]) || 0, volB = Number(b[15]) || 0;
+    return volB - volA; // descending
+  });
+
   // --- Write to sheet IN-PLACE (no clearContents, preserves formatting) ---
 
   // Write headers (row 1)
@@ -194,7 +211,12 @@ function syncFieldRouting() {
   sheet.getRange(rows.length + 3, 1).setValue('Last synced: ' + timestamp);
   sheet.getRange(rows.length + 3, 1).setFontColor('#999999').setFontSize(9);
 
-  // NO autoResizeColumn — preserves your custom column widths
+  // Restore column widths to exactly what they were before sync
+  for (var w = 0; w < savedWidths.length && w < HEADERS.length; w++) {
+    if (savedWidths[w] > 0) {
+      sheet.setColumnWidth(w + 1, savedWidths[w]);
+    }
+  }
 
   Logger.log('Synced ' + rows.length + ' rows at ' + timestamp);
 }
@@ -227,7 +249,7 @@ function buildRow_(phys, loc, practice, activity, type) {
       loc ? loc.address || '' : '',                       // Address
       loc ? loc.city || '' : '',                          // City
       loc ? loc.zip || '' : '',                           // Zip
-      loc ? loc.phone || '' : '',                         // Phone
+      fmtPhone_(loc ? loc.phone : ''),                    // Phone
       '',                                                 // Vol
       loc && loc.city ? guessCounty_(loc.city) : '',     // County
       loc && loc.practice_email ? 'Email: ' + loc.practice_email : '' // Notes
@@ -260,7 +282,7 @@ function buildRow_(phys, loc, practice, activity, type) {
     loc ? loc.address || '' : '',   // Address
     loc ? loc.city || '' : '',      // City
     loc ? loc.zip || '' : '',       // Zip
-    loc ? loc.phone || '' : '',     // Phone Number
+    fmtPhone_(loc ? loc.phone : ''), // Phone Number
     vol,                            // Vol
     county,                         // County
     notes                           // Notes
@@ -324,6 +346,16 @@ function indexOf_(arr, val) {
     if (arr[i] === val) return i;
   }
   return -1;
+}
+
+// === PHONE FORMAT HELPER ===
+
+function fmtPhone_(p) {
+  if (!p) return '';
+  var d = String(p).replace(/\D/g, '');
+  if (d.length === 11 && d.charAt(0) === '1') d = d.substring(1);
+  if (d.length === 10) return d.substring(0, 3) + '-' + d.substring(3, 6) + '-' + d.substring(6);
+  return p;
 }
 
 // === COUNTY HELPER (mirrors CRM guessCounty) ===
