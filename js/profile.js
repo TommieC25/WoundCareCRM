@@ -119,12 +119,12 @@ ${locations.length === 0 ?
 '<div class="empty-notice">No locations yet. Click + Add Location to add an address.</div>' :
 '<div class="locations-grid">' +
 locations.map(loc => `
-<div class="location-card">
+<div class="location-card" style="cursor:pointer;" onclick="viewLocation('${loc.id}')">
 <div class="location-card-header">
-<div class="location-label">${loc.label || 'Office'}</div>
+<div class="location-label" style="text-decoration:underline;">${loc.label || 'Office'}</div>
 <div class="location-actions">
-<button class="icon-btn" onclick="editLocationDetails('${loc.id}')" title="Edit">✏️</button>
-<button class="icon-btn" onclick="deleteLocation('${loc.id}')" title="Delete">🗑️</button>
+<button class="icon-btn" onclick="event.stopPropagation();editLocationDetails('${loc.id}')" title="Edit">✏️</button>
+<button class="icon-btn" onclick="event.stopPropagation();deleteLocation('${loc.id}')" title="Delete">🗑️</button>
 </div>
 </div>
 <div class="location-details">${locDetails(loc)}</div>
@@ -162,6 +162,52 @@ practicePhysicians.map(phys => `
 </div>
 `;
 await loadPracticeActivity(p.id);
+}
+
+function renderLocationProfile(loc) {
+const practice = practices.find(p => p.id === loc.practice_id);
+const locPhysicians = physicians.filter(phys => {
+const assigns = physicianAssignments[phys.id] || [];
+return assigns.some(a => a.practice_location_id === loc.id);
+});
+$('mainContent').innerHTML = `
+<div class="profile-header">
+<div style="font-size:0.85rem;margin-bottom:0.5rem;"><span style="cursor:pointer;color:#0a4d3c;text-decoration:underline;" onclick="viewPractice('${practice?.id}')">← ${practice?.name || 'Practice'}</span></div>
+<div class="profile-name">${loc.label || 'Office'}</div>
+<div class="profile-practice">${[loc.address, loc.city, loc.zip].filter(Boolean).join(', ')}</div>
+<div class="profile-meta">
+${mi('Physicians', locPhysicians.length)}${mi('City', loc.city || '—')}${mi('Zip', loc.zip || '—')}
+</div>
+</div>
+<div class="section">
+<div class="section-header">
+<h3>Location Details</h3>
+<div>
+<button class="edit-btn" onclick="editLocationDetails('${loc.id}')">Edit</button>
+<button class="delete-btn" onclick="deleteLocation('${loc.id}')">Delete</button>
+</div>
+</div>
+<div class="contact-grid">
+${ci('📍','Address',locAddr(loc))}${ci('📞','Phone',loc.phone?locPhone(loc.phone):'')}${ci('📠','Fax',loc.fax?fmtPhone(loc.fax):'')}${ci('✉️','Email',loc.practice_email?`<a href="mailto:${loc.practice_email}">${loc.practice_email}</a>`:'')}${ci('🕐','Office Hours',loc.office_hours||'')}${ci('👥','Office Staff',loc.office_staff||'')}${ci('👤','Receptionist',loc.receptionist_name||'')}${ci('📅','Best Days',loc.best_days||'')}
+${!loc.phone&&!loc.practice_email&&!loc.office_hours&&!loc.office_staff&&!loc.receptionist_name&&!loc.best_days&&!loc.fax?'<div class="empty-notice">No details recorded. Use Edit to add details.</div>':''}
+</div>
+</div>
+<div class="section">
+<div class="section-header">
+<h3>Physicians at this Location</h3>
+</div>
+${locPhysicians.length === 0 ?
+'<div class="empty-notice">No physicians assigned to this location.</div>' :
+'<div class="contact-grid">' + locPhysicians.map(phys => `
+<div class="contact-item" style="cursor:pointer;" onclick="setView('physicians');viewPhysician('${phys.id}')">
+<div class="contact-icon">👨‍⚕️</div>
+<div class="contact-item-content">
+<div class="contact-item-label">${phys.priority ? 'Tier ' + phys.priority : 'No tier'}${phys.specialty ? ' · ' + phys.specialty : ''}</div>
+<div class="contact-item-value">${fmtName(phys)}</div>
+</div>
+</div>`).join('') + '</div>'}
+</div>
+`;
 }
 
 async function loadPracticeActivity(practiceId) {

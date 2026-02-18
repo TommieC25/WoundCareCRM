@@ -409,6 +409,16 @@ closeSidebar();
 }
 }
 
+function viewLocation(locId) {
+const loc = practiceLocations.find(l => l.id === locId);
+if (!loc) return;
+currentPractice = practices.find(p => p.id === loc.practice_id);
+currentPhysician = null;
+renderList();
+renderLocationProfile(loc);
+if (window.innerWidth <= 768) closeSidebar();
+}
+
 async function viewPractice(id) {
 currentPractice = practices.find(p => p.id === id);
 currentPhysician = null;
