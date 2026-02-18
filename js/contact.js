@@ -30,9 +30,10 @@ const locations = assignments.map(a => {
 const loc = practiceLocations.find(l => l.id === a.practice_location_id);
 if (loc) {
 const practice = practices.find(p => p.id === loc.practice_id);
+const locLabel = loc.label && loc.label !== loc.city ? loc.label : loc.city || 'Office';
 return {
 id: loc.id,
-label: `${loc.address}, ${loc.city}${practice ? ' (' + practice.name + ')' : ''}`
+label: `${practice ? practice.name + ' — ' : ''}${locLabel}${loc.address ? ' ('+loc.address+')' : ''}`
 };
 }
 return null;
@@ -41,6 +42,8 @@ select.innerHTML = locations.length === 1
 ? `<option value="${locations[0].id}">${locations[0].label}</option>`
 : '<option value="">Select location...</option>' +
 locations.map(l => `<option value="${l.id}">${l.label}</option>`).join('');
+// Refresh attendees when location changes
+select.onchange = () => { if($('contactNotes').value.startsWith('Visit: ')) populateAlsoAttended(); };
 $('locationSelectRow').style.display = locations.length <= 1 ? 'none' : 'block';
 if (locations.length === 1) {
 select.value = locations[0].id;
@@ -50,15 +53,23 @@ select.value = locations[0].id;
 function populateAlsoAttended() {
 const list = $('alsoAttendedList');
 if (!list || !currentPhysician) return;
-const myAssigns = physicianAssignments[currentPhysician.id] || [];
-const myLocIds = myAssigns.map(a => a.practice_location_id);
-const colleagues = physicians.filter(p => {
+// Filter by the currently selected location if one is chosen
+const selectedLocId = $('contactLocation').value;
+let colleagues;
+if (selectedLocId) {
+colleagues = physicians.filter(p => {
 if (p.id === currentPhysician.id) return false;
-const theirAssigns = physicianAssignments[p.id] || [];
-return theirAssigns.some(a => myLocIds.includes(a.practice_location_id));
+return (physicianAssignments[p.id] || []).some(a => a.practice_location_id === selectedLocId);
 });
+} else {
+const myLocIds = (physicianAssignments[currentPhysician.id] || []).map(a => a.practice_location_id);
+colleagues = physicians.filter(p => {
+if (p.id === currentPhysician.id) return false;
+return (physicianAssignments[p.id] || []).some(a => myLocIds.includes(a.practice_location_id));
+});
+}
 if (colleagues.length === 0) {
-list.innerHTML = '<div style="font-size:0.8rem;color:#999;padding:0.2rem 0;">No colleague physicians at shared locations</div>';
+list.innerHTML = `<div style="font-size:0.8rem;color:#999;padding:0.2rem 0;">${selectedLocId ? 'No other physicians at this location' : 'No colleague physicians at shared locations'}</div>`;
 } else {
 list.innerHTML = colleagues.map(p => `<div class="selector-option" style="margin-bottom:0.25rem;" onclick="var c=this.querySelector('input');c.checked=!c.checked;">
 <input type="checkbox" value="${p.id}" class="also-attended-cb">
