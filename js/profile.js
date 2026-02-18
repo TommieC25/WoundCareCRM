@@ -56,7 +56,7 @@ return `
 <div class="location-label">
 ${loc.label || 'Office'}
 ${assign.is_primary ? '<span class="location-badge">Primary</span>' : ''}
-${practiceName ? `<span class="practice-badge">${practiceName}</span>` : ''}
+${practiceName ? `<span class="practice-badge" onclick="viewPractice('${loc.practice_id}')" style="cursor:pointer;" title="View practice">🏢 ${practiceName}</span>` : ''}
 </div>
 <div class="location-actions">
 <button class="icon-btn" onclick="editLocationDetails('${loc.id}')" title="Edit">✏️</button>
