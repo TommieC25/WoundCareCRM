@@ -50,7 +50,6 @@ currentView = view;
 $('tabPhysicians').classList.toggle('active', view === 'physicians');
 $('tabPractices').classList.toggle('active', view === 'practices');
 $('tabActivity').classList.toggle('active', view === 'activity');
-$('tabTasks').classList.toggle('active', view === 'tasks');
 $('tabMap').classList.toggle('active', view === 'map');
 if(view==='activity'){
 $('searchInput').placeholder='Search activity...';
