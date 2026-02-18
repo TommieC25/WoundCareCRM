@@ -18,25 +18,29 @@ const row={};headers.forEach((h,j)=>row[h]=vals[j]||'');rows.push(row);
 }
 status(`Parsed ${rows.length} rows. Importing...`);
 updateSyncIndicators('syncing');
-const practiceNames=[...new Set(rows.map(r=>r.practice_name).filter(Boolean))];
+const practiceNames=[...new Set(rows.map(r=>(r.practice_name||'').trim()).filter(Boolean))];
 const practiceMap={};
 for(const name of practiceNames){
-const{data:ex}=await db.from('practices').select('*').eq('name',name).maybeSingle();
+const{data:exArr}=await db.from('practices').select('*').ilike('name',name).limit(1);
+const ex=exArr&&exArr.length>0?exArr[0]:null;
 if(ex){practiceMap[name]=ex.id;}else{
-const{data:np,error}=await db.from('practices').insert({name}).select().maybeSingle();
+const{data:np}=await db.from('practices').insert({name}).select().maybeSingle();
 if(np)practiceMap[name]=np.id;
 }}
 const physMap=new Map();
 rows.forEach(r=>{
-const key=`${(r.first_name||'').toLowerCase()}|${(r.last_name||'').toLowerCase()}`;
-if(!physMap.has(key))physMap.set(key,{phys:{first_name:r.first_name,last_name:r.last_name,email:r.email||null,priority:r.priority||null,academic_connection:r.academic_connection||r.um_connection||null,specialty:r.specialty||null,degree:r.degree||null,title:r.title||null,patient_volume:r.patient_volume||r.vol||null,general_notes:r.general_notes||null},locs:[]});
+const key=`${(r.first_name||'').trim().toLowerCase()}|${(r.last_name||'').trim().toLowerCase()}`;
+if(!physMap.has(key))physMap.set(key,{phys:{first_name:(r.first_name||'').trim(),last_name:(r.last_name||'').trim(),email:r.email||null,priority:r.priority||null,academic_connection:r.academic_connection||r.um_connection||null,specialty:r.specialty||null,degree:r.degree||null,title:r.title||null,patient_volume:r.patient_volume||r.vol||null,general_notes:r.general_notes||null},locs:[]});
 const e=physMap.get(key);
-if(r.address&&r.address!=='[Research needed]')e.locs.push({practice_id:practiceMap[r.practice_name],address:r.address,city:r.city,zip:r.zip,phone:r.phone,fax:r.fax,office_hours:r.office_hours||null,office_staff:r.office_staff||null,receptionist_name:r.receptionist_name||r.receptionist||null,best_days:r.best_days||null,practice_email:r.practice_email||r.office_email||null,label:r.city||'Office',is_primary:e.locs.length===0});
+const practName=(r.practice_name||'').trim();
+const practId=practiceMap[practName]||practiceMap[Object.keys(practiceMap).find(k=>k.toLowerCase()===practName.toLowerCase())];
+if(r.address&&r.address.trim()&&r.address.trim()!=='[Research needed]')e.locs.push({practice_id:practId,address:(r.address||'').trim(),city:(r.city||'').trim(),zip:(r.zip||'').trim(),phone:r.phone,fax:r.fax,office_hours:r.office_hours||null,office_staff:r.office_staff||null,receptionist_name:r.receptionist_name||r.receptionist||null,best_days:r.best_days||null,practice_email:r.practice_email||r.office_email||null,label:(r.city||'').trim()||'Office',is_primary:e.locs.length===0});
 });
 let count=0;const total=physMap.size;
 for(const[key,entry] of physMap){
 count++;if(count%10===0)status(`Importing physician ${count} of ${total}...`);
-const{data:ex}=await db.from('physicians').select('*').ilike('first_name',entry.phys.first_name).ilike('last_name',entry.phys.last_name).maybeSingle();
+const{data:exArr}=await db.from('physicians').select('*').ilike('first_name',entry.phys.first_name).ilike('last_name',entry.phys.last_name).limit(1);
+const ex=exArr&&exArr.length>0?exArr[0]:null;
 const phys=ex||(await db.from('physicians').insert(entry.phys).select().maybeSingle()).data;
 if(!phys)continue;
 for(const loc of entry.locs){

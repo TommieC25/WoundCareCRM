@@ -3,7 +3,7 @@
 // --- Activity view ---
 async function renderActivityView(){
 try{
-const{data:allLogs,error}=await db.from('contact_logs').select('*').order('contact_date',{ascending:false}).limit(200);
+const{data:allLogs,error}=await db.from('contact_logs').select('*').order('contact_date',{ascending:false}).order('created_at',{ascending:false}).limit(200);
 if(error)throw error;
 const physMap={};physicians.forEach(p=>physMap[p.id]=p);
 const search=$('searchInput').value.toLowerCase();
@@ -14,16 +14,16 @@ $('physicianList').innerHTML=filtered.length===0?'<li class="loading">No activit
 filtered.map(l=>{const p=physMap[l.physician_id]||{};
 let time=l.contact_time||'';let notes=l.notes||'';
 if(!time&&notes.startsWith('[')){const m=notes.match(/^\[(\d{1,2}:\d{2})\]\s*/);if(m){time=m[1];notes=notes.slice(m[0].length);}}
-const preview=notes.length>60?notes.slice(0,60)+'...':notes;
+const preview=notes.length>120?notes.slice(0,120)+'...':notes;
 return`<li class="physician-item" onclick="viewPhysician('${l.physician_id}')">
 <div class="name">${p.first_name||''} ${p.last_name||''}</div>
 <div class="practice">${l.contact_date}${time?' '+time:''}${l.author?' - '+l.author:''}</div>
-<div style="font-size:0.75rem;color:#666;margin-top:0.25rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${preview}</div>
+<div style="font-size:0.75rem;color:#666;margin-top:0.25rem;">${preview}</div>
 </li>`;}).join('');
 $('physicianCount').textContent=filtered.length+' of '+allLogs.length+' activities';
 $('mainContent').innerHTML=`<div class="section"><div class="section-header"><h3>Activity Log</h3><div style="font-size:0.8rem;color:#666;">${filtered.length} entries${search?' matching "'+search+'"':''}</div></div>
 ${filtered.length===0?'<div class="empty-notice">No activity found.</div>':
-'<div class="contact-entries">'+filtered.map(e=>{const phys=physMap[e.physician_id];return renderLogEntry(e,{physName:phys?fmtName(phys):'Unknown',onClick:`viewPhysician('${e.physician_id}')`,full:true});}).join('')+'</div>'}
+'<div class="contact-entries">'+filtered.map(e=>{const phys=physMap[e.physician_id];return renderLogEntry(e,{physName:phys?fmtName(phys):'Unknown',editable:true,editFn:`editNoteFromActivity('${e.id}','${e.physician_id}')`,deleteFn:`deleteNoteFromActivity('${e.id}','${e.physician_id}')`,full:true,showTimestamp:true});}).join('')+'</div>'}
 </div>`;
 }catch(e){console.error('Activity view error:',e);$('physicianList').innerHTML='<li class="loading">Error loading activity</li>';$('mainContent').innerHTML='<div class="empty-state"><h2>Activity</h2><p>Error loading. Try again.</p></div>';}
 }

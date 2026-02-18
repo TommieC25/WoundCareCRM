@@ -1,6 +1,6 @@
 // === js/contact.js === Contact modal, note editing, reminder completion, admin panel toggle
 
-function prefixNote(prefix){const ta=$('contactNotes');if(!ta.value.startsWith('Call: ')&&!ta.value.startsWith('Visit: ')){ta.value=prefix+ta.value;}else{ta.value=ta.value.replace(/^(Call|Visit): /,prefix);}ta.focus();}
+function prefixNote(prefix){const ta=$('contactNotes');if(!ta.value.startsWith('Call: ')&&!ta.value.startsWith('Visit: ')){ta.value=prefix+ta.value;}else{ta.value=ta.value.replace(/^(Call|Visit): /,prefix);}ta.focus();const row=$('alsoAttendedRow');if(row){row.style.display=(prefix==='Visit: ')?'block':'none';if(prefix!=='Visit: '){const det=$('alsoAttendedDetails');if(det)det.style.display='none';const sp=$('staffPresent');if(sp)sp.value='';}}}
 
 function openContactModal() {
 editingContactId = null;
@@ -12,6 +12,9 @@ $('contactSaveBtn').className = 'btn-primary';
 setToday();
 populateLocationDropdown();
 populateAlsoAttended();
+const row=$('alsoAttendedRow');if(row)row.style.display='none';
+const det=$('alsoAttendedDetails');if(det)det.style.display='none';
+const sp=$('staffPresent');if(sp)sp.value='';
 const pr = $('practicePhysSelectRow'); if (pr) pr.style.display = 'none';
 $('contactForm').onsubmit = function(ev) { saveContact(ev); return false; };
 $('setReminder').checked = false;
@@ -45,9 +48,8 @@ select.value = locations[0].id;
 }
 
 function populateAlsoAttended() {
-const row = $('alsoAttendedRow');
 const list = $('alsoAttendedList');
-if (!row || !list || !currentPhysician) { if(row) row.style.display='none'; return; }
+if (!list || !currentPhysician) return;
 const myAssigns = physicianAssignments[currentPhysician.id] || [];
 const myLocIds = myAssigns.map(a => a.practice_location_id);
 const colleagues = physicians.filter(p => {
@@ -55,13 +57,14 @@ if (p.id === currentPhysician.id) return false;
 const theirAssigns = physicianAssignments[p.id] || [];
 return theirAssigns.some(a => myLocIds.includes(a.practice_location_id));
 });
-if (colleagues.length === 0) { row.style.display = 'none'; return; }
-row.style.display = 'block';
-list.style.display = 'none';
+if (colleagues.length === 0) {
+list.innerHTML = '<div style="font-size:0.8rem;color:#999;padding:0.2rem 0;">No colleague physicians at shared locations</div>';
+} else {
 list.innerHTML = colleagues.map(p => `<div class="selector-option" style="margin-bottom:0.25rem;" onclick="var c=this.querySelector('input');c.checked=!c.checked;">
 <input type="checkbox" value="${p.id}" class="also-attended-cb">
 <span class="selector-option-label">${fmtName(p)}</span>
 </div>`).join('');
+}
 }
 
 function closeContactModal(){closeModal('contactModal');}
@@ -72,7 +75,9 @@ const tv=$('contactTime').value,nv=$('contactNotes').value;
 const locVal=$('contactLocation').value||null;
 const reminderOn=$('setReminder').checked;
 const reminderDate=reminderOn?calcBusinessDate(parseInt($('reminderDaysSelect').value)):null;
-const noteText=tv?`[${tv}] ${nv}`:nv;
+const baseNote=tv?`[${tv}] ${nv}`:nv;
+const staffVal=$('staffPresent')?$('staffPresent').value.trim():'';
+const noteText=staffVal?`${baseNote} | Staff: ${staffVal}`:baseNote;
 const dateVal=$('contactDate').value,authorVal=$('authorName').value;
 const data={physician_id:currentPhysician.id,contact_date:dateVal,author:authorVal,notes:noteText,practice_location_id:locVal,reminder_date:reminderDate};
 const alsoCbs=document.querySelectorAll('.also-attended-cb:checked');
@@ -144,6 +149,25 @@ showToast('Reminder marked complete ✓', 'success');
 updateSyncIndicators('synced');
 if (!currentPhysician && !currentPractice) { renderEmptyState(); }
 } catch(e) { showToast('Error: ' + e.message, 'error'); updateSyncIndicators('error'); }
+}
+
+async function editNoteFromActivity(logId, physicianId) {
+currentPhysician = physicians.find(p => p.id === physicianId);
+currentPractice = null;
+if (!currentPhysician) return;
+await loadContactLogs(physicianId);
+renderList();
+renderProfile();
+if (window.innerWidth <= 768) closeSidebar();
+setTimeout(() => editNote(logId), 150);
+}
+
+async function deleteNoteFromActivity(logId, physicianId) {
+currentPhysician = physicians.find(p => p.id === physicianId);
+currentPractice = null;
+if (!currentPhysician) return;
+await loadContactLogs(physicianId);
+deleteNote(logId);
 }
 
 function toggleAdminPanel() {

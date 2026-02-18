@@ -50,7 +50,6 @@ currentView = view;
 $('tabPhysicians').classList.toggle('active', view === 'physicians');
 $('tabPractices').classList.toggle('active', view === 'practices');
 $('tabActivity').classList.toggle('active', view === 'activity');
-$('tabTasks').classList.toggle('active', view === 'tasks');
 $('tabMap').classList.toggle('active', view === 'map');
 if(view==='activity'){
 $('searchInput').placeholder='Search activity...';
@@ -181,7 +180,9 @@ const physLine=opts.physName?`<span style="font-weight:600;color:#0a4d3c;display
 const locLine=e.practice_location_id?'<span class="contact-entry-location">'+getLocationLabel(e.practice_location_id)+'</span>':'';
 const tsLine=opts.showTimestamp?`<span class="contact-entry-timestamp">${formatTimestamp(e.created_at)}</span>`:'';
 const reminderLine=e.reminder_date?`<span style="font-size:0.7rem;padding:0.15rem 0.5rem;background:#fef3c7;color:#92400e;border-radius:4px;margin-left:0.5rem;">Reminder: ${e.reminder_date}</span>`:'';
-const actions=opts.editable?`<div class="contact-entry-actions"><button class="icon-btn" onclick="editNote('${e.id}')" title="Edit">✏️</button><button class="icon-btn" onclick="deleteNote('${e.id}')" title="Delete">🗑️</button></div>`:'';
+const editFn=opts.editFn||`editNote('${e.id}')`;
+const delFn=opts.deleteFn||`deleteNote('${e.id}')`;
+const actions=opts.editable?`<div class="contact-entry-actions"><button class="icon-btn" onclick="event.stopPropagation();${editFn}" title="Edit">✏️</button><button class="icon-btn" onclick="event.stopPropagation();${delFn}" title="Delete">🗑️</button></div>`:'';
 const click=opts.onClick?` style="cursor:pointer" onclick="${opts.onClick}"`:'';
 return `<div class="contact-entry"${click}><div class="contact-entry-header"><div><span class="contact-entry-date">${e.contact_date}${time}${e.author?' - '+e.author:''}</span>${physLine}${locLine}${tsLine}${reminderLine}</div>${actions}</div><div class="contact-entry-notes">${preview}</div></div>`;}
 function ci(icon,label,val){return val?`<div class="contact-item"><div class="contact-icon">${icon}</div><div class="contact-item-content"><div class="contact-item-label">${label}</div><div class="contact-item-value">${val}</div></div></div>`:''}

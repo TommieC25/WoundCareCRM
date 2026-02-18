@@ -58,7 +58,6 @@ Append New Records from CSV <input type="file" accept=".csv" onchange="importCSV
 <button class="view-tab active" onclick="setView('physicians')" id="tabPhysicians">Physicians</button>
 <button class="view-tab" onclick="setView('practices')" id="tabPractices">Practices</button>
 <button class="view-tab" onclick="setView('activity')" id="tabActivity">Activity</button>
-<button class="view-tab" onclick="setView('tasks')" id="tabTasks">Tasks</button>
 <button class="view-tab" onclick="setView('map')" id="tabMap" style="display:none;"></button>
 <button class="view-tab" onclick="setView('dashboard')" id="tabDashboard" style="display:none;"></button>
 </div>
@@ -361,11 +360,17 @@ Append New Records from CSV <input type="file" accept=".csv" onchange="importCSV
 <option value="">Select location...</option>
 </select>
 </div>
-<div id="alsoAttendedRow" style="display:none;">
-<label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer;text-transform:none;letter-spacing:0;font-size:0.9rem;color:#0a4d3c;" onclick="var el=$('alsoAttendedList');el.style.display=el.style.display==='none'?'block':'none';">
-Also Present (log for multiple physicians) <span style="font-size:0.7rem;opacity:0.7;">tap to expand</span>
+<div id="alsoAttendedRow" style="display:none;background:#f0f9ff;border:1px solid #bae6fd;border-radius:8px;padding:0.5rem 0.75rem;">
+<label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer;text-transform:none;letter-spacing:0;font-size:0.9rem;color:#0a4d3c;font-weight:600;" onclick="var el=$('alsoAttendedDetails');el.style.display=el.style.display==='none'?'block':'none';">
+👥 Who was present? <span style="font-size:0.7rem;font-weight:400;opacity:0.7;">tap to expand (optional)</span>
 </label>
-<div id="alsoAttendedList" style="display:none;max-height:150px;overflow-y:auto;border:1px solid #e5e5e5;border-radius:8px;padding:0.5rem;margin-top:0.25rem;"></div>
+<div id="alsoAttendedDetails" style="display:none;margin-top:0.5rem;">
+<div id="alsoAttendedList" style="max-height:130px;overflow-y:auto;"></div>
+<div style="margin-top:0.5rem;">
+<label style="font-size:0.8rem;color:#555;text-transform:none;letter-spacing:0;font-weight:400;">Staff present (optional, e.g. Jane MA, Bob)</label>
+<input type="text" id="staffPresent" placeholder="Staff names..." style="width:100%;padding:0.4rem 0.6rem;border:1px solid #bae6fd;border-radius:6px;font-size:0.9rem;margin-top:0.2rem;">
+</div>
+</div>
 </div>
 <div>
 <label>Notes *</label>
