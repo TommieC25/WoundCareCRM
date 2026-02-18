@@ -185,3 +185,60 @@ function toggleAdminPanel() {
 const panel = $('adminPanel');
 panel.classList.toggle('show');
 }
+
+// --- Task editing from Tasks view ---
+let editingTaskId = null;
+
+function openEditTaskModal(logId) {
+editingTaskId = logId;
+db.from('contact_logs').select('*').eq('id', logId).maybeSingle().then(({data: log}) => {
+if (!log) return;
+let notes = log.notes || '';
+const tm = notes.match(/^\[(\d{1,2}:\d{2}(?:\s*[APap][Mm])?)\]\s*/);
+const timePrefix = tm ? tm[0] : '';
+if (tm) notes = notes.slice(tm[0].length);
+let modal = document.getElementById('editTaskModal');
+if (!modal) {
+modal = document.createElement('div');
+modal.id = 'editTaskModal';
+modal.className = 'modal';
+modal.innerHTML = `<div class="modal-content" style="max-width:460px;"><div class="modal-header"><h2 style="font-size:1.25rem;">Edit Task / Reminder</h2><button class="close-btn" onclick="closeEditTaskModal()">×</button></div><div class="modal-body"><div class="form-grid"><div><label>Due Date</label><input type="date" id="editTaskDate" style="font-size:1rem;"></div><div><label>Note</label><textarea id="editTaskNotes" style="min-height:130px;font-size:0.95rem;"></textarea></div></div><div style="margin-top:1rem;display:flex;gap:0.5rem;"><button class="btn-primary" id="editTaskSaveBtn" onclick="saveEditTask()">Save Changes</button></div></div></div>`;
+modal.addEventListener('click', e => { if (e.target === modal) closeEditTaskModal(); });
+document.body.appendChild(modal);
+}
+document.getElementById('editTaskDate').value = log.reminder_date || '';
+document.getElementById('editTaskNotes').value = notes;
+modal.dataset.timePrefix = timePrefix;
+modal.classList.add('active');
+});
+}
+
+function closeEditTaskModal() {
+const m = document.getElementById('editTaskModal');
+if (m) m.classList.remove('active');
+editingTaskId = null;
+}
+
+async function saveEditTask() {
+if (!editingTaskId) return;
+const date = document.getElementById('editTaskDate').value;
+const rawNotes = document.getElementById('editTaskNotes').value.trim();
+const modal = document.getElementById('editTaskModal');
+const timePrefix = (modal?.dataset.timePrefix) || '';
+const notes = timePrefix ? timePrefix + rawNotes : rawNotes;
+const btn = document.getElementById('editTaskSaveBtn');
+btn.textContent = 'Saving…'; btn.disabled = true;
+try {
+updateSyncIndicators('syncing');
+const {error} = await db.from('contact_logs').update({reminder_date: date || null, notes}).eq('id', editingTaskId);
+if (error) throw error;
+showToast('Task updated ✓', 'success');
+updateSyncIndicators('synced');
+closeEditTaskModal();
+renderTasksView();
+} catch(e) {
+showToast('Error: ' + e.message, 'error');
+updateSyncIndicators('error');
+btn.textContent = 'Save Changes'; btn.disabled = false;
+}
+}
