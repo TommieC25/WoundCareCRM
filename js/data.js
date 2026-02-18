@@ -121,7 +121,8 @@ const { data, error } = await db
 .from('contact_logs')
 .select('*')
 .eq('physician_id', physicianId)
-.order('contact_date', { ascending: false });
+.order('contact_date', { ascending: false })
+.order('created_at', { ascending: false });
 if (error) throw error;
 contactLogs[physicianId] = data || [];
 } catch (error) {

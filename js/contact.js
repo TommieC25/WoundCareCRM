@@ -151,6 +151,25 @@ if (!currentPhysician && !currentPractice) { renderEmptyState(); }
 } catch(e) { showToast('Error: ' + e.message, 'error'); updateSyncIndicators('error'); }
 }
 
+async function editNoteFromActivity(logId, physicianId) {
+currentPhysician = physicians.find(p => p.id === physicianId);
+currentPractice = null;
+if (!currentPhysician) return;
+await loadContactLogs(physicianId);
+renderList();
+renderProfile();
+if (window.innerWidth <= 768) closeSidebar();
+setTimeout(() => editNote(logId), 150);
+}
+
+async function deleteNoteFromActivity(logId, physicianId) {
+currentPhysician = physicians.find(p => p.id === physicianId);
+currentPractice = null;
+if (!currentPhysician) return;
+await loadContactLogs(physicianId);
+deleteNote(logId);
+}
+
 function toggleAdminPanel() {
 const panel = $('adminPanel');
 panel.classList.toggle('show');
