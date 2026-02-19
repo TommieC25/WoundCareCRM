@@ -11,19 +11,21 @@ const filtered=search?allLogs.filter(l=>{const p=physMap[l.physician_id]||{};
 return(l.notes||'').toLowerCase().includes(search)||(l.author||'').toLowerCase().includes(search)||(p.first_name||'').toLowerCase().includes(search)||(p.last_name||'').toLowerCase().includes(search);
 }):allLogs;
 $('physicianList').innerHTML=filtered.length===0?'<li class="loading">No activity found</li>':
-filtered.map(l=>{const p=physMap[l.physician_id]||{};
+filtered.map(l=>{const p=l.physician_id?physMap[l.physician_id]:null;
 let time=l.contact_time||'';let notes=l.notes||'';
 if(!time&&notes.startsWith('[')){const m=notes.match(/^\[(\d{1,2}:\d{2})\]\s*/);if(m){time=m[1];notes=notes.slice(m[0].length);}}
 const preview=notes.length>120?notes.slice(0,120)+'...':notes;
-return`<li class="physician-item" onclick="viewPhysician('${l.physician_id}')">
-<div class="name">${p.first_name||''} ${p.last_name||''}</div>
+const nameDisplay=p?`${p.first_name||''} ${p.last_name||''}`.trim():(l.practice_location_id?getLocationLabel(l.practice_location_id):'Location Note');
+const clickFn=l.physician_id?`viewPhysician('${l.physician_id}')`:l.practice_location_id?`viewLocation('${l.practice_location_id}')`:''
+return`<li class="physician-item" onclick="${clickFn}">
+<div class="name">${nameDisplay}</div>
 <div class="practice">${l.contact_date}${time?' '+time:''}${l.author?' - '+l.author:''}</div>
 <div style="font-size:0.75rem;color:#666;margin-top:0.25rem;">${preview}</div>
 </li>`;}).join('');
 $('physicianCount').textContent=filtered.length+' of '+allLogs.length+' activities';
 $('mainContent').innerHTML=`<div class="section"><div class="section-header"><h3>Activity Log</h3><div style="font-size:0.8rem;color:#666;">${filtered.length} entries${search?' matching "'+search+'"':''}</div></div>
 ${filtered.length===0?'<div class="empty-notice">No activity found.</div>':
-'<div class="contact-entries">'+filtered.map(e=>{const phys=physMap[e.physician_id];return renderLogEntry(e,{physName:phys?fmtName(phys):'Unknown',editable:true,editFn:`editNoteFromActivity('${e.id}','${e.physician_id}')`,deleteFn:`deleteNoteFromActivity('${e.id}','${e.physician_id}')`,full:true,showTimestamp:true});}).join('')+'</div>'}
+'<div class="contact-entries">'+filtered.map(e=>{const phys=e.physician_id?physMap[e.physician_id]:null;const canEdit=!!e.physician_id;return renderLogEntry(e,{physName:phys?fmtName(phys):null,editable:canEdit,editFn:`editNoteFromActivity('${e.id}','${e.physician_id}')`,deleteFn:`deleteNoteFromActivity('${e.id}','${e.physician_id}')`,full:true,showTimestamp:true});}).join('')+'</div>'}
 </div>`;
 }catch(e){console.error('Activity view error:',e);$('physicianList').innerHTML='<li class="loading">Error loading activity</li>';$('mainContent').innerHTML='<div class="empty-state"><h2>Activity</h2><p>Error loading. Try again.</p></div>';}
 }
@@ -46,12 +48,13 @@ let html=`<div class="section"><div class="section-header"><h3>Tasks &amp; Remin
 if(overdue.length>0){
 html+=`<div style="margin-bottom:1rem;"><div style="font-size:0.75rem;font-weight:700;color:#dc2626;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:0.5rem;padding-bottom:0.25rem;border-bottom:2px solid #fca5a5;">⚠️ Overdue (${overdue.length})</div><div class="contact-entries">`;
 overdue.forEach(r=>{
-const phys=physMap[r.physician_id];const physName=phys?fmtName(phys):'Unknown';
+const phys=r.physician_id?physMap[r.physician_id]:null;const physName=phys?fmtName(phys):(r.practice_location_id?getLocationLabel(r.practice_location_id):'Location Note');
 const emailLink=phys?.email?` <a href="mailto:${phys.email}" style="color:#0a4d3c;font-size:0.75rem;">✉️ Email</a>`:'';
 const tm=(r.notes||'').match(/^\[(\d{1,2}:\d{2}(?:\s*[APap][Mm])?)\]\s*/);
 const displayNotes=tm?r.notes.replace(tm[0],''):(r.notes||'');
 const preview=displayNotes.length>120?displayNotes.substring(0,120)+'...':displayNotes;
-html+=`<div class="contact-entry" style="border-left-color:#dc2626;background:#fff5f5;display:flex;gap:0.5rem;align-items:flex-start;cursor:pointer;" onclick="viewPhysician('${r.physician_id}')">
+const clickFn=r.physician_id?`viewPhysician('${r.physician_id}')`:r.practice_location_id?`viewLocation('${r.practice_location_id}')`:''
+html+=`<div class="contact-entry" style="border-left-color:#dc2626;background:#fff5f5;display:flex;gap:0.5rem;align-items:flex-start;cursor:pointer;" onclick="${clickFn}">
 <button onclick="event.stopPropagation();completeReminder('${r.id}').then(()=>renderTasksView())" title="Mark complete" style="background:none;border:2px solid #dc2626;color:#dc2626;border-radius:50%;width:24px;height:24px;min-width:24px;cursor:pointer;font-size:0.8rem;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:0.15rem;">✓</button>
 <div style="flex:1;"><div style="font-weight:600;color:#dc2626;">${physName}${emailLink}</div>
 <div style="font-size:0.75rem;color:#dc2626;font-weight:600;">Due ${r.reminder_date} — OVERDUE</div>
@@ -68,12 +71,13 @@ const d=new Date(date+'T12:00:00');const label=d.toLocaleDateString('en-US',{wee
 const isToday=date===today;
 html+=`<div style="margin-bottom:0.75rem;"><div style="font-size:0.75rem;font-weight:700;color:#92400e;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:0.5rem;padding-bottom:0.25rem;border-bottom:2px solid #fcd34d;">${isToday?'📅 TODAY — ':''}${label}</div><div class="contact-entries">`;
 dayR.forEach(r=>{
-const phys=physMap[r.physician_id];const physName=phys?fmtName(phys):'Unknown';
+const phys=r.physician_id?physMap[r.physician_id]:null;const physName=phys?fmtName(phys):(r.practice_location_id?getLocationLabel(r.practice_location_id):'Location Note');
 const emailLink=phys?.email?` <a href="mailto:${phys.email}" onclick="event.stopPropagation()" style="color:#0a4d3c;font-size:0.75rem;">✉️ Email</a>`:'';
 const tm=(r.notes||'').match(/^\[(\d{1,2}:\d{2}(?:\s*[APap][Mm])?)\]\s*/);
 const displayNotes=tm?r.notes.replace(tm[0],''):(r.notes||'');
 const preview=displayNotes.length>120?displayNotes.substring(0,120)+'...':displayNotes;
-html+=`<div class="contact-entry" style="border-left-color:#f59e0b;display:flex;gap:0.5rem;align-items:flex-start;cursor:pointer;" onclick="viewPhysician('${r.physician_id}')">
+const clickFn=r.physician_id?`viewPhysician('${r.physician_id}')`:r.practice_location_id?`viewLocation('${r.practice_location_id}')`:''
+html+=`<div class="contact-entry" style="border-left-color:#f59e0b;display:flex;gap:0.5rem;align-items:flex-start;cursor:pointer;" onclick="${clickFn}">
 <button onclick="event.stopPropagation();completeReminder('${r.id}').then(()=>renderTasksView())" title="Mark complete" style="background:none;border:2px solid #f59e0b;color:#92400e;border-radius:50%;width:24px;height:24px;min-width:24px;cursor:pointer;font-size:0.8rem;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:0.15rem;">✓</button>
 <div style="flex:1;"><div style="font-weight:600;color:#0a4d3c;">${physName}${emailLink}</div>
 <div style="font-size:0.85rem;color:#333;margin-top:0.25rem;">${preview}</div>

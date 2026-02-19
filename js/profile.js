@@ -53,17 +53,17 @@ const practiceName = loc.practices?.name || getPracticeName(loc.practice_id);
 return `
 <div class="location-card ${assign.is_primary ? 'primary' : ''}">
 <div class="location-card-header">
-<div class="location-label">
+<div class="location-label" style="cursor:pointer;flex:1;" onclick="viewLocation('${loc.id}')">
 ${loc.label || 'Office'}
 ${assign.is_primary ? '<span class="location-badge">Primary</span>' : ''}
-${practiceName ? `<span class="practice-badge" onclick="viewPractice('${loc.practice_id}')" style="cursor:pointer;" title="View practice">🏢 ${practiceName}</span>` : ''}
+${practiceName ? `<span class="practice-badge" title="View practice">🏢 ${practiceName}</span>` : ''}
 </div>
 <div class="location-actions">
 <button class="icon-btn" onclick="editLocationDetails('${loc.id}')" title="Edit">✏️</button>
 <button class="icon-btn" onclick="removeAssignment('${assign.id}')" title="Remove">🗑️</button>
 </div>
 </div>
-<div class="location-details">${locDetails(loc)}</div>
+<div class="location-details" style="cursor:pointer;" onclick="viewLocation('${loc.id}')">${locDetails(loc)}</div>
 </div>
 `}).join('') +
 '</div>'
@@ -119,15 +119,15 @@ ${locations.length === 0 ?
 '<div class="empty-notice">No locations yet. Click + Add Location to add an address.</div>' :
 '<div class="locations-grid">' +
 locations.map(loc => `
-<div class="location-card" style="cursor:pointer;" onclick="viewLocation('${loc.id}')">
+<div class="location-card">
 <div class="location-card-header">
-<div class="location-label" style="text-decoration:underline;">${loc.label || 'Office'}</div>
+<div class="location-label" style="cursor:pointer;text-decoration:underline;flex:1;" onclick="viewLocation('${loc.id}')">${loc.label || 'Office'}</div>
 <div class="location-actions">
-<button class="icon-btn" onclick="event.stopPropagation();editLocationDetails('${loc.id}')" title="Edit">✏️</button>
-<button class="icon-btn" onclick="event.stopPropagation();deleteLocation('${loc.id}')" title="Delete">🗑️</button>
+<button class="icon-btn" onclick="editLocationDetails('${loc.id}')" title="Edit">✏️</button>
+<button class="icon-btn" onclick="deleteLocation('${loc.id}')" title="Delete">🗑️</button>
 </div>
 </div>
-<div class="location-details">${locDetails(loc)}</div>
+<div class="location-details" style="cursor:pointer;" onclick="viewLocation('${loc.id}')">${locDetails(loc)}</div>
 </div>
 `).join('') +
 '</div>'
@@ -164,7 +164,7 @@ practicePhysicians.map(phys => `
 await loadPracticeActivity(p.id);
 }
 
-function renderLocationProfile(loc) {
+async function renderLocationProfile(loc) {
 const practice = practices.find(p => p.id === loc.practice_id);
 const locPhysicians = physicians.filter(phys => {
 const assigns = physicianAssignments[phys.id] || [];
@@ -207,22 +207,51 @@ ${locPhysicians.length === 0 ?
 </div>
 </div>`).join('') + '</div>'}
 </div>
+<div class="section">
+<div class="section-header">
+<h3>Activity Log</h3>
+<button class="edit-btn" onclick="openLocationContactModal('${loc.id}')">+ Log Call</button>
+</div>
+<div id="locationActivityContent"><div class="loading">Loading activity...</div></div>
+</div>
 `;
+loadLocationActivity(loc.id);
+}
+
+async function loadLocationActivity(locId) {
+try {
+const { data: logs, error } = await db.from('contact_logs')
+.select('*')
+.eq('practice_location_id', locId)
+.order('contact_date', { ascending: false })
+.order('created_at', { ascending: false })
+.limit(50);
+if (error) throw error;
+const el = $('locationActivityContent');
+if (!el) return;
+if (!logs || logs.length === 0) {
+el.innerHTML = '<div class="empty-notice">No activity logged yet. Click + Log Call to record your first call or visit.</div>';
+return;
+}
+el.innerHTML = '<div class="contact-entries">' + logs.map(e => {
+const phys = e.physician_id ? physicians.find(p => p.id === e.physician_id) : null;
+return renderLogEntry(e, { physName: phys ? fmtName(phys) : null, editable: false, full: true, showTimestamp: true });
+}).join('') + '</div>';
+} catch(err) {
+const el = $('locationActivityContent');
+if (el) el.innerHTML = '<div class="empty-notice">Could not load activity</div>';
+}
 }
 
 async function loadPracticeActivity(practiceId) {
 const locIds = practiceLocations.filter(l => l.practice_id === practiceId).map(l => l.id);
-const practPhysIds = physicians.filter(ph => {
-const assigns = physicianAssignments[ph.id] || [];
-return assigns.some(a => locIds.includes(a.practice_location_id));
-}).map(ph => ph.id);
-if (practPhysIds.length === 0) {
+if (locIds.length === 0) {
 const el = $('practiceActivityContent');
-if (el) el.innerHTML = '<div class="empty-notice">No physicians assigned yet. Assign physicians to log activity.</div>';
+if (el) el.innerHTML = '<div class="empty-notice">No locations assigned yet. Add locations to log activity.</div>';
 return;
 }
 try {
-const { data: logs, error } = await db.from('contact_logs').select('*').in('physician_id', practPhysIds).order('contact_date', { ascending: false }).limit(50);
+const { data: logs, error } = await db.from('contact_logs').select('*').in('practice_location_id', locIds).order('contact_date', { ascending: false }).order('created_at', { ascending: false }).limit(50);
 if (error) throw error;
 const el = $('practiceActivityContent');
 if (!el) return;
@@ -231,8 +260,8 @@ el.innerHTML = '<div class="empty-notice">No activity logged yet. Click + Log Ca
 return;
 }
 el.innerHTML = '<div class="contact-entries">' + logs.map(e => {
-const phys = physicians.find(p => p.id === e.physician_id);
-return renderLogEntry(e,{physName:phys?fmtName(phys):'Unknown'});
+const phys = e.physician_id ? physicians.find(p => p.id === e.physician_id) : null;
+return renderLogEntry(e, { physName: phys ? fmtName(phys) : null });
 }).join('') + '</div>';
 } catch(e) {
 const el = $('practiceActivityContent');
@@ -266,7 +295,7 @@ physRow.id = 'practicePhysSelectRow';
 $('locationSelectRow').parentElement.insertBefore(physRow, $('locationSelectRow'));
 }
 if (practPhys.length > 0) {
-physRow.innerHTML = `<label>Physicians/Staff Present</label>
+physRow.innerHTML = `<label>Who was present? <span style="font-weight:400;color:#aaa;text-transform:none;letter-spacing:0;">(optional — check if physician was there)</span></label>
 <div id="practicePhysCheckboxes" style="max-height:180px;overflow-y:auto;border:2px solid #e5e5e5;border-radius:8px;padding:0.5rem;">
 ${practPhys.map(p => `<div class="selector-option" style="margin-bottom:0.25rem;" onclick="var c=this.querySelector('input');c.checked=!c.checked;">
 <input type="checkbox" value="${p.id}" class="practice-phys-cb">
@@ -278,11 +307,11 @@ ${practPhys.map(p => `<div class="selector-option" style="margin-bottom:0.25rem;
 </div>
 </div>
 <input type="text" id="officeStaffNameInput" placeholder="Office staff name (optional)" style="display:none;margin-top:0.25rem;padding:0.5rem;font-size:0.85rem;border:1px solid #fcd34d;border-radius:6px;width:100%;">
-<div style="font-size:0.75rem;color:#666;margin-top:0.25rem;">${practPhys.length} physician${practPhys.length!==1?'s':''} at this practice</div>`;
+<div style="font-size:0.75rem;color:#999;margin-top:0.25rem;">Leave unchecked to log a location-level note with no physician attached</div>`;
 physRow.style.display = 'block';
 if (practPhys.length === 1) physRow.querySelector('.practice-phys-cb').checked = true;
 } else {
-physRow.innerHTML = `<label>Who did you contact?</label>
+physRow.innerHTML = `<label>Who was present? <span style="font-weight:400;color:#aaa;text-transform:none;letter-spacing:0;">(optional)</span></label>
 <div style="padding:0.5rem;border:2px solid #e5e5e5;border-radius:8px;">
 <div class="selector-option" style="background:#fff9e6;border:1px solid #fcd34d;" onclick="var c=this.querySelector('input');c.checked=!c.checked;var n=document.getElementById('officeStaffNameInput');if(n)n.style.display=c.checked?'block':'none';">
 <input type="checkbox" value="office_staff" class="practice-phys-cb" id="officeStaffCb">
@@ -290,7 +319,7 @@ physRow.innerHTML = `<label>Who did you contact?</label>
 </div>
 </div>
 <input type="text" id="officeStaffNameInput" placeholder="Office staff name (optional)" style="display:none;margin-top:0.25rem;padding:0.5rem;font-size:0.85rem;border:1px solid #fcd34d;border-radius:6px;width:100%;">
-<div style="font-size:0.75rem;color:#f97316;margin-top:0.25rem;">No physicians assigned yet — you can still log a note about office staff.</div>`;
+<div style="font-size:0.75rem;color:#999;margin-top:0.25rem;">No physicians assigned yet — note will be saved at the location level.</div>`;
 physRow.style.display = 'block';
 }
 $('setReminder').checked = false;
@@ -307,7 +336,6 @@ const selectedValues = [...cbs].map(cb => cb.value);
 const physIds = selectedValues.filter(v => v !== 'office_staff');
 const hasOfficeStaff = selectedValues.includes('office_staff');
 const staffName = ($('officeStaffNameInput')?.value || '').trim();
-if (physIds.length === 0 && !hasOfficeStaff) { showToast('Please select at least one physician or Office Staff', 'error'); return; }
 const tv = $('contactTime').value, nv = $('contactNotes').value;
 const locVal = $('contactLocation').value || null;
 const reminderOn = $('setReminder').checked;
@@ -315,27 +343,111 @@ const reminderDate = reminderOn ? calcCalendarDate(parseInt($('reminderDaysSelec
 const dateVal = $('contactDate').value, authorVal = $('authorName').value;
 await withSave('contactSaveBtn', 'Save Note', async() => {
 const entries = [];
+const baseNote = tv ? `[${tv}] ${nv}` : nv;
+// One entry per checked physician
 physIds.forEach(pid => {
-const noteText = tv ? `[${tv}] ${nv}` : nv;
-entries.push({physician_id:pid,contact_date:dateVal,author:authorVal,notes:noteText,practice_location_id:locVal,reminder_date:reminderDate});
+entries.push({physician_id:pid,contact_date:dateVal,author:authorVal,notes:baseNote,practice_location_id:locVal,reminder_date:reminderDate});
 });
+// Office staff entry always saves with null physician_id
 if (hasOfficeStaff) {
-const staffNote = staffName ? `[Office Staff: ${staffName}] ` : '[Office Staff] ';
-const noteText = tv ? `[${tv}] ${staffNote}${nv}` : `${staffNote}${nv}`;
-const firstPhysId = physIds.length > 0 ? null : (physicians.find(p => (physicianAssignments[p.id]||[]).some(a => (practiceLocations.filter(l=>l.practice_id===currentPractice.id)).some(l=>l.id===a.practice_location_id)))?.id || null);
-entries.push({physician_id:firstPhysId,contact_date:dateVal,author:authorVal,notes:noteText,practice_location_id:locVal,reminder_date:reminderDate});
+const staffPrefix = staffName ? `[Office Staff: ${staffName}] ` : '[Office Staff] ';
+const staffNote = tv ? `[${tv}] ${staffPrefix}${nv}` : `${staffPrefix}${nv}`;
+entries.push({physician_id:null,contact_date:dateVal,author:authorVal,notes:staffNote,practice_location_id:locVal,reminder_date:reminderDate});
 }
-if (entries.length === 0) { showToast('Nothing to save', 'info'); return; }
+// If nothing selected, save as pure location-level note (physician_id = null)
+if (entries.length === 0) {
+entries.push({physician_id:null,contact_date:dateVal,author:authorVal,notes:baseNote,practice_location_id:locVal,reminder_date:reminderDate});
+}
 const {error} = await db.from('contact_logs').insert(entries);
 if (error) throw error;
 for (const pid of physIds) {
 await db.from('physicians').update({last_contact:dateVal}).eq('id',pid);
 }
-const total = physIds.length + (hasOfficeStaff ? 1 : 0);
-showToast(`Call logged for ${total} contact${total!==1?'s':''}`, 'success');
+const label = physIds.length > 0 ? `Call logged for ${physIds.length} physician${physIds.length!==1?'s':''}` : 'Location note logged';
+showToast(label, 'success');
 await loadAllData();
 renderPracticeProfile();
 await loadPracticeActivity(currentPractice.id);
 setTimeout(() => { closeContactModal(); $('contactForm').onsubmit = function(ev) { saveContact(ev); return false; }; const pr = $('practicePhysSelectRow'); if (pr) pr.style.display = 'none'; }, 500);
+});
+}
+
+function openLocationContactModal(locId) {
+const loc = practiceLocations.find(l => l.id === locId);
+if (!loc) return;
+editingContactId = null;
+$('contactForm').reset();
+$('contactModalTitle').textContent = 'Log Call / Visit';
+$('authorName').value = 'Tom';
+$('contactSaveBtn').textContent = 'Save Note';
+$('contactSaveBtn').className = 'btn-primary';
+setToday();
+// Pre-set location — not editable
+const select = $('contactLocation');
+select.innerHTML = `<option value="${loc.id}">${loc.label || loc.address || 'Office'}${loc.city ? ', ' + loc.city : ''}</option>`;
+select.value = loc.id;
+$('locationSelectRow').style.display = 'none';
+// Hide also-attended row
+const alsoRow = $('alsoAttendedRow');
+if (alsoRow) alsoRow.style.display = 'none';
+// Physician checklist (optional)
+const locPhys = physicians.filter(ph => (physicianAssignments[ph.id] || []).some(a => a.practice_location_id === locId));
+let physRow = $('practicePhysSelectRow');
+if (!physRow) {
+physRow = document.createElement('div');
+physRow.id = 'practicePhysSelectRow';
+$('locationSelectRow').parentElement.insertBefore(physRow, $('locationSelectRow'));
+}
+const physHtml = locPhys.length > 0
+? locPhys.map(p => `<div class="selector-option" style="margin-bottom:0.25rem;" onclick="var c=this.querySelector('input');c.checked=!c.checked;"><input type="checkbox" value="${p.id}" class="loc-phys-cb"><span class="selector-option-label">${fmtName(p)}</span></div>`).join('')
+: '<div style="font-size:0.8rem;color:#999;padding:0.25rem;">No physicians assigned to this location yet</div>';
+physRow.innerHTML = `<label style="font-size:0.75rem;font-weight:600;color:#666;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:0.25rem;">Who was present? <span style="font-weight:400;color:#aaa;text-transform:none;letter-spacing:0;">(optional)</span></label><div style="max-height:180px;overflow-y:auto;border:2px solid #e5e5e5;border-radius:8px;padding:0.5rem;">${physHtml}</div><div style="font-size:0.75rem;color:#999;margin-top:0.25rem;">Leave unchecked to save as a location-level note with no physician attached</div>`;
+physRow.style.display = 'block';
+$('setReminder').checked = false;
+$('reminderDays').style.display = 'none';
+$('reminderDatePreview').textContent = '';
+$('contactForm').onsubmit = function(ev) { saveLocationContact(ev, locId); return false; };
+$('contactModal').classList.add('active');
+}
+
+async function saveLocationContact(e, locId) {
+e.preventDefault();
+const tv = $('contactTime').value, nv = $('contactNotes').value;
+const dateVal = $('contactDate').value, authorVal = $('authorName').value;
+const reminderOn = $('setReminder').checked;
+const reminderDate = reminderOn ? calcCalendarDate(parseInt($('reminderDaysSelect').value)) : null;
+const cbs = document.querySelectorAll('.loc-phys-cb:checked');
+const physIds = [...cbs].map(cb => cb.value);
+const noteText = tv ? `[${tv}] ${nv}` : nv;
+await withSave('contactSaveBtn', 'Save Note', async () => {
+let entries;
+if (physIds.length > 0) {
+entries = physIds.map(pid => ({
+physician_id: pid, contact_date: dateVal, author: authorVal,
+notes: noteText, practice_location_id: locId, reminder_date: reminderDate
+}));
+} else {
+entries = [{ physician_id: null, contact_date: dateVal, author: authorVal,
+notes: noteText, practice_location_id: locId, reminder_date: reminderDate }];
+}
+const { error } = await db.from('contact_logs').insert(entries);
+if (error) throw error;
+for (const pid of physIds) {
+await db.from('physicians').update({ last_contact: dateVal }).eq('id', pid);
+}
+const label = physIds.length > 0 ? `Note logged for ${physIds.length} physician${physIds.length !== 1 ? 's' : ''}` : 'Location note logged';
+showToast(label, 'success');
+await loadAllData();
+const updatedLoc = practiceLocations.find(l => l.id === locId);
+if (updatedLoc) {
+currentPractice = practices.find(p => p.id === updatedLoc.practice_id);
+renderLocationProfile(updatedLoc);
+}
+setTimeout(() => {
+closeContactModal();
+$('contactForm').onsubmit = function(ev) { saveContact(ev); return false; };
+const pr = $('practicePhysSelectRow');
+if (pr) pr.style.display = 'none';
+}, 500);
 });
 }
