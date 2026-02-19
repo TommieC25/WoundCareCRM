@@ -51,19 +51,19 @@ const loc = assign.practice_locations || practiceLocations.find(l => l.id === as
 if (!loc) return '';
 const practiceName = loc.practices?.name || getPracticeName(loc.practice_id);
 return `
-<div class="location-card ${assign.is_primary ? 'primary' : ''}" style="cursor:pointer;" onclick="viewLocation('${loc.id}')">
+<div class="location-card ${assign.is_primary ? 'primary' : ''}">
 <div class="location-card-header">
-<div class="location-label">
+<div class="location-label" style="cursor:pointer;flex:1;" onclick="viewLocation('${loc.id}')">
 ${loc.label || 'Office'}
 ${assign.is_primary ? '<span class="location-badge">Primary</span>' : ''}
-${practiceName ? `<span class="practice-badge" style="cursor:pointer;" title="View practice">🏢 ${practiceName}</span>` : ''}
+${practiceName ? `<span class="practice-badge" title="View practice">🏢 ${practiceName}</span>` : ''}
 </div>
 <div class="location-actions">
-<button class="icon-btn" onclick="event.stopPropagation();editLocationDetails('${loc.id}')" title="Edit">✏️</button>
-<button class="icon-btn" onclick="event.stopPropagation();removeAssignment('${assign.id}')" title="Remove">🗑️</button>
+<button class="icon-btn" onclick="editLocationDetails('${loc.id}')" title="Edit">✏️</button>
+<button class="icon-btn" onclick="removeAssignment('${assign.id}')" title="Remove">🗑️</button>
 </div>
 </div>
-<div class="location-details">${locDetails(loc)}</div>
+<div class="location-details" style="cursor:pointer;" onclick="viewLocation('${loc.id}')">${locDetails(loc)}</div>
 </div>
 `}).join('') +
 '</div>'
@@ -119,15 +119,15 @@ ${locations.length === 0 ?
 '<div class="empty-notice">No locations yet. Click + Add Location to add an address.</div>' :
 '<div class="locations-grid">' +
 locations.map(loc => `
-<div class="location-card" style="cursor:pointer;" onclick="viewLocation('${loc.id}')">
+<div class="location-card">
 <div class="location-card-header">
-<div class="location-label" style="text-decoration:underline;">${loc.label || 'Office'}</div>
+<div class="location-label" style="cursor:pointer;text-decoration:underline;flex:1;" onclick="viewLocation('${loc.id}')">${loc.label || 'Office'}</div>
 <div class="location-actions">
-<button class="icon-btn" onclick="event.stopPropagation();editLocationDetails('${loc.id}')" title="Edit">✏️</button>
-<button class="icon-btn" onclick="event.stopPropagation();deleteLocation('${loc.id}')" title="Delete">🗑️</button>
+<button class="icon-btn" onclick="editLocationDetails('${loc.id}')" title="Edit">✏️</button>
+<button class="icon-btn" onclick="deleteLocation('${loc.id}')" title="Delete">🗑️</button>
 </div>
 </div>
-<div class="location-details">${locDetails(loc)}</div>
+<div class="location-details" style="cursor:pointer;" onclick="viewLocation('${loc.id}')">${locDetails(loc)}</div>
 </div>
 `).join('') +
 '</div>'
