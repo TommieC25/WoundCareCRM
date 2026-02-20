@@ -17,23 +17,23 @@ $('mainContent').innerHTML = `
 ${associatedPractices.length > 0 ? associatedPractices.map(pr => `<span style="cursor:pointer;text-decoration:underline;color:#0a4d3c;" onclick="event.stopPropagation();editPracticeFromProfile('${pr.id}')">${pr.name}</span>`).join(' | ') + ` <button class="edit-btn" style="font-size:0.75rem;padding:0.25rem 0.5rem;margin-left:0.5rem;" onclick="editPracticeFromProfile('${associatedPractices[0].id}')">Edit Practice</button>` : 'No practice assigned'}
 </div>
 <div class="profile-meta">
-${mi('Priority',p.priority||'Not set')}${mi('Specialty',p.specialty||'Not set')}${mi('Degree',p.degree||'—')}${p.title?mi('Title',p.title):''}
-${p.email?`<div class="meta-item"><div class="meta-label">Email</div><div class="meta-value"><a href="mailto:${p.email}" style="color:#0a4d3c;">${p.email}</a></div></div>`:''}
-${mi('Academic Connection',p.academic_connection||p.um_connection||'None')}${mi('Candidate Patient Volume',p.patient_volume||p.mohs_volume||'Unknown')}
+${p.specialty==='Administrative Staff'
+  ? `${p.title?mi('Role',p.title):mi('Role','Office Staff')}${p.email?`<div class="meta-item"><div class="meta-label">Email</div><div class="meta-value"><a href="mailto:${p.email}" style="color:#0a4d3c;">${p.email}</a></div></div>`:''}<div class="meta-item"><div class="meta-label">Type</div><div class="meta-value" style="color:#7c3aed;font-weight:600;">Staff Contact</div></div>`
+  : `${mi('Priority',p.priority||'Not set')}${mi('Specialty',p.specialty||'Not set')}${mi('Degree',p.degree||'—')}${p.title?mi('Title',p.title):''}${p.email?`<div class="meta-item"><div class="meta-label">Email</div><div class="meta-value"><a href="mailto:${p.email}" style="color:#0a4d3c;">${p.email}</a></div></div>`:''}${mi('Academic Connection',p.academic_connection||p.um_connection||'None')}${mi('Candidate Patient Volume',p.patient_volume||p.mohs_volume||'Unknown')}`}
 <div class="meta-item"><span class="meta-label">Advanced Solution</span><label style="display:inline-flex;align-items:center;gap:0.4rem;cursor:pointer;padding:0.25rem 0.6rem;border-radius:6px;background:${p.advanced_solution?'#f97316':'#e5e5e5'};color:${p.advanced_solution?'white':'#666'};font-size:0.8rem;font-weight:700;transition:all 0.2s;" onclick="toggleAdvancedSolution(event)"><input type="checkbox" ${p.advanced_solution?'checked':''} style="width:16px;height:16px;min-width:16px;" onchange="toggleAdvancedSolution(event)">${p.advanced_solution?'YES':'NO'}</label></div>
 ${mi('Last Contact',p.last_contact||'Never')}${mi('Locations',assignments.length+' location'+(assignments.length!==1?'s':''))}
 </div>
 </div>
 <div class="section">
 <div class="section-header">
-<h3>Physician Profile</h3>
+<h3>${p.specialty==='Administrative Staff'?'Staff Contact':'Physician Profile'}</h3>
 <div>
 <button class="edit-btn" onclick="editPhysicianInfo()">Edit</button>
 <button class="delete-btn" onclick="deletePhysician()">Delete</button>
 </div>
 </div>
 <div class="contact-grid">
-${ci('✉️','Physician Email',p.email?`<a href="mailto:${p.email}">${p.email}</a>`:'')}
+${ci('✉️',p.specialty==='Administrative Staff'?'Email':'Physician Email',p.email?`<a href="mailto:${p.email}">${p.email}</a>`:'')}
 ${ci('📝','General Notes',p.general_notes)}
 ${!p.email&&!p.general_notes?'<div class="empty-notice">Click Edit to add email and notes</div>':''}
 </div>
@@ -142,21 +142,22 @@ locations.map(loc => `
 </div>
 <div class="section">
 <div class="section-header">
-<h3>Physicians at this Practice</h3>
-<button class="edit-btn" onclick="openAssignPhysicianModal()">+ Assign Physician</button>
+<h3>Physicians & Staff</h3>
+<button class="edit-btn" onclick="openAssignPhysicianModal()">+ Assign</button>
 </div>
 ${practicePhysicians.length === 0 ?
-'<div class="empty-notice">No physicians assigned to this practice yet.</div>' :
+'<div class="empty-notice">No physicians or staff assigned to this practice yet.</div>' :
 '<div class="contact-grid">' +
-practicePhysicians.map(phys => `
-<div class="contact-item" style="cursor: pointer;" onclick="setView('physicians');viewPhysician('${phys.id}')">
-<div class="contact-icon">👨‍⚕️</div>
+practicePhysicians.map(phys => {
+const isStaffP = phys.specialty === 'Administrative Staff';
+return `<div class="contact-item" style="cursor: pointer;" onclick="setView('physicians');viewPhysician('${phys.id}')">
+<div class="contact-icon">${isStaffP ? '👤' : '👨‍⚕️'}</div>
 <div class="contact-item-content">
-<div class="contact-item-label">${phys.priority || 'No tier'}</div>
+<div class="contact-item-label">${isStaffP ? (phys.title || 'Staff') : (phys.priority ? 'P'+phys.priority : 'No tier')}</div>
 <div class="contact-item-value">${fmtName(phys)}</div>
 </div>
-</div>
-`).join('') +
+</div>`;
+}).join('') +
 '</div>'
 }
 </div>
@@ -194,18 +195,21 @@ ${!loc.phone&&!loc.practice_email&&!loc.office_hours&&!loc.office_staff&&!loc.re
 </div>
 <div class="section">
 <div class="section-header">
-<h3>Physicians at this Location</h3>
+<h3>Physicians & Staff</h3>
 </div>
 ${locPhysicians.length === 0 ?
 '<div class="empty-notice">No physicians assigned to this location.</div>' :
-'<div class="contact-grid">' + locPhysicians.map(phys => `
+'<div class="contact-grid">' + locPhysicians.map(phys => {
+const isStaffL = phys.specialty === 'Administrative Staff';
+return `
 <div class="contact-item" style="cursor:pointer;" onclick="setView('physicians');viewPhysician('${phys.id}')">
-<div class="contact-icon">👨‍⚕️</div>
+<div class="contact-icon">${isStaffL ? '👤' : '👨‍⚕️'}</div>
 <div class="contact-item-content">
-<div class="contact-item-label">${phys.priority ? 'Tier ' + phys.priority : 'No tier'}${phys.specialty ? ' · ' + phys.specialty : ''}</div>
+<div class="contact-item-label">${isStaffL ? (phys.title || 'Staff') : (phys.priority ? 'P' + phys.priority : 'No tier')}${!isStaffL && phys.specialty ? ' · ' + phys.specialty : ''}</div>
 <div class="contact-item-value">${fmtName(phys)}</div>
 </div>
-</div>`).join('') + '</div>'}
+</div>`;
+}).join('') + '</div>'}
 </div>
 <div class="section">
 <div class="section-header">

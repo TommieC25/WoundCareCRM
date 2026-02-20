@@ -148,8 +148,9 @@ Append New Records from CSV <input type="file" accept=".csv" onchange="importCSV
 </select>
 </div>
 <div>
-<label>Title (non-physician staff)</label>
-<input type="text" id="staffTitle" placeholder="e.g. Office Manager">
+<label>Job Title / Role</label>
+<input type="text" id="staffTitle" placeholder="e.g. Office Manager, Medical Director">
+<div style="font-size:0.72rem;color:#888;margin-top:0.2rem;">For staff: select "Administrative Staff" above, enter role here</div>
 </div>
 </div>
 <div>
@@ -169,15 +170,16 @@ Append New Records from CSV <input type="file" accept=".csv" onchange="importCSV
 </select>
 </div>
 <div>
-<label>Specialty</label>
+<label>Specialty / Role</label>
 <select id="specialty">
-<option value="">-- Select Specialty --</option>
+<option value="">-- Select --</option>
 <option value="Dermatology">Dermatology</option>
 <option value="Podiatry">Podiatry</option>
 <option value="Wound Healing">Wound Healing</option>
 <option value="Plastic & Reconstructive Surgery">Plastic & Reconstructive Surgery</option>
 <option value="General Surgery">General Surgery</option>
 <option value="Other">Other</option>
+<option value="Administrative Staff">── Administrative Staff ──</option>
 </select>
 </div>
 </div>
@@ -214,16 +216,17 @@ Append New Records from CSV <input type="file" accept=".csv" onchange="importCSV
 <option value="">-- Select Practice --</option>
 </select>
 <div id="locationPracticeEditRow" style="display:none;margin-top:0.5rem;">
-<label style="font-size:0.7rem;color:#0369a1;">Practice Name (editable)</label>
+<label style="font-size:0.7rem;color:#0369a1;">Practice Group Name (editable)</label>
 <div style="display:flex;gap:0.5rem;align-items:center;">
-<input type="text" id="locationPracticeNameEdit" style="flex:1;" placeholder="Edit practice name...">
+<input type="text" id="locationPracticeNameEdit" style="flex:1;" placeholder="Edit practice group name...">
 <button type="button" class="edit-btn" onclick="saveInlinePracticeName()" style="font-size:0.75rem;white-space:nowrap;padding:0.625rem 0.75rem;">Rename</button>
 </div>
 </div>
 </div>
 <div>
-<label>Location Label</label>
-<input type="text" id="locationLabel" placeholder="e.g., Main Office, Key Biscayne">
+<label>Office Location Label</label>
+<input type="text" id="locationLabel" placeholder="e.g., Advanced Wound Care — Boca Raton">
+<div style="font-size:0.72rem;color:#888;margin-top:0.2rem;">Recommended: Practice Group Name — City (e.g., Water's Edge — Delray)</div>
 </div>
 <div style="background:#f0f9f6;border:1px solid #86efac;border-radius:8px;padding:0.75rem;margin-bottom:0.25rem;">
 <label style="color:#0a4d3c;">Paste Full Address Block (auto-fill)</label>
@@ -292,8 +295,9 @@ Append New Records from CSV <input type="file" accept=".csv" onchange="importCSV
 <form id="practiceForm" onsubmit="savePractice(event)">
 <div class="form-grid">
 <div>
-<label>Practice Name *</label>
+<label>Practice Group Name *</label>
 <input type="text" id="practiceName" required>
+<div style="font-size:0.72rem;color:#888;margin-top:0.2rem;">Group/company name shared across all its office locations</div>
 </div>
 <div>
 <label>Website</label>
@@ -474,6 +478,7 @@ Set Follow-Up Reminder
 <option value="Plastic & Reconstructive Surgery">Plastic & Reconstructive Surgery</option>
 <option value="General Surgery">General Surgery</option>
 <option value="Other">Other</option>
+<option value="Administrative Staff">Admin Staff</option>
 </select>
 </div>
 </div>
