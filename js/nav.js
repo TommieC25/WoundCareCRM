@@ -321,9 +321,9 @@ const pLoc = primaryAssign?.practice_locations || (primaryAssign ? practiceLocat
 const cityDisplay = pLoc.city || '';
 const practiceName = pLoc.practices?.name || getPracticeName(pLoc.practice_id) || p.practice_name || '';
 const locationCount = assignments.length;
-const tierStyles={'1':'background:rgba(220,38,38,0.12);color:#dc2626;border:1px solid rgba(220,38,38,0.3)','2':'background:rgba(249,115,22,0.12);color:#ea580c;border:1px solid rgba(249,115,22,0.3)','3':'background:rgba(59,130,246,0.12);color:#2563eb;border:1px solid rgba(59,130,246,0.3)','4':'background:rgba(0,0,0,0.05);color:#777;border:1px solid rgba(0,0,0,0.12)','5':'background:rgba(0,0,0,0.03);color:#bbb;border:1px solid rgba(0,0,0,0.08)'};
+const tierStyles={'1':'background:#dc2626;color:white','2':'background:#f97316;color:white','3':'background:#3b82f6;color:white','4':'background:#6b7280;color:white','5':'background:#9ca3af;color:white'};
 const isStaff=p.specialty==='Administrative Staff';
-const tierBadge=isStaff?`<div class="tier" style="background:rgba(139,92,246,0.12);color:#7c3aed;border:1px solid rgba(139,92,246,0.3);">Staff</div>`:p.priority?`<div class="tier" style="${tierStyles[p.priority]||''}">P${p.priority}</div>`:'';
+const tierBadge=isStaff?`<div class="tier" style="background:#7c3aed;color:white;">Staff</div>`:p.priority?`<div class="tier" style="${tierStyles[p.priority]||''}">P${p.priority}</div>`:'';
 return `
 <li class="physician-item ${currentPhysician?.id === p.id ? 'active' : ''}"
 onclick="viewPhysician('${p.id}')">
