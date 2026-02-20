@@ -19,7 +19,8 @@ const pr = $('practicePhysSelectRow'); if (pr) pr.style.display = 'none';
 $('contactForm').onsubmit = function(ev) { saveContact(ev); return false; };
 $('setReminder').checked = false;
 $('reminderDays').style.display = 'none';
-$('reminderDatePreview').textContent = '';
+if($('reminderDatePreview'))$('reminderDatePreview').textContent='';
+if($('reminderSelectedDate'))$('reminderSelectedDate').value='';
 if($('reminderNote'))$('reminderNote').value='';
 if($('reminderNoteRow'))$('reminderNoteRow').style.display='none';
 $('contactModal').classList.add('active');
@@ -87,7 +88,7 @@ e.preventDefault();
 const tv=$('contactTime').value,nv=$('contactNotes').value;
 const locVal=$('contactLocation').value||null;
 const reminderOn=$('setReminder').checked;
-const reminderDate=reminderOn?calcBusinessDate(parseInt($('reminderDaysSelect').value)):null;
+const reminderDate=reminderOn?($('reminderSelectedDate')?.value||null):null;
 const reminderNoteVal=reminderOn&&$('reminderNote')?$('reminderNote').value.trim():'';
 const baseNote=tv?`[${tv}] ${nv}`:nv;
 const staffVal=$('staffPresent')?$('staffPresent').value.trim():'';
@@ -145,15 +146,15 @@ $('setReminder').checked = true;
 $('reminderDays').style.display = 'flex';
 if($('reminderNoteRow'))$('reminderNoteRow').style.display='block';
 if($('reminderNote'))$('reminderNote').value=taskNote;
-const rd = new Date(log.reminder_date + 'T12:00:00');
-const opts = {weekday:'short', month:'short', day:'numeric'};
-$('reminderDatePreview').textContent = rd.toLocaleDateString('en-US', opts);
+populateReminderDateButtons();
+selectReminderDate(log.reminder_date, log.reminder_date === '2099-12-31' ? 'Open' : '');
 } else {
 $('setReminder').checked = false;
 $('reminderDays').style.display = 'none';
 if($('reminderNoteRow'))$('reminderNoteRow').style.display='none';
 if($('reminderNote'))$('reminderNote').value='';
-$('reminderDatePreview').textContent = '';
+if($('reminderSelectedDate'))$('reminderSelectedDate').value='';
+if($('reminderDatePreview'))$('reminderDatePreview').textContent='';
 }
 $('contactModal').classList.add('active');
 }

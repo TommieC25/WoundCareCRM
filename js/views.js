@@ -42,9 +42,12 @@ if(!reminders||reminders.length===0){
 $('mainContent').innerHTML=`<div class="section"><div class="section-header"><h3>Tasks &amp; Reminders</h3></div><div class="empty-notice">No follow-up reminders set. Add a reminder when logging a contact note.</div></div>`;
 return;
 }
-const overdue=reminders.filter(r=>r.reminder_date<today);
-const upcoming=reminders.filter(r=>r.reminder_date>=today);
-let html=`<div class="section"><div class="section-header"><h3>Tasks &amp; Reminders</h3><div style="font-size:0.8rem;color:#666;">${reminders.length} total${overdue.length>0?` — <span style="color:#dc2626;font-weight:600;">${overdue.length} overdue</span>`:''}</div></div>`;
+const OPEN_DATE='2099-12-31';
+const openTasks=reminders.filter(r=>r.reminder_date===OPEN_DATE);
+const datedR=reminders.filter(r=>r.reminder_date!==OPEN_DATE);
+const overdue=datedR.filter(r=>r.reminder_date<today);
+const upcoming=datedR.filter(r=>r.reminder_date>=today);
+let html=`<div class="section"><div class="section-header"><h3>Tasks &amp; Reminders</h3><div style="font-size:0.8rem;color:#666;">${reminders.length} total${overdue.length>0?` — <span style="color:#dc2626;font-weight:600;">${overdue.length} overdue</span>`:''}${openTasks.length>0?` — ${openTasks.length} open`:''}</div></div>`;
 if(overdue.length>0){
 html+=`<div style="margin-bottom:1rem;"><div style="font-size:0.75rem;font-weight:700;color:#dc2626;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:0.5rem;padding-bottom:0.25rem;border-bottom:2px solid #fca5a5;">⚠️ Overdue (${overdue.length})</div><div class="contact-entries">`;
 overdue.forEach(r=>{
@@ -90,6 +93,26 @@ ${taskNote?`<div style="font-size:0.85rem;font-weight:600;color:#92400e;backgrou
 });
 html+='</div></div>';
 });
+}
+if(openTasks.length>0){
+html+=`<div style="margin-bottom:0.75rem;"><div style="font-size:0.75rem;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:0.5rem;padding-bottom:0.25rem;border-bottom:2px solid #d1d5db;">📌 Open Tasks — no due date (${openTasks.length})</div><div class="contact-entries">`;
+openTasks.forEach(r=>{
+const phys=r.physician_id?physMap[r.physician_id]:null;const physName=phys?fmtName(phys):(r.practice_location_id?getLocationLabel(r.practice_location_id):'Location Note');
+const emailLink=phys?.email?` <a href="mailto:${phys.email}" onclick="event.stopPropagation()" style="color:#0a4d3c;font-size:0.75rem;">✉️ Email</a>`:'';
+const tm=(r.notes||'').match(/^\[(\d{1,2}:\d{2}(?:\s*[APap][Mm])?)\]\s*/);
+let displayNotes=tm?r.notes.replace(tm[0],''):(r.notes||'');
+const taskMatch=displayNotes.match(/\s*\|\s*\[Task:\s*(.*?)\]$/);const taskNote=taskMatch?taskMatch[1].trim():'';if(taskMatch)displayNotes=displayNotes.slice(0,taskMatch.index).trim();
+const preview=displayNotes.length>120?displayNotes.substring(0,120)+'...':displayNotes;
+const clickFn=r.physician_id?`viewPhysician('${r.physician_id}')`:r.practice_location_id?`viewLocation('${r.practice_location_id}')`:''
+html+=`<div class="contact-entry" style="border-left-color:#6b7280;display:flex;gap:0.5rem;align-items:flex-start;cursor:pointer;" onclick="${clickFn}">
+<button onclick="event.stopPropagation();completeReminder('${r.id}').then(()=>renderTasksView())" title="Mark complete" style="background:none;border:2px solid #6b7280;color:#6b7280;border-radius:50%;width:24px;height:24px;min-width:24px;cursor:pointer;font-size:0.8rem;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:0.15rem;">✓</button>
+<div style="flex:1;"><div style="font-weight:600;color:#0a4d3c;">${physName}${emailLink}</div>
+${taskNote?`<div style="font-size:0.85rem;font-weight:600;color:#92400e;background:#fef3c7;padding:0.2rem 0.5rem;border-radius:4px;margin-top:0.25rem;">📋 ${taskNote}</div>`:''}
+<div style="font-size:0.85rem;color:#333;margin-top:0.2rem;">${preview}</div>
+<div style="font-size:0.7rem;color:#999;margin-top:0.2rem;">Note from ${r.contact_date}${r.author?' by '+r.author:''}</div>
+</div></div>`;
+});
+html+='</div></div>';
 }
 html+='</div>';
 $('mainContent').innerHTML=html;

@@ -21,6 +21,7 @@ let currentPhysician = null;
 let currentPractice = null;
 let currentView = 'physicians';
 let sortBy = 'name';
+let filterTier = null;
 let editMode = false;
 let editingContactId = null;
 let editingLocationId = null;
