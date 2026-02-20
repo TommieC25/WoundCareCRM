@@ -333,7 +333,8 @@ const phys = r.physician_id ? physicians.find(p => p.id === r.physician_id) : nu
 const physName = phys ? fmtName(phys) : (r.practice_location_id ? getLocationLabel(r.practice_location_id) : 'Location Note');
 const emailLink = phys?.email ? ` — <a href="mailto:${phys.email}" onclick="event.stopPropagation()" style="color:#0a4d3c;font-size:0.75rem;">✉️ Email</a>` : '';
 const tm = (r.notes||'').match(/^\[(\d{1,2}:\d{2}(?:\s*[APap][Mm])?)\]\s*/);
-const displayNotes = tm ? r.notes.replace(tm[0], '') : (r.notes||'');
+let displayNotes = tm ? r.notes.replace(tm[0], '') : (r.notes||'');
+const taskMatch=displayNotes.match(/\s*\|\s*\[Task:\s*(.*?)\]$/);const taskNote=taskMatch?taskMatch[1].trim():'';if(taskMatch)displayNotes=displayNotes.slice(0,taskMatch.index).trim();
 const preview = displayNotes.length > 100 ? displayNotes.substring(0,100) + '...' : displayNotes;
 const clickFn = r.physician_id ? `viewPhysician('${r.physician_id}')` : r.practice_location_id ? `viewLocation('${r.practice_location_id}')` : '';
 html += `<div class="contact-entry" style="cursor:pointer;border-left-color:#dc2626;background:#fff5f5;margin-bottom:0.5rem;display:flex;gap:0.5rem;align-items:flex-start;">
@@ -341,7 +342,8 @@ html += `<div class="contact-entry" style="cursor:pointer;border-left-color:#dc2
 <div onclick="${clickFn}" style="flex:1;">
 <div style="font-weight:600;color:#dc2626;font-size:0.9rem;">${physName}${emailLink}</div>
 <div style="font-size:0.75rem;color:#dc2626;font-weight:600;">Due: ${r.reminder_date} (OVERDUE)</div>
-<div style="font-size:0.8rem;color:#666;margin-top:0.25rem;">${preview}</div>
+${taskNote?`<div style="font-size:0.8rem;font-weight:600;color:#92400e;background:#fef3c7;padding:0.15rem 0.4rem;border-radius:4px;margin-top:0.2rem;">📋 ${taskNote}</div>`:''}
+<div style="font-size:0.8rem;color:#666;margin-top:0.2rem;">${preview}</div>
 </div>
 </div>`;
 });
@@ -360,14 +362,16 @@ const phys = r.physician_id ? physicians.find(p => p.id === r.physician_id) : nu
 const physName = phys ? fmtName(phys) : (r.practice_location_id ? getLocationLabel(r.practice_location_id) : 'Location Note');
 const emailLink = phys?.email ? ` — <a href="mailto:${phys.email}" onclick="event.stopPropagation()" style="color:#0a4d3c;font-size:0.75rem;">✉️ Email</a>` : '';
 const tm = (r.notes||'').match(/^\[(\d{1,2}:\d{2}(?:\s*[APap][Mm])?)\]\s*/);
-const displayNotes = tm ? r.notes.replace(tm[0], '') : (r.notes||'');
+let displayNotes = tm ? r.notes.replace(tm[0], '') : (r.notes||'');
+const taskMatch=displayNotes.match(/\s*\|\s*\[Task:\s*(.*?)\]$/);const taskNote=taskMatch?taskMatch[1].trim():'';if(taskMatch)displayNotes=displayNotes.slice(0,taskMatch.index).trim();
 const preview = displayNotes.length > 100 ? displayNotes.substring(0,100) + '...' : displayNotes;
 const clickFn = r.physician_id ? `viewPhysician('${r.physician_id}')` : r.practice_location_id ? `viewLocation('${r.practice_location_id}')` : '';
 html += `<div class="contact-entry" style="cursor:pointer;border-left-color:#f59e0b;margin-bottom:0.5rem;display:flex;gap:0.5rem;align-items:flex-start;">
 <button onclick="event.stopPropagation();completeReminder('${r.id}')" title="Mark complete" style="background:none;border:2px solid #f59e0b;color:#92400e;border-radius:50%;width:22px;height:22px;min-width:22px;cursor:pointer;font-size:0.75rem;display:flex;align-items:center;justify-content:center;margin-top:0.15rem;flex-shrink:0;">✓</button>
 <div onclick="${clickFn}" style="flex:1;">
 <div style="font-weight:600;color:#0a4d3c;font-size:0.9rem;">${physName}${emailLink}</div>
-<div style="font-size:0.8rem;color:#666;margin-top:0.25rem;">${preview}</div>
+${taskNote?`<div style="font-size:0.8rem;font-weight:600;color:#92400e;background:#fef3c7;padding:0.15rem 0.4rem;border-radius:4px;margin-top:0.2rem;">📋 ${taskNote}</div>`:''}
+<div style="font-size:0.8rem;color:#666;margin-top:0.2rem;">${preview}</div>
 <div style="font-size:0.7rem;color:#999;margin-top:0.25rem;">Note from ${r.contact_date}${r.author ? ' by ' + r.author : ''}</div>
 </div>
 </div>`;

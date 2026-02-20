@@ -20,6 +20,8 @@ $('contactForm').onsubmit = function(ev) { saveContact(ev); return false; };
 $('setReminder').checked = false;
 $('reminderDays').style.display = 'none';
 $('reminderDatePreview').textContent = '';
+if($('reminderNote'))$('reminderNote').value='';
+if($('reminderNoteRow'))$('reminderNoteRow').style.display='none';
 $('contactModal').classList.add('active');
 }
 
@@ -86,9 +88,11 @@ const tv=$('contactTime').value,nv=$('contactNotes').value;
 const locVal=$('contactLocation').value||null;
 const reminderOn=$('setReminder').checked;
 const reminderDate=reminderOn?calcBusinessDate(parseInt($('reminderDaysSelect').value)):null;
+const reminderNoteVal=reminderOn&&$('reminderNote')?$('reminderNote').value.trim():'';
 const baseNote=tv?`[${tv}] ${nv}`:nv;
 const staffVal=$('staffPresent')?$('staffPresent').value.trim():'';
-const noteText=staffVal?`${baseNote} | Staff: ${staffVal}`:baseNote;
+const withStaff=staffVal?`${baseNote} | Staff: ${staffVal}`:baseNote;
+const noteText=reminderNoteVal?`${withStaff} | [Task: ${reminderNoteVal}]`:withStaff;
 const dateVal=$('contactDate').value,authorVal=$('authorName').value;
 const data={physician_id:currentPhysician.id,contact_date:dateVal,author:authorVal,notes:noteText,practice_location_id:locVal,reminder_date:reminderDate};
 const alsoCbs=document.querySelectorAll('.also-attended-cb:checked');
@@ -131,17 +135,24 @@ time = timeMatch[1];
 notes = notes.replace(timeMatch[0], '');
 }
 }
+const taskMatch=notes.match(/\s*\|\s*\[Task:\s*(.*?)\]$/);
+const taskNote=taskMatch?taskMatch[1].trim():'';
+if(taskMatch)notes=notes.slice(0,taskMatch.index).trim();
 $('contactTime').value = time;
 $('contactNotes').value = notes;
 if (log.reminder_date) {
 $('setReminder').checked = true;
 $('reminderDays').style.display = 'flex';
+if($('reminderNoteRow'))$('reminderNoteRow').style.display='block';
+if($('reminderNote'))$('reminderNote').value=taskNote;
 const rd = new Date(log.reminder_date + 'T12:00:00');
 const opts = {weekday:'short', month:'short', day:'numeric'};
 $('reminderDatePreview').textContent = rd.toLocaleDateString('en-US', opts);
 } else {
 $('setReminder').checked = false;
 $('reminderDays').style.display = 'none';
+if($('reminderNoteRow'))$('reminderNoteRow').style.display='none';
+if($('reminderNote'))$('reminderNote').value='';
 $('reminderDatePreview').textContent = '';
 }
 $('contactModal').classList.add('active');

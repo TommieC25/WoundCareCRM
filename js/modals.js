@@ -324,7 +324,7 @@ function editLocationDetails(locationId) {
 const loc=practiceLocations.find(l=>l.id===locationId);if(!loc)return;
 editingLocationId=locationId;$('locationModalTitle').textContent='Edit Location';
 if ($('addressBlock')) $('addressBlock').value = '';
-setFields({locationPracticeId:loc.practice_id,locationLabel:loc.label||'',locationIsPrimary:'false',locationAddress:loc.address||'',locationCity:loc.city||'',locationZip:loc.zip||'',locationPhone:loc.phone||'',locationFax:loc.fax||'',locationEmail:loc.practice_email||'',locationHours:loc.office_hours||'',locationStaff:loc.office_staff||'',locationReceptionist:loc.receptionist_name||'',locationBestDays:loc.best_days||''});
+setFields({locationPracticeId:loc.practice_id,locationLabel:loc.label||'',locationAddress:loc.address||'',locationCity:loc.city||'',locationZip:loc.zip||'',locationPhone:loc.phone||'',locationFax:loc.fax||'',locationEmail:loc.practice_email||'',locationHours:loc.office_hours||'',locationStaff:loc.office_staff||'',locationReceptionist:loc.receptionist_name||'',locationBestDays:loc.best_days||''});
 $('locationSaveBtn').textContent='Save Location';$('locationSaveBtn').className='btn-primary';
 $('locationPracticeId').innerHTML='<option value="">-- Select Practice --</option>'+practices.map(p=>`<option value="${p.id}" ${p.id===loc.practice_id?'selected':''}>${p.name}</option>`).join('');
 const pr=practices.find(p=>p.id===loc.practice_id);
