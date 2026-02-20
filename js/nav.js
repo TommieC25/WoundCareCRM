@@ -224,15 +224,17 @@ function locDetails(loc){return ld(loc.address,'📍',locAddr(loc))+ld(loc.phone
 function mi(label,val){return `<div class="meta-item"><div class="meta-label">${label}</div><div class="meta-value">${val}</div></div>`}
 function parseNoteTime(notes){const tm=(notes||'').match(/^\[(\d{1,2}:\d{2}(?:\s*[APap][Mm])?)\]\s*/);return tm?{time:' '+tm[1],text:notes.replace(tm[0],'')}:{time:'',text:notes||''};}
 function renderLogEntry(e,opts={}){const{time,text}=parseNoteTime(e.notes);const preview=opts.full?text:(text.length>120?text.substring(0,120)+'...':text);
-const physLine=opts.physName?`<span style="font-weight:600;color:#0a4d3c;display:block;margin-top:0.25rem;">${opts.physName}</span>`:'';
-const locLine=e.practice_location_id?'<span class="contact-entry-location">'+getLocationLabel(e.practice_location_id)+'</span>':'';
-const tsLine=opts.showTimestamp?`<span class="contact-entry-timestamp">${formatTimestamp(e.created_at)}</span>`:'';
-const reminderLine=e.reminder_date?`<span style="font-size:0.7rem;padding:0.15rem 0.5rem;background:#fef3c7;color:#92400e;border-radius:4px;margin-left:0.5rem;">Reminder: ${e.reminder_date}</span>`:'';
+const fmtCD=(ds)=>{if(!ds)return'';const d=new Date(ds+'T12:00:00');return d.toLocaleDateString('en-US',{month:'short',day:'numeric'});};
+const headerLine1=`${fmtCD(e.contact_date)}${time?' · '+time.trim():''}${e.author?' — '+e.author:''}`;
+const locCtx=e.practice_location_id?getLocationContext(e.practice_location_id):'';
+const physPart=opts.physName?` | ${opts.physName}`:'';
+const headerLine2=(locCtx||physPart)?`<div style="font-size:0.78rem;color:#555;margin-top:0.1rem;">${locCtx}${physPart}</div>`:'';
+const reminderLine=e.reminder_date?(e.reminder_date==='2099-12-31'?`<span style="font-size:0.7rem;padding:0.15rem 0.5rem;background:#e5e7eb;color:#6b7280;border-radius:4px;margin-left:0.4rem;">📌 Open</span>`:`<span style="font-size:0.7rem;padding:0.15rem 0.5rem;background:#fef3c7;color:#92400e;border-radius:4px;margin-left:0.4rem;">🔔 ${new Date(e.reminder_date+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'})}</span>`):'';
 const editFn=opts.editFn||`editNote('${e.id}')`;
 const delFn=opts.deleteFn||`deleteNote('${e.id}')`;
 const actions=opts.editable?`<div class="contact-entry-actions"><button class="icon-btn" onclick="event.stopPropagation();${editFn}" title="Edit">✏️</button><button class="icon-btn" onclick="event.stopPropagation();${delFn}" title="Delete">🗑️</button></div>`:'';
 const click=opts.onClick?` style="cursor:pointer" onclick="${opts.onClick}"`:'';
-return `<div class="contact-entry"${click}><div class="contact-entry-header"><div><span class="contact-entry-date">${e.contact_date}${time}${e.author?' - '+e.author:''}</span>${physLine}${locLine}${tsLine}${reminderLine}</div>${actions}</div><div class="contact-entry-notes">${preview}</div></div>`;}
+return `<div class="contact-entry"${click}><div class="contact-entry-header"><div><span class="contact-entry-date">${headerLine1}</span>${reminderLine}${headerLine2}</div>${actions}</div><div class="contact-entry-notes">${preview}</div></div>`;}
 function ci(icon,label,val){return val?`<div class="contact-item"><div class="contact-icon">${icon}</div><div class="contact-item-content"><div class="contact-item-label">${label}</div><div class="contact-item-value">${val}</div></div></div>`:''}
 function getPracticeName(practiceId){const p=practices.find(pr=>pr.id===practiceId);return p?p.name:'';}
 function getPrimaryLoc(physicianId) {
@@ -251,6 +253,14 @@ function getLocationLabel(locationId) {
 const loc = practiceLocations.find(l => l.id === locationId);
 if (!loc) return '';
 return `${loc.address}, ${loc.city}`;
+}
+function getLocationContext(locationId) {
+const loc = practiceLocations.find(l => l.id === locationId);
+if (!loc) return '';
+const pname = getPracticeName(loc.practice_id);
+const city = loc.city || loc.label || '';
+const addr = loc.address || '';
+return pname ? `${pname}${city ? ' · ' + city : ''}` : `${addr}${city ? ', ' + city : ''}`;
 }
 
 // --- Filter / list rendering ---
@@ -483,6 +493,7 @@ if (container) container.innerHTML = '<div class="empty-notice">Could not load r
 async function viewPhysician(id) {
 currentPhysician = physicians.find(p => p.id === id);
 currentPractice = null;
+currentLocationId = null;
 if (!currentPhysician) return;
 await loadContactLogs(id);
 renderList();
@@ -497,6 +508,7 @@ const loc = practiceLocations.find(l => l.id === locId);
 if (!loc) return;
 currentPractice = practices.find(p => p.id === loc.practice_id);
 currentPhysician = null;
+currentLocationId = locId;
 renderList();
 renderLocationProfile(loc);
 if (window.innerWidth <= 768) closeSidebar();
@@ -505,6 +517,7 @@ if (window.innerWidth <= 768) closeSidebar();
 async function viewPractice(id) {
 currentPractice = practices.find(p => p.id === id);
 currentPhysician = null;
+currentLocationId = null;
 if (!currentPractice) return;
 renderList();
 renderPracticeProfile();
@@ -512,3 +525,29 @@ if (window.innerWidth <= 768) {
 closeSidebar();
 }
 }
+
+// --- State persistence (restore last view after minimize/reopen) ---
+function saveViewState() {
+try {
+const s = { view: currentView, ts: Date.now() };
+if (currentPhysician) s.physicianId = currentPhysician.id;
+else if (currentLocationId) s.locationId = currentLocationId;
+else if (currentPractice) s.practiceId = currentPractice.id;
+localStorage.setItem('crmViewState', JSON.stringify(s));
+} catch(e) {}
+}
+async function restoreViewState() {
+try {
+const raw = localStorage.getItem('crmViewState');
+if (!raw) return;
+const s = JSON.parse(raw);
+const MAX_AGE = 4 * 60 * 60 * 1000; // 4 hours
+if (Date.now() - s.ts > MAX_AGE) { localStorage.removeItem('crmViewState'); return; }
+if (s.physicianId) { await viewPhysician(s.physicianId); }
+else if (s.locationId) { viewLocation(s.locationId); }
+else if (s.practiceId) { await viewPractice(s.practiceId); }
+else if (s.view && s.view !== 'physicians') { setView(s.view); }
+} catch(e) {}
+}
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') saveViewState(); });
+window.addEventListener('beforeunload', saveViewState);
