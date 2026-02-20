@@ -68,8 +68,8 @@ const volData = {
 let updated = 0;
 for (const p of physicians) {
 const key = `${p.first_name}|${p.last_name}`;
-if (volData[key] !== undefined && p.patient_volume != String(volData[key])) {
-const { error } = await db.from('physicians').update({ patient_volume: String(volData[key]) }).eq('id', p.id);
+if (volData[key] !== undefined && p.proj_vol != String(volData[key])) {
+const { error } = await db.from('physicians').update({ proj_vol: String(volData[key]) }).eq('id', p.id);
 if (!error) updated++;
 else console.warn('Volume migration failed for', key, error);
 }
