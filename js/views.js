@@ -129,7 +129,7 @@ const monthAgo=new Date(now-30*86400000).toISOString().slice(0,10);
 const thisWeek=logs.filter(l=>l.contact_date>=weekAgo).length;
 const thisMonth=logs.filter(l=>l.contact_date>=monthAgo).length;
 const tierCounts={};physicians.forEach(p=>{const t=p.priority||'Unset';tierCounts[t]=(tierCounts[t]||0)+1;});
-const tierHTML=Object.entries(tierCounts).sort((a,b)=>a[0].localeCompare(b[0])).map(([t,c])=>`<div style="display:flex;justify-content:space-between;padding:0.5rem 0;border-bottom:1px solid #f0f0f0;"><span>Tier ${t}</span><strong>${c}</strong></div>`).join('');
+const tierHTML=Object.entries(tierCounts).sort((a,b)=>a[0].localeCompare(b[0])).map(([t,c])=>`<div style="display:flex;justify-content:space-between;padding:0.5rem 0;border-bottom:1px solid #f0f0f0;"><span>${t==='Unset'?'Unset':'P'+t}</span><strong>${c}</strong></div>`).join('');
 const specCounts={};physicians.forEach(p=>{const s=p.specialty||'Unset';specCounts[s]=(specCounts[s]||0)+1;});
 const specHTML=Object.entries(specCounts).sort((a,b)=>b[1]-a[1]).map(([s,c])=>`<div style="display:flex;justify-content:space-between;padding:0.5rem 0;border-bottom:1px solid #f0f0f0;"><span>${s}</span><strong>${c}</strong></div>`).join('');
 const cityCounts={};physicians.forEach(p=>{const loc=getPrimaryLoc(p.id);const c=loc.city||'Unknown';cityCounts[c]=(cityCounts[c]||0)+1;});
@@ -139,7 +139,7 @@ const physMap={};physicians.forEach(p=>physMap[p.id]=p);
 const mostContacted=Object.entries(contactCounts).sort((a,b)=>b[1]-a[1]).slice(0,10).map(([id,c])=>{const p=physMap[id];return p?`<div style="display:flex;justify-content:space-between;padding:0.5rem 0;border-bottom:1px solid #f0f0f0;cursor:pointer;" onclick="setView('physicians');viewPhysician('${id}')"><span>${p.first_name} ${p.last_name}</span><strong>${c}</strong></div>`:'';}).join('');
 const contacted=new Set(logs.map(l=>l.physician_id));
 const neverContacted=physicians.filter(p=>!contacted.has(p.id));
-const neverHTML=neverContacted.slice(0,10).map(p=>`<div style="padding:0.5rem 0;border-bottom:1px solid #f0f0f0;cursor:pointer;" onclick="setView('physicians');viewPhysician('${p.id}')">${p.first_name} ${p.last_name} <span style="font-size:0.75rem;color:#999;">Tier ${p.priority||'?'}</span></div>`).join('');
+const neverHTML=neverContacted.slice(0,10).map(p=>`<div style="padding:0.5rem 0;border-bottom:1px solid #f0f0f0;cursor:pointer;" onclick="setView('physicians');viewPhysician('${p.id}')">${p.first_name} ${p.last_name} <span style="font-size:0.75rem;color:#999;">${p.priority?'P'+p.priority:'No priority'}</span></div>`).join('');
 const card=(title,content)=>`<div style="background:white;padding:1.25rem;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.1);"><h4 style="color:#0a4d3c;margin-bottom:0.75rem;font-size:1rem;">${title}</h4>${content}</div>`;
 const stat=(label,val,color)=>`<div style="background:white;padding:1.25rem;border-radius:12px;box-shadow:0 1px 3px rgba(0,0,0,0.1);text-align:center;"><div style="font-size:2rem;font-weight:700;color:${color||'#0a4d3c'};">${val}</div><div style="font-size:0.75rem;color:#999;margin-top:0.25rem;">${label}</div></div>`;
 $('mainContent').innerHTML=`
