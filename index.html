@@ -46,11 +46,6 @@ Append New Records from CSV <input type="file" accept=".csv" onchange="importCSV
 </label>
 <div style="font-size:0.7rem;color:#888;margin-bottom:0.75rem;text-align:center;">Adds new physicians without affecting existing data</div>
 <div id="importStatus" style="font-size:0.8rem;margin-bottom:0.5rem;color:#ccc;"></div>
-<label style="display:block;margin-bottom:0.25rem;padding:0.75rem;background:#7c3aed;color:white;border-radius:8px;font-weight:600;text-align:center;cursor:pointer;font-size:0.95rem;">
-Import Skin Sub Volume Data <input type="file" accept=".csv" onchange="importSkinSubCSV(this.files[0])" style="display:none">
-</label>
-<div style="font-size:0.7rem;color:#888;margin-bottom:0.75rem;text-align:center;">Imports ss_vol cohort — skips duplicates</div>
-<div id="skinSubImportStatus" style="font-size:0.8rem;margin-bottom:0.5rem;color:#ccc;"></div>
 <h4 style="margin-top:1rem;color:#0ea5e9;">Data Export</h4>
 <p style="color:#aaa;font-size:0.8rem;margin-bottom:0.75rem;">Download your CRM data as CSV files.</p>
 <button style="background:#0ea5e9;color:white;border:none;padding:0.6rem 1rem;border-radius:6px;font-size:0.85rem;cursor:pointer;width:100%;font-weight:600;" onclick="openExportModal()">Export Data</button>
@@ -167,11 +162,11 @@ Import Skin Sub Volume Data <input type="file" accept=".csv" onchange="importSki
 <label>Priority Tier (Quintile)</label>
 <select id="priority">
 <option value="">-- Select Tier --</option>
-<option value="1">1 - Highest Priority</option>
-<option value="2">2 - High Priority</option>
-<option value="3">3 - Medium Priority</option>
-<option value="4">4 - Lower Priority</option>
-<option value="5">5 - Lowest Priority</option>
+<option value="1">P1 — Highest</option>
+<option value="2">P2 — High</option>
+<option value="3">P3 — Medium</option>
+<option value="4">P4 — Lower</option>
+<option value="5">P5 — Lowest</option>
 </select>
 </div>
 <div>
@@ -491,11 +486,11 @@ Set Follow-Up Reminder
 <div>
 <select id="quickPhysPriority" style="padding:0.5rem;font-size:0.85rem;">
 <option value="">Priority</option>
-<option value="1">Tier 1</option>
-<option value="2">Tier 2</option>
-<option value="3">Tier 3</option>
-<option value="4">Tier 4</option>
-<option value="5">Tier 5</option>
+<option value="1">P1</option>
+<option value="2">P2</option>
+<option value="3">P3</option>
+<option value="4">P4</option>
+<option value="5">P5</option>
 </select>
 </div>
 </div>
