@@ -51,7 +51,7 @@ if(locRec)locMap[locKey]=locRec;
 const physMap=new Map();
 rows.forEach(r=>{
 const key=`${(r.first_name||'').trim().toLowerCase()}|${(r.last_name||'').trim().toLowerCase()}`;
-if(!physMap.has(key))physMap.set(key,{phys:{first_name:(r.first_name||'').trim(),last_name:(r.last_name||'').trim(),email:r.email||null,priority:r.priority||null,academic_connection:r.academic_connection||r.um_connection||null,specialty:r.specialty||null,degree:r.degree||null,title:r.title||null,patient_volume:r.patient_volume||r.vol||null,general_notes:r.general_notes||null},practiceIds:new Set(),primaryLocKey:null});
+if(!physMap.has(key))physMap.set(key,{phys:{first_name:(r.first_name||'').trim(),last_name:(r.last_name||'').trim(),email:r.email||null,priority:r.priority||null,academic_connection:r.academic_connection||r.um_connection||null,specialty:r.specialty||null,degree:r.degree||null,title:r.title||null,proj_vol:r.proj_vol||r.patient_volume||r.vol||null,general_notes:r.general_notes||null},practiceIds:new Set(),primaryLocKey:null});
 const e=physMap.get(key);
 const practId=getPractId(r.practice_name);
 if(practId)e.practiceIds.add(practId);
@@ -146,10 +146,10 @@ const{data:allAssign}=await db.from('physician_location_assignments').select('*,
 const am={};(allAssign||[]).forEach(a=>{if(!am[a.physician_id])am[a.physician_id]=[];am[a.physician_id].push(a);});
 const{data:allLogs}=await db.from('contact_logs').select('*').order('contact_date',{ascending:false});
 const latestLog={};(allLogs||[]).forEach(l=>{if(!latestLog[l.physician_id])latestLog[l.physician_id]=l;});
-const h=['Last Name','First Name','Degree','Practice','Tier','Specialty','Email','Academic Connection','Patient Volume','Primary Address','Primary City','Primary ZIP','Primary Phone','Primary Fax','Office Hours','Best Days','Receptionist','Location Count','Last Contact','Status','General Notes'];
+const h=['Last Name','First Name','Degree','Practice','Tier','Specialty','Email','Academic Connection','Projected Volume','SS Volume','Primary Address','Primary City','Primary ZIP','Primary Phone','Primary Fax','Office Hours','Best Days','Receptionist','Location Count','Last Contact','Status','General Notes'];
 const rows=(allPhys||[]).map(p=>{const as=am[p.id]||[];const pl=(as.find(a=>a.is_primary)||as[0])?.practice_locations||{};
 const log=latestLog[p.id];const statusNote=log?(log.notes||'').replace(/^\[\d{1,2}:\d{2}\]\s*/,''):'';const statusPreview=statusNote.length>80?statusNote.substring(0,80)+'...':statusNote;const status=log?log.contact_date+': '+statusPreview:'';
-return[p.last_name,p.first_name,p.degree||'',pl.practices?.name||p.practice_name||'',p.priority||'',p.specialty||'',p.email||'',p.academic_connection||'',p.patient_volume||p.mohs_volume||'',pl.address||'',pl.city||'',pl.zip||'',fmtPhone(pl.phone),fmtPhone(pl.fax),pl.office_hours||'',pl.best_days||'',pl.receptionist_name||'',as.length,p.last_contact||'',status,p.general_notes||''];});
+return[p.last_name,p.first_name,p.degree||'',pl.practices?.name||p.practice_name||'',p.priority||'',p.specialty||'',p.email||'',p.academic_connection||'',p.proj_vol||p.mohs_volume||'',p.ss_vol||'',pl.address||'',pl.city||'',pl.zip||'',fmtPhone(pl.phone),fmtPhone(pl.fax),pl.office_hours||'',pl.best_days||'',pl.receptionist_name||'',as.length,p.last_contact||'',status,p.general_notes||''];});
 downloadCSV('physicians_export_'+todayStamp()+'.csv',h,rows);
 }
 
@@ -268,7 +268,7 @@ const lastName = p?.last_name || '';
 const firstLast = (firstName + ' ' + lastName).trim();
 const degree = p?.degree || '';
 const rank = p?.priority || '';
-const vol = p?.patient_volume || p?.mohs_volume || '';
+const vol = p?.proj_vol || p?.mohs_volume || '';
 const county = l?.city ? guessCounty(l.city) : '';
 const notes = p?.general_notes || '';
 const asVal = p?.advanced_solution ? 'Y' : '';
@@ -316,4 +316,118 @@ if (!confirm('Clear all export history? Everything will show as "NEW" again.')) 
 localStorage.removeItem('routingExportHistory');
 showToast('Export history cleared', 'info');
 openRoutingExport();
+}
+
+// --- Skin Substitute Volume Import ---
+// Expects CSV with headers: FirstName, LastName, FirstNameLastName, Degree, Address, Suite,
+//   City, Zip, Phone, Notes, County, Specialty, ss_vol
+// Conflict rule: skip if same (first_name+last_name no-space) AND same address already exists.
+// proj_vol is left NULL for all imported records.
+async function importSkinSubCSV(file) {
+if (!file) return;
+const statusEl = $('skinSubImportStatus');
+const status = s => { if (statusEl) statusEl.textContent = s; };
+status('Reading CSV...');
+try {
+function parseCSVLine(line) {
+const vals = []; let cur = '', inQ = false;
+for (const ch of line) {
+if (ch === '"') { inQ = !inQ; }
+else if (ch === ',' && !inQ) { vals.push(cur.trim()); cur = ''; }
+else { cur += ch; }
+}
+vals.push(cur.trim());
+return vals;
+}
+const text = await file.text();
+const lines = text.split('\n').filter(l => l.trim());
+const headers = parseCSVLine(lines[0]).map(h => h.trim());
+const rows = [];
+for (let i = 1; i < lines.length; i++) {
+const vals = parseCSVLine(lines[i]);
+const row = {};
+headers.forEach((h, j) => row[h] = (vals[j] || '').trim());
+rows.push(row);
+}
+status(`Parsed ${rows.length} rows. Building conflict map...`);
+// Build conflict set: (first_name+last_name no-space lowercased)|(address lowercased)
+const { data: existingPhys } = await db.from('physicians').select('id, first_name, last_name');
+const { data: existingAssign } = await db.from('physician_location_assignments').select('physician_id, practice_locations(address)');
+const existingKeys = new Set();
+(existingPhys || []).forEach(p => {
+const fnl = ((p.first_name || '') + (p.last_name || '')).replace(/\s/g, '').toLowerCase();
+const assigns = (existingAssign || []).filter(a => a.physician_id === p.id);
+if (assigns.length === 0) {
+existingKeys.add(fnl + '|');
+} else {
+assigns.forEach(a => {
+const addr = (a.practice_locations?.address || '').toLowerCase().trim();
+existingKeys.add(fnl + '|' + addr);
+});
+}
+});
+let imported = 0, skipped = 0;
+const skippedList = [];
+for (let i = 0; i < rows.length; i++) {
+const r = rows[i];
+status(`Processing ${i + 1} of ${rows.length}...`);
+const firstName = (r.FirstName || '').trim();
+const lastName = (r.LastName || '').trim();
+const fullConcat = ((r.FirstNameLastName || (firstName + lastName)).replace(/\s/g, '')).toLowerCase();
+const address = (r.Address || '').toLowerCase().trim();
+const conflictKey = fullConcat + '|' + address;
+if (existingKeys.has(conflictKey)) {
+skipped++;
+skippedList.push(`${firstName} ${lastName} (${r.Address || 'no address'})`);
+continue;
+}
+existingKeys.add(conflictKey);
+// Insert physician
+const ssVolRaw = parseInt(r.ss_vol, 10);
+const physData = {
+first_name: firstName,
+last_name: lastName,
+degree: r.Degree || null,
+specialty: r.Specialty || null,
+general_notes: r.Notes || null,
+ss_vol: isNaN(ssVolRaw) ? null : ssVolRaw,
+proj_vol: null,
+};
+const { data: newPhys, error: physErr } = await db.from('physicians').insert(physData).select().single();
+if (physErr) { showToast(`Error inserting ${firstName} ${lastName}: ${physErr.message}`, 'error'); continue; }
+// Create a practice named after the physician
+const { data: newPractice, error: practErr } = await db.from('practices').insert({ name: `${firstName} ${lastName}`.trim() }).select().single();
+if (practErr) { showToast(`Error creating practice for ${firstName} ${lastName}: ${practErr.message}`, 'error'); continue; }
+// Create practice location
+const phone = r.Phone && r.Phone !== '0' ? r.Phone : null;
+const locData = {
+practice_id: newPractice.id,
+label: r.City || 'Office',
+address: r.Address || null,
+city: r.City || null,
+zip: r.Zip ? String(r.Zip) : null,
+phone,
+};
+const { data: newLoc, error: locErr } = await db.from('practice_locations').insert(locData).select().single();
+if (locErr) { showToast(`Error creating location for ${firstName} ${lastName}: ${locErr.message}`, 'error'); continue; }
+// Link physician → location
+const { error: assignErr } = await db.from('physician_location_assignments').insert({
+physician_id: newPhys.id,
+practice_location_id: newLoc.id,
+is_primary: true,
+});
+if (assignErr) showToast(`Warning: could not link ${firstName} ${lastName} to location`, 'error');
+imported++;
+}
+await loadAllData();
+let summary = `Import complete: ${imported} imported, ${skipped} skipped.`;
+if (skippedList.length > 0) summary += ' Skipped: ' + skippedList.join('; ');
+status(summary);
+showToast(`Skin sub import: ${imported} added, ${skipped} skipped`, imported > 0 ? 'success' : 'info');
+console.log('[SkinSubImport]', summary);
+} catch (err) {
+console.error('Skin sub import error:', err);
+status('Error: ' + err.message);
+showToast('Import error: ' + err.message, 'error');
+}
 }

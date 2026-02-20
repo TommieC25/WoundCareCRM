@@ -268,7 +268,7 @@ function buildRow_(phys, loc, practice, activity, type) {
   var degree = phys ? phys.degree || '' : '';
   var rank = phys ? phys.priority || '' : '';
   var specialty = phys ? phys.specialty || '' : '';
-  var vol = phys ? (phys.patient_volume || phys.mohs_volume || '') : '';
+  var vol = phys ? (phys.proj_vol || phys.mohs_volume || '') : '';
   var county = loc && loc.city ? guessCounty_(loc.city) : '';
   var notes = phys ? phys.general_notes || '' : '';
   var asVal = phys && phys.advanced_solution ? 'Y' : '';

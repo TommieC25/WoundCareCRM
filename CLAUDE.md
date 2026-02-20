@@ -18,7 +18,7 @@ Single-page territory CRM for Miami wound care sales. One file: `index.html` (~2
 ## Supabase Database Tables
 | Table | Purpose |
 |-------|---------|
-| `physicians` | HCPs — first_name, last_name, degree, title, email, specialty, priority (1-5 tier), academic_connection, patient_volume, general_notes, last_contact |
+| `physicians` | HCPs — first_name, last_name, degree, title, email, specialty, priority (1-5 tier), academic_connection, proj_vol (projected volume, replaces patient_volume), ss_vol (skin substitute CMS claims volume), general_notes, last_contact |
 | `practices` | Practice groups — name, website, notes |
 | `practice_locations` | Physical offices — practice_id, label, address, city, zip, phone, fax, practice_email, office_hours, office_staff, receptionist_name, best_days |
 | `physician_location_assignments` | Many-to-many — physician_id, practice_location_id, is_primary |
@@ -33,7 +33,7 @@ Single-page territory CRM for Miami wound care sales. One file: `index.html` (~2
 - Routing export tracks export history in localStorage to show NEW vs previously exported rows
 
 ## CSV Import Format
-Expects columns: first_name, last_name, email, priority, specialty, degree, title, patient_volume, academic_connection/um_connection, general_notes, practice_name, address, city, zip, phone, fax
+Expects columns: first_name, last_name, email, priority, specialty, degree, title, proj_vol (or patient_volume for backward compat), academic_connection/um_connection, general_notes, practice_name, address, city, zip, phone, fax
 
 ## Export Formats
 - **Physicians CSV**: All physicians with practice info, degree, last contact, Status (latest activity)
@@ -43,7 +43,7 @@ Expects columns: first_name, last_name, email, priority, specialty, degree, titl
 
 ## Naming Conventions
 - "Academic Connection" (UI label) = `academic_connection` column (formerly `um_connection`, still falls back to it)
-- "Candidate Patient Volume" (UI) = `patient_volume` column (falls back to `mohs_volume`)
+- "Projected Volume" (UI) = `proj_vol` column (falls back to `mohs_volume`; formerly `patient_volume`)
 - Priority 1-5 = Tier system (1 = highest)
 
 ## Common Gotchas
