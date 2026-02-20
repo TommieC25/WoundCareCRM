@@ -209,8 +209,8 @@ const zipA = getPrimaryLoc(a.id).zip || 'zzz';
 const zipB = getPrimaryLoc(b.id).zip || 'zzz';
 return zipA.localeCompare(zipB);
 } else if (sortBy === 'tier') {
-const tierA = a.priority || 'zzz';
-const tierB = b.priority || 'zzz';
+const tierA = normPriority(a.priority) || 'zzz';
+const tierB = normPriority(b.priority) || 'zzz';
 return tierA.localeCompare(tierB);
 }
 return 0;
@@ -263,12 +263,20 @@ const addr = loc.address || '';
 return pname ? `${pname}${city ? ' · ' + city : ''}` : `${addr}${city ? ', ' + city : ''}`;
 }
 
+// --- Normalize priority (handles legacy "TIER 3 - MODERATE" and "3" and "P3") ---
+function normPriority(val) {
+  if (!val && val !== 0) return null;
+  const m = String(val).match(/(\d)/);
+  return m ? m[1] : null;
+}
+
 // --- Filter / list rendering ---
 function getFilteredPhysicians(search) {
-let base = filterTier ? physicians.filter(p => String(p.priority) === filterTier) : physicians;
+let base = filterTier ? physicians.filter(p => normPriority(p.priority) === filterTier) : physicians;
 if (!search) return base;
 return base.filter(p => {
-if ([p.first_name,p.last_name,p.specialty,p.email,p.general_notes,p.priority,p.academic_connection||p.um_connection,p.proj_vol,p.mohs_volume,p.practice_name].some(v=>(v||'').toLowerCase().includes(search))) return true;
+const np = normPriority(p.priority);
+if ([p.first_name,p.last_name,p.specialty,p.email,p.general_notes,np?'P'+np:null,p.academic_connection||p.um_connection,p.proj_vol,p.mohs_volume,p.practice_name].some(v=>(v||'').toLowerCase().includes(search))) return true;
 const logs=contactLogs[p.id]||[];
 if(logs.some(l=>(l.notes||'').toLowerCase().includes(search)||(l.author||'').toLowerCase().includes(search))) return true;
 const assigns=physicianAssignments[p.id]||[];
@@ -323,7 +331,8 @@ const practiceName = pLoc.practices?.name || getPracticeName(pLoc.practice_id) |
 const locationCount = assignments.length;
 const tierStyles={'1':'background:#ef4444;color:white','2':'background:#f97316;color:white','3':'background:#3b82f6;color:white','4':'background:#8b5cf6;color:white','5':'background:#64748b;color:white'};
 const isStaff=p.specialty==='Administrative Staff';
-const tierBadge=isStaff?`<div class="tier" style="background:#0891b2;color:white;">Staff</div>`:p.priority?`<div class="tier" style="${tierStyles[p.priority]||''}">P${p.priority}</div>`:'';
+const np=normPriority(p.priority);
+const tierBadge=isStaff?`<div class="tier" style="background:#0891b2;color:white;">Staff</div>`:np?`<div class="tier" style="${tierStyles[np]||''}">P${np}</div>`:'';
 return `
 <li class="physician-item ${currentPhysician?.id === p.id ? 'active' : ''}"
 onclick="viewPhysician('${p.id}')">
