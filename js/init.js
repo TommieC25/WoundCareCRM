@@ -21,6 +21,8 @@ let currentPhysician = null;
 let currentPractice = null;
 let currentView = 'physicians';
 let sortBy = 'name';
+let filterTier = null;
+let currentLocationId = null;
 let editMode = false;
 let editingContactId = null;
 let editingLocationId = null;
@@ -35,6 +37,7 @@ await loadAllData();
 await runVolumeMigration();
 await runASMigration();
 setupRealtimeSubscription();
+await restoreViewState();
 // Prevent background scroll when modals are open (iPad fix)
 document.querySelectorAll('.modal').forEach(modal => {
 modal.addEventListener('touchmove', function(e) {

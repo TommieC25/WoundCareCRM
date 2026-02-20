@@ -18,13 +18,54 @@ d.setDate(d.getDate() + days);
 return d.toISOString().split('T')[0];
 }
 function calcBusinessDate(days) { return calcCalendarDate(days); }
-function updateReminderPreview() {
-const days = parseInt($('reminderDaysSelect')?.value || 7);
-const dt = calcBusinessDate(days);
-const d = new Date(dt + 'T12:00:00');
-const opts = {weekday:'short', month:'short', day:'numeric'};
-const el = $('reminderDatePreview');
-if (el) el.textContent = d.toLocaleDateString('en-US', opts);
+function updateReminderPreview() { populateReminderDateButtons(); } // legacy alias
+function populateReminderDateButtons() {
+const container = $('reminderDateButtons');
+if (!container) return;
+const addDays = (base, n) => { const d = new Date(base + 'T12:00:00'); d.setDate(d.getDate() + n); return d.toISOString().split('T')[0]; };
+const today = new Date().toISOString().split('T')[0];
+const dow = new Date(today + 'T12:00:00').getDay(); // 0=Sun,6=Sat
+const buttons = [];
+buttons.push({ label: 'Today', date: today });
+buttons.push({ label: 'Tomorrow', date: addDays(today, 1) });
+// Remaining business days this week (after tomorrow, up to Friday)
+for (let i = 2; i <= 6; i++) {
+  const d = addDays(today, i);
+  const dn = new Date(d + 'T12:00:00');
+  if (dn.getDay() === 0 || dn.getDay() === 6) continue; // skip weekends
+  if (dn.getDay() < (dow === 0 ? 1 : dow)) continue; // already past
+  buttons.push({ label: dn.toLocaleDateString('en-US',{weekday:'short'}), date: d });
+}
+// Next week Mon–Fri
+const daysToNextMon = ((8 - dow) % 7) || 7;
+for (let i = 0; i < 5; i++) {
+  const d = addDays(today, daysToNextMon + i);
+  const dn = new Date(d + 'T12:00:00');
+  buttons.push({ label: 'Nxt ' + dn.toLocaleDateString('en-US',{weekday:'short'}), date: d });
+}
+buttons.push({ label: '2 weeks', date: addDays(today, 14) });
+buttons.push({ label: 'Open', date: '2099-12-31' });
+container.innerHTML = buttons.map(b =>
+  `<button type="button" class="reminder-date-btn" onclick="selectReminderDate('${b.date}','${b.label}')" data-date="${b.date}" style="padding:0.3rem 0.55rem;font-size:0.78rem;border:1px solid #fcd34d;border-radius:6px;background:#fffbeb;color:#92400e;cursor:pointer;white-space:nowrap;transition:background 0.1s;">${b.label}</button>`
+).join('');
+// Default: tomorrow
+selectReminderDate(buttons[1].date, buttons[1].label);
+}
+function selectReminderDate(dateStr, label) {
+const inp = $('reminderSelectedDate');
+if (inp) inp.value = dateStr;
+const prev = $('reminderDatePreview');
+if (prev) {
+  if (dateStr === '2099-12-31') { prev.textContent = 'Open — no due date, will appear in Open Tasks'; }
+  else { const d = new Date(dateStr + 'T12:00:00'); prev.textContent = d.toLocaleDateString('en-US',{weekday:'long',month:'short',day:'numeric'}); }
+}
+document.querySelectorAll('.reminder-date-btn').forEach(btn => {
+  const sel = btn.dataset.date === dateStr;
+  btn.style.background = sel ? '#f59e0b' : '#fffbeb';
+  btn.style.color = sel ? '#fff' : '#92400e';
+  btn.style.fontWeight = sel ? '700' : '400';
+  btn.style.borderColor = sel ? '#d97706' : '#fcd34d';
+});
 }
 function getUpcomingBusinessDays(count) {
 const result = [];
@@ -100,6 +141,7 @@ $('searchInput').placeholder = currentView === 'physicians' ? 'Search physicians
 $('addBtn').textContent = currentView === 'physicians' ? '+ New Physician' : '+ New Practice';
 $('addBtn').onclick = currentView === 'physicians' ? openPhysicianModal : openPracticeModal;
 $('sortControls').style.display = currentView === 'physicians' ? 'flex' : 'none';
+$('tierFilterControls').style.display = currentView === 'physicians' ? 'flex' : 'none';
 currentPhysician = null;
 currentPractice = null;
 renderList();
@@ -108,8 +150,14 @@ renderEmptyState();
 
 function setSortBy(sort) {
 sortBy = sort;
-document.querySelectorAll('.sort-btn').forEach(btn => btn.classList.remove('active'));
+document.querySelectorAll('#sortControls .sort-btn').forEach(btn => btn.classList.remove('active'));
 $('sort' + sort.charAt(0).toUpperCase() + sort.slice(1)).classList.add('active');
+renderList();
+}
+function setFilterTier(tier) {
+filterTier = tier;
+document.querySelectorAll('#tierFilterControls .sort-btn').forEach(btn => btn.classList.remove('active'));
+$('filter' + (tier ? 'T' + tier : 'All')).classList.add('active');
 renderList();
 }
 
@@ -176,15 +224,17 @@ function locDetails(loc){return ld(loc.address,'📍',locAddr(loc))+ld(loc.phone
 function mi(label,val){return `<div class="meta-item"><div class="meta-label">${label}</div><div class="meta-value">${val}</div></div>`}
 function parseNoteTime(notes){const tm=(notes||'').match(/^\[(\d{1,2}:\d{2}(?:\s*[APap][Mm])?)\]\s*/);return tm?{time:' '+tm[1],text:notes.replace(tm[0],'')}:{time:'',text:notes||''};}
 function renderLogEntry(e,opts={}){const{time,text}=parseNoteTime(e.notes);const preview=opts.full?text:(text.length>120?text.substring(0,120)+'...':text);
-const physLine=opts.physName?`<span style="font-weight:600;color:#0a4d3c;display:block;margin-top:0.25rem;">${opts.physName}</span>`:'';
-const locLine=e.practice_location_id?'<span class="contact-entry-location">'+getLocationLabel(e.practice_location_id)+'</span>':'';
-const tsLine=opts.showTimestamp?`<span class="contact-entry-timestamp">${formatTimestamp(e.created_at)}</span>`:'';
-const reminderLine=e.reminder_date?`<span style="font-size:0.7rem;padding:0.15rem 0.5rem;background:#fef3c7;color:#92400e;border-radius:4px;margin-left:0.5rem;">Reminder: ${e.reminder_date}</span>`:'';
+const fmtCD=(ds)=>{if(!ds)return'';const d=new Date(ds+'T12:00:00');return d.toLocaleDateString('en-US',{month:'short',day:'numeric'});};
+const headerLine1=`${fmtCD(e.contact_date)}${time?' · '+time.trim():''}${e.author?' — '+e.author:''}`;
+const locCtx=e.practice_location_id?getLocationContext(e.practice_location_id):'';
+const physPart=opts.physName?` | ${opts.physName}`:'';
+const headerLine2=(locCtx||physPart)?`<div style="font-size:0.78rem;color:#555;margin-top:0.1rem;">${locCtx}${physPart}</div>`:'';
+const reminderLine=e.reminder_date?(e.reminder_date==='2099-12-31'?`<span style="font-size:0.7rem;padding:0.15rem 0.5rem;background:#e5e7eb;color:#6b7280;border-radius:4px;margin-left:0.4rem;">📌 Open</span>`:`<span style="font-size:0.7rem;padding:0.15rem 0.5rem;background:#fef3c7;color:#92400e;border-radius:4px;margin-left:0.4rem;">🔔 ${new Date(e.reminder_date+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'})}</span>`):'';
 const editFn=opts.editFn||`editNote('${e.id}')`;
 const delFn=opts.deleteFn||`deleteNote('${e.id}')`;
 const actions=opts.editable?`<div class="contact-entry-actions"><button class="icon-btn" onclick="event.stopPropagation();${editFn}" title="Edit">✏️</button><button class="icon-btn" onclick="event.stopPropagation();${delFn}" title="Delete">🗑️</button></div>`:'';
 const click=opts.onClick?` style="cursor:pointer" onclick="${opts.onClick}"`:'';
-return `<div class="contact-entry"${click}><div class="contact-entry-header"><div><span class="contact-entry-date">${e.contact_date}${time}${e.author?' - '+e.author:''}</span>${physLine}${locLine}${tsLine}${reminderLine}</div>${actions}</div><div class="contact-entry-notes">${preview}</div></div>`;}
+return `<div class="contact-entry"${click}><div class="contact-entry-header"><div><span class="contact-entry-date">${headerLine1}</span>${reminderLine}${headerLine2}</div>${actions}</div><div class="contact-entry-notes">${preview}</div></div>`;}
 function ci(icon,label,val){return val?`<div class="contact-item"><div class="contact-icon">${icon}</div><div class="contact-item-content"><div class="contact-item-label">${label}</div><div class="contact-item-value">${val}</div></div></div>`:''}
 function getPracticeName(practiceId){const p=practices.find(pr=>pr.id===practiceId);return p?p.name:'';}
 function getPrimaryLoc(physicianId) {
@@ -204,11 +254,20 @@ const loc = practiceLocations.find(l => l.id === locationId);
 if (!loc) return '';
 return `${loc.address}, ${loc.city}`;
 }
+function getLocationContext(locationId) {
+const loc = practiceLocations.find(l => l.id === locationId);
+if (!loc) return '';
+const pname = getPracticeName(loc.practice_id);
+const city = loc.city || loc.label || '';
+const addr = loc.address || '';
+return pname ? `${pname}${city ? ' · ' + city : ''}` : `${addr}${city ? ', ' + city : ''}`;
+}
 
 // --- Filter / list rendering ---
 function getFilteredPhysicians(search) {
-if (!search) return physicians;
-return physicians.filter(p => {
+let base = filterTier ? physicians.filter(p => String(p.priority) === filterTier) : physicians;
+if (!search) return base;
+return base.filter(p => {
 if ([p.first_name,p.last_name,p.specialty,p.email,p.general_notes,p.priority,p.academic_connection||p.um_connection,p.patient_volume,p.mohs_volume,p.practice_name].some(v=>(v||'').toLowerCase().includes(search))) return true;
 const logs=contactLogs[p.id]||[];
 if(logs.some(l=>(l.notes||'').toLowerCase().includes(search)||(l.author||'').toLowerCase().includes(search))) return true;
@@ -262,12 +321,14 @@ const pLoc = primaryAssign?.practice_locations || (primaryAssign ? practiceLocat
 const cityDisplay = pLoc.city || '';
 const practiceName = pLoc.practices?.name || getPracticeName(pLoc.practice_id) || p.practice_name || '';
 const locationCount = assignments.length;
+const tierStyles={'1':'background:rgba(220,38,38,0.12);color:#dc2626;border:1px solid rgba(220,38,38,0.3)','2':'background:rgba(249,115,22,0.12);color:#ea580c;border:1px solid rgba(249,115,22,0.3)','3':'background:rgba(59,130,246,0.12);color:#2563eb;border:1px solid rgba(59,130,246,0.3)','4':'background:rgba(0,0,0,0.05);color:#777;border:1px solid rgba(0,0,0,0.12)','5':'background:rgba(0,0,0,0.03);color:#bbb;border:1px solid rgba(0,0,0,0.08)'};
+const tierBadge=p.priority?`<div class="tier" style="${tierStyles[p.priority]||''}">P${p.priority}</div>`:'';
 return `
 <li class="physician-item ${currentPhysician?.id === p.id ? 'active' : ''}"
 onclick="viewPhysician('${p.id}')">
 <div class="name">${fmtName(p)}</div>
 <div class="practice">${practiceName}</div>
-<div class="tier">${p.priority || 'No tier'}</div>
+${tierBadge}
 ${cityDisplay ? `<span class="city-badge">${cityDisplay}</span>` : ''}
 ${locationCount > 1 ? `<span class="city-badge">+${locationCount - 1} more</span>` : ''}
 </li>
@@ -323,8 +384,11 @@ if (remErr) { rc.innerHTML = '<div class="empty-notice">Could not load reminders
 else if (!reminders || reminders.length === 0) {
 rc.innerHTML = '<div class="empty-notice" style="color:#92400e;">No follow-up reminders set.</div>';
 } else {
-const overdue = reminders.filter(r => r.reminder_date < today);
-const upcoming = reminders.filter(r => r.reminder_date >= today);
+const OPEN_DATE = '2099-12-31';
+const openReminders = reminders.filter(r => r.reminder_date === OPEN_DATE);
+const datedR2 = reminders.filter(r => r.reminder_date !== OPEN_DATE);
+const overdue = datedR2.filter(r => r.reminder_date < today);
+const upcoming = datedR2.filter(r => r.reminder_date >= today);
 let html = '';
 if (overdue.length > 0) {
 html += `<div style="margin-bottom:1rem;"><div style="font-size:0.75rem;font-weight:700;color:#dc2626;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:0.5rem;padding-bottom:0.25rem;border-bottom:2px solid #fca5a5;">⚠️ Overdue (${overdue.length})</div>`;
@@ -379,6 +443,28 @@ ${taskNote?`<div style="font-size:0.8rem;font-weight:600;color:#92400e;backgroun
 html += '</div>';
 });
 }
+if (openReminders.length > 0) {
+html += `<div style="margin-bottom:0.5rem;"><div style="font-size:0.75rem;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:0.5rem;padding-bottom:0.25rem;border-bottom:2px solid #d1d5db;">📌 Open (${openReminders.length})</div>`;
+openReminders.forEach(r => {
+const phys = r.physician_id ? physicians.find(p => p.id === r.physician_id) : null;
+const physName = phys ? fmtName(phys) : (r.practice_location_id ? getLocationLabel(r.practice_location_id) : 'Location Note');
+const tm = (r.notes||'').match(/^\[(\d{1,2}:\d{2}(?:\s*[APap][Mm])?)\]\s*/);
+let displayNotes = tm ? r.notes.replace(tm[0], '') : (r.notes||'');
+const taskMatch = displayNotes.match(/\s*\|\s*\[Task:\s*(.*?)\]$/);
+const taskNote = taskMatch ? taskMatch[1].trim() : '';
+if (taskMatch) displayNotes = displayNotes.slice(0, taskMatch.index).trim();
+const preview = displayNotes.length > 80 ? displayNotes.substring(0,80) + '...' : displayNotes;
+const clickFn = r.physician_id ? `viewPhysician('${r.physician_id}')` : r.practice_location_id ? `viewLocation('${r.practice_location_id}')` : '';
+html += `<div class="contact-entry" style="cursor:pointer;border-left-color:#6b7280;margin-bottom:0.5rem;display:flex;gap:0.5rem;align-items:flex-start;">
+<button onclick="event.stopPropagation();completeReminder('${r.id}')" title="Mark complete" style="background:none;border:2px solid #6b7280;color:#6b7280;border-radius:50%;width:22px;height:22px;min-width:22px;cursor:pointer;font-size:0.75rem;display:flex;align-items:center;justify-content:center;margin-top:0.15rem;flex-shrink:0;">✓</button>
+<div onclick="${clickFn}" style="flex:1;">
+<div style="font-weight:600;color:#0a4d3c;font-size:0.9rem;">${physName}</div>
+${taskNote?`<div style="font-size:0.8rem;font-weight:600;color:#92400e;background:#fef3c7;padding:0.15rem 0.4rem;border-radius:4px;margin-top:0.2rem;">📋 ${taskNote}</div>`:''}
+<div style="font-size:0.8rem;color:#666;margin-top:0.2rem;">${preview}</div>
+</div></div>`;
+});
+html += '</div>';
+}
 rc.innerHTML = html || '<div class="empty-notice" style="color:#92400e;">No reminders found.</div>';
 }
 } catch(e) {
@@ -407,6 +493,7 @@ if (container) container.innerHTML = '<div class="empty-notice">Could not load r
 async function viewPhysician(id) {
 currentPhysician = physicians.find(p => p.id === id);
 currentPractice = null;
+currentLocationId = null;
 if (!currentPhysician) return;
 await loadContactLogs(id);
 renderList();
@@ -421,6 +508,7 @@ const loc = practiceLocations.find(l => l.id === locId);
 if (!loc) return;
 currentPractice = practices.find(p => p.id === loc.practice_id);
 currentPhysician = null;
+currentLocationId = locId;
 renderList();
 renderLocationProfile(loc);
 if (window.innerWidth <= 768) closeSidebar();
@@ -429,6 +517,7 @@ if (window.innerWidth <= 768) closeSidebar();
 async function viewPractice(id) {
 currentPractice = practices.find(p => p.id === id);
 currentPhysician = null;
+currentLocationId = null;
 if (!currentPractice) return;
 renderList();
 renderPracticeProfile();
@@ -436,3 +525,29 @@ if (window.innerWidth <= 768) {
 closeSidebar();
 }
 }
+
+// --- State persistence (restore last view after minimize/reopen) ---
+function saveViewState() {
+try {
+const s = { view: currentView, ts: Date.now() };
+if (currentPhysician) s.physicianId = currentPhysician.id;
+else if (currentLocationId) s.locationId = currentLocationId;
+else if (currentPractice) s.practiceId = currentPractice.id;
+localStorage.setItem('crmViewState', JSON.stringify(s));
+} catch(e) {}
+}
+async function restoreViewState() {
+try {
+const raw = localStorage.getItem('crmViewState');
+if (!raw) return;
+const s = JSON.parse(raw);
+const MAX_AGE = 4 * 60 * 60 * 1000; // 4 hours
+if (Date.now() - s.ts > MAX_AGE) { localStorage.removeItem('crmViewState'); return; }
+if (s.physicianId) { await viewPhysician(s.physicianId); }
+else if (s.locationId) { viewLocation(s.locationId); }
+else if (s.practiceId) { await viewPractice(s.practiceId); }
+else if (s.view && s.view !== 'physicians') { setView(s.view); }
+} catch(e) {}
+}
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') saveViewState(); });
+window.addEventListener('beforeunload', saveViewState);

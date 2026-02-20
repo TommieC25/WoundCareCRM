@@ -73,6 +73,14 @@ Append New Records from CSV <input type="file" accept=".csv" onchange="importCSV
 <button class="sort-btn" onclick="setSortBy('zip')" id="sortZip">ZIP</button>
 <button class="sort-btn" onclick="setSortBy('tier')" id="sortTier">Tier</button>
 </div>
+<div class="sort-controls" id="tierFilterControls" style="display:none;">
+<button class="sort-btn active" onclick="setFilterTier(null)" id="filterAll">All</button>
+<button class="sort-btn" onclick="setFilterTier('1')" id="filterT1" style="color:#dc2626;font-weight:700;">P1</button>
+<button class="sort-btn" onclick="setFilterTier('2')" id="filterT2" style="color:#ea580c;font-weight:700;">P2</button>
+<button class="sort-btn" onclick="setFilterTier('3')" id="filterT3" style="color:#2563eb;font-weight:700;">P3</button>
+<button class="sort-btn" onclick="setFilterTier('4')" id="filterT4" style="color:#666;">P4</button>
+<button class="sort-btn" onclick="setFilterTier('5')" id="filterT5" style="color:#aaa;">P5</button>
+</div>
 <ul class="physician-list" id="physicianList">
 <li class="loading">Loading physicians...</li>
 </ul>
@@ -382,21 +390,13 @@ Append New Records from CSV <input type="file" accept=".csv" onchange="importCSV
 </div>
 <div id="reminderRow" style="padding:0.75rem;background:#fffbeb;border:1px solid #fcd34d;border-radius:8px;">
 <label style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.5rem;cursor:pointer;text-transform:none;letter-spacing:0;font-size:0.9rem;color:#92400e;">
-<input type="checkbox" id="setReminder" onchange="const s=this.checked;$('reminderDays').style.display=s?'flex':'none';$('reminderNoteRow').style.display=s?'block':'none';if(s)updateReminderPreview();">
+<input type="checkbox" id="setReminder" onchange="const s=this.checked;$('reminderDays').style.display=s?'flex':'none';$('reminderNoteRow').style.display=s?'block':'none';if(s)populateReminderDateButtons();">
 Set Follow-Up Reminder
 </label>
-<div id="reminderDays" style="display:none;align-items:center;gap:0.5rem;">
-<select id="reminderDaysSelect" onchange="updateReminderPreview()" style="padding:0.5rem;font-size:0.85rem;border:1px solid #fcd34d;border-radius:6px;">
-<option value="1">1 day</option>
-<option value="2">2 days</option>
-<option value="3">3 days</option>
-<option value="4">4 days</option>
-<option value="5">5 days</option>
-<option value="7" selected>7 days (1 week)</option>
-<option value="14">14 days (2 weeks)</option>
-<option value="30">30 days (1 month)</option>
-</select>
-<span style="font-size:0.8rem;color:#92400e;" id="reminderDatePreview"></span>
+<div id="reminderDays" style="display:none;flex-direction:column;gap:0.4rem;">
+<div id="reminderDateButtons" style="display:flex;flex-wrap:wrap;gap:0.3rem;"></div>
+<div id="reminderDatePreview" style="font-size:0.8rem;color:#92400e;font-weight:600;min-height:1.2em;"></div>
+<input type="hidden" id="reminderSelectedDate" value="">
 </div>
 <div id="reminderNoteRow" style="display:none;margin-top:0.5rem;">
 <input type="text" id="reminderNote" placeholder="What to follow up on… (e.g. Call back re: prior auth)" style="width:100%;padding:0.5rem;font-size:0.85rem;border:1px solid #fcd34d;border-radius:6px;background:#fffbeb;font-family:inherit;box-sizing:border-box;">
