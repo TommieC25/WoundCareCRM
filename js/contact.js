@@ -194,10 +194,7 @@ await loadContactLogs(physicianId);
 deleteNote(logId);
 }
 
-function openAddTaskModal(physicianId, locationId) {
-$('addTaskNote').value = '';
-$('addTaskPhysicianId').value = physicianId || '';
-$('addTaskLocationId').value = locationId || '';
+function _buildTaskContext(physicianId, locationId) {
 const phys = physicianId ? physicians.find(p => p.id === physicianId) : null;
 const loc = locationId ? practiceLocations.find(l => l.id === locationId) : null;
 const practice = loc ? practices.find(p => p.id === loc.practice_id) : null;
@@ -205,8 +202,38 @@ let ctx = '';
 if (phys) { ctx = `<strong>${fmtName(phys)}</strong>`; if (practice) ctx += ` · ${practice.name}`; if (loc && loc.address) ctx += ` · ${loc.address}`; }
 else if (practice) { ctx = `<strong>${practice.name}</strong>`; if (loc) ctx += ` · ${loc.label || loc.address || loc.city || ''}`; }
 else if (loc) { ctx = `<strong>${loc.label || loc.address || 'Location'}</strong>`; }
-$('addTaskContext').innerHTML = ctx;
+return ctx;
+}
+
+function openAddTaskModal(physicianId, locationId) {
+if($('addTaskEditId'))$('addTaskEditId').value = '';
+$('addTaskNote').value = '';
+$('addTaskPhysicianId').value = physicianId || '';
+$('addTaskLocationId').value = locationId || '';
+$('addTaskContext').innerHTML = _buildTaskContext(physicianId, locationId);
+$('addTaskModalTitle').textContent = 'New Follow-Up Task';
 populateReminderDateButtons('task');
+$('addTaskModal').classList.add('active');
+setTimeout(() => $('addTaskNote').focus(), 100);
+}
+
+// Opens addTaskModal in edit mode for an existing task record (called from task detail modal)
+function openEditTaskModal() {
+const rec = window._openedTaskRec;
+if (!rec) return;
+// Extract task note: for old-style records with embedded [Task:], use that text; otherwise use the full notes
+const tm = (rec.notes||'').match(/^\[(\d{1,2}:\d{2})\]\s*/);
+let noteText = tm ? rec.notes.replace(tm[0], '') : (rec.notes||'');
+const taskMatch = noteText.match(/\s*\|\s*\[Task:\s*(.*?)\]$/);
+const taskNote = taskMatch ? taskMatch[1].trim() : noteText;
+if($('addTaskEditId'))$('addTaskEditId').value = rec.id;
+$('addTaskNote').value = taskNote;
+$('addTaskPhysicianId').value = rec.physician_id || '';
+$('addTaskLocationId').value = rec.practice_location_id || '';
+$('addTaskContext').innerHTML = _buildTaskContext(rec.physician_id, rec.practice_location_id);
+$('addTaskModalTitle').textContent = 'Edit Task';
+populateReminderDateButtons('task');
+if (rec.reminder_date) selectReminderDate(rec.reminder_date, '', 'task');
 $('addTaskModal').classList.add('active');
 setTimeout(() => $('addTaskNote').focus(), 100);
 }
@@ -218,15 +245,22 @@ const note = ($('addTaskNote').value || '').trim();
 if (!note) { showToast('Please enter a task note', 'error'); return; }
 const date = $('taskSelectedDate').value;
 if (!date) { showToast('Please select a due date', 'error'); return; }
+const editId = ($('addTaskEditId')?.value) || null;
 const physicianId = $('addTaskPhysicianId').value || null;
 const locationId = $('addTaskLocationId').value || null;
 const today = new Date().toISOString().split('T')[0];
 try {
-const { error } = await db.from('contact_logs').insert({ physician_id: physicianId, contact_date: today, author: 'Tom', notes: note, practice_location_id: locationId, reminder_date: date });
+let error;
+if (editId) {
+({error} = await db.from('contact_logs').update({ notes: note, reminder_date: date }).eq('id', editId));
+} else {
+({error} = await db.from('contact_logs').insert({ physician_id: physicianId, contact_date: today, author: 'Tom', notes: note, practice_location_id: locationId, reminder_date: date }));
+}
 if (error) throw error;
-showToast('Task saved', 'success');
+showToast(editId ? 'Task updated' : 'Task saved', 'success');
 closeAddTaskModal();
 if (physicianId && currentPhysician && currentPhysician.id === physicianId) { await loadContactLogs(physicianId); renderProfile(); }
+if (typeof renderTasksView === 'function') renderTasksView();
 } catch(e) { showToast('Error saving task: ' + e.message, 'error'); }
 }
 

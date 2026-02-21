@@ -48,13 +48,14 @@ ${taskNote?`<div style="font-weight:700;color:#92400e;background:#fef3c7;padding
 ${r.reminder_date?`<div style="margin-top:0.6rem;padding:0.3rem 0.6rem;border-radius:6px;font-size:0.82rem;font-weight:600;${isOpen?'background:#e5e7eb;color:#6b7280;':isOverdue?'background:#fef2f2;color:#dc2626;':'background:#fef3c7;color:#92400e;'}">${isOpen?'📌 Open task — no due date':isOverdue?`⚠️ OVERDUE — Due ${fmtD(r.reminder_date)}`:`🔔 Due ${fmtD(r.reminder_date)}`}</div>`:''}
 </div>`;
 const completeFn = `event.stopPropagation();completeReminder('${r.id}').then(()=>{closeTaskDetailModal();renderTasksView();})`;
-const editFn = r.physician_id ? `closeTaskDetailModal();editNoteFromActivity('${r.id}','${r.physician_id}')` : '';
+window._openedTaskRec = r;
+const editFn = `closeTaskDetailModal();openEditTaskModal()`;
 const delFn = r.physician_id ? `closeTaskDetailModal();deleteNoteFromActivity('${r.id}','${r.physician_id}').then(()=>renderTasksView())` : '';
 const profileFn = phys ? `closeTaskDetailModal();setView('physicians');viewPhysician('${phys.id}')` : '';
 html += `<div style="display:flex;flex-direction:column;gap:0.5rem;">
 <button onclick="${completeFn}" style="padding:0.75rem;background:#10b981;color:white;border:none;border-radius:8px;font-weight:700;font-size:0.95rem;cursor:pointer;-webkit-tap-highlight-color:transparent;">✓ Mark Complete</button>
 <div style="display:flex;gap:0.5rem;">
-${editFn?`<button onclick="${editFn}" style="flex:1;padding:0.7rem;background:#0a4d3c;color:white;border:none;border-radius:8px;font-weight:600;font-size:0.875rem;cursor:pointer;">✏️ Edit Note</button>`:''}
+<button onclick="${editFn}" style="flex:1;padding:0.7rem;background:#0a4d3c;color:white;border:none;border-radius:8px;font-weight:600;font-size:0.875rem;cursor:pointer;">✏️ Edit Task</button>
 ${delFn?`<button onclick="${delFn}" style="flex:1;padding:0.7rem;background:#dc2626;color:white;border:none;border-radius:8px;font-weight:600;font-size:0.875rem;cursor:pointer;">🗑️ Delete</button>`:''}
 </div>
 ${profileFn?`<button onclick="${profileFn}" style="padding:0.7rem;background:rgba(10,77,60,0.08);color:#0a4d3c;border:2px solid #0a4d3c;border-radius:8px;font-weight:600;font-size:0.875rem;cursor:pointer;">👤 View Full Profile</button>`:''}
