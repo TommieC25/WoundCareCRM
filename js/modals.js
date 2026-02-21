@@ -2,10 +2,10 @@
 
 // --- Physician modal ---
 function openPhysicianModal() {
-editMode=false;selectedPracticeId=null;selectedLocationIds=[];$('modalTitle').textContent='Add Physician';
+editMode=false;selectedPracticeId=null;selectedLocationIds=[];$('modalTitle').textContent='Add Provider';
 $('physicianForm').reset();setFields({priority:'',specialty:''});
 $('newPracticeFields').style.display='none';$('locationSelector').style.display='none';
-$('physicianSaveBtn').textContent='Save Physician';$('physicianSaveBtn').className='btn-primary';
+$('physicianSaveBtn').textContent='Save Provider';$('physicianSaveBtn').className='btn-primary';
 populatePracticeOptions();$('physicianModal').classList.add('active');
 }
 function closeModal(id){$(id).classList.remove('active');}
@@ -111,17 +111,17 @@ renderProfile();
 showToast(newVal?'Marked as Advanced Solution':'Removed Advanced Solution','success');
 }
 function editPhysicianInfo() {
-editMode=true;const p=currentPhysician;$('modalTitle').textContent='Edit Physician';
+editMode=true;const p=currentPhysician;$('modalTitle').textContent='Edit Provider';
 setFields({firstName:p.first_name,lastName:p.last_name,physicianEmail:p.email||'',priority:normPriority(p.priority)||'',specialty:p.specialty||'',umConnection:p.academic_connection||p.um_connection||'',patientVolume:p.proj_vol||p.mohs_volume||'',physicianGeneralNotes:p.general_notes||'',degree:p.degree||'',staffTitle:p.title||''});
 $('practiceSelector').style.display='none';$('locationSelector').style.display='none';
-$('physicianSaveBtn').textContent='Save Physician';$('physicianSaveBtn').className='btn-primary';$('physicianModal').classList.add('active');
+$('physicianSaveBtn').textContent='Save Provider';$('physicianSaveBtn').className='btn-primary';$('physicianModal').classList.add('active');
 }
 async function savePhysician(e) {
 e.preventDefault();
 const data = {first_name:$('firstName').value,last_name:$('lastName').value,email:$('physicianEmail').value||null,priority:$('priority').value||null,specialty:$('specialty').value||null,academic_connection:$('umConnection').value||null,proj_vol:$('patientVolume').value||null,general_notes:$('physicianGeneralNotes').value||null};
 const degreeVal=$('degree').value||null;const titleVal=$('staffTitle').value||null;
 data.degree=degreeVal;data.title=titleVal;
-await withSave('physicianSaveBtn','Save Physician',async()=>{
+await withSave('physicianSaveBtn','Save Provider',async()=>{
 if(editMode){if(!currentPhysician){showToast('Error: physician context lost. Close and try again.','error');return;}const{error}=await db.from('physicians').update(data).eq('id',currentPhysician.id);if(error)throw error;Object.assign(currentPhysician,data);renderProfile();showToast('Physician updated','success');
 }else{
 let practiceId=selectedPracticeId;const npn=$('newPracticeName').value;
@@ -140,7 +140,7 @@ const{error:ae}=await db.from('physician_location_assignments').insert({physicia
 if(ae)throw ae;
 }
 }
-physicians.push(newP);physicians.sort((a,b)=>a.last_name.localeCompare(b.last_name));showToast('Physician added','success');
+physicians.push(newP);physicians.sort((a,b)=>a.last_name.localeCompare(b.last_name));showToast('Provider added','success');
 }
 await loadAllData();renderList();setTimeout(()=>closePhysicianModal(),500);
 });
@@ -480,7 +480,7 @@ $('assignPhysicianOptions').innerHTML = filtered.map(p => `
 <div class="selector-option-sub">${p.specialty || ''}</div>
 </div>
 </div>
-`).join('') || '<div class="empty-notice">No physicians found</div>';
+`).join('') || '<div class="empty-notice">No providers found</div>';
 }
 function filterAssignPhysicianOptions() {
 const currentChecked = new Set();
@@ -528,7 +528,7 @@ const assigns = physicianAssignments[p.id] || [];
 return assigns.some(a => locations.some(l => l.id === a.practice_location_id));
 }).map(p => p.id);
 renderAssignPhysicianOptions(existingPhysIds);
-showToast(`Dr. ${first} ${last} added and assigned`, 'success');
+showToast(`${first} ${last} added and assigned`, 'success');
 updateSyncIndicators('synced');
 } catch(e) {
 console.error('Quick add error:', e);
@@ -565,7 +565,7 @@ await db.from('physician_location_assignments').delete().eq('physician_id',physI
 await loadAllData();
 renderPracticeProfile();
 closeAssignPhysicianModal();
-showToast('Physicians assigned', 'success');
+showToast('Providers assigned', 'success');
 updateSyncIndicators('synced');
 } catch(e) {
 console.error('Assign error:', e);

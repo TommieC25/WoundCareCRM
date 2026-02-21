@@ -15,7 +15,7 @@ $('mainContent').innerHTML = `
 <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:0.5rem;flex-wrap:wrap;">
 <div class="profile-name" style="flex:1;">${fmtName(p)}</div>
 <div style="display:flex;gap:0.5rem;flex-shrink:0;">
-<button class="edit-btn" onclick="editPhysicianInfo()" style="background:#0a4d3c;">Edit Physician</button>
+<button class="edit-btn" onclick="editPhysicianInfo()" style="background:#0a4d3c;">Edit Provider</button>
 <button class="delete-btn" onclick="deletePhysician()">Delete</button>
 </div>
 </div>
@@ -32,13 +32,13 @@ ${mi('Last Contact',p.last_contact||'Never')}${mi('Locations',assignments.length
 </div>
 <div class="section">
 <div class="section-header">
-<h3>${p.specialty==='Administrative Staff'?'Staff Contact':'Physician Profile'}</h3>
+<h3>${p.specialty==='Administrative Staff'?'Staff Contact':'Provider Profile'}</h3>
 <div>
 <button class="edit-btn" onclick="editPhysicianInfo()">Edit</button>
 </div>
 </div>
 <div class="contact-grid">
-${ci('✉️',p.specialty==='Administrative Staff'?'Email':'Physician Email',p.email?`<a href="mailto:${p.email}">${p.email}</a>`:'')}
+${ci('✉️',p.specialty==='Administrative Staff'?'Email':'Provider Email',p.email?`<a href="mailto:${p.email}">${p.email}</a>`:'')}
 ${ci('📝','General Notes',p.general_notes)}
 ${!p.email&&!p.general_notes?'<div class="empty-notice">Click Edit to add email and notes</div>':''}
 </div>
@@ -115,7 +115,7 @@ $('mainContent').innerHTML = `
 <div class="profile-name">${p.name}</div>
 <div class="profile-practice">${p.website ? `<a href="${p.website.match(/^https?:\/\//)?p.website:'https://'+p.website}" target="_blank">${p.website}</a>` : 'No website'}</div>
 <div class="profile-meta">
-${mi('Locations',locations.length)}${mi('Physicians',practicePhysicians.length)}${mi('Cities',[...new Set(locations.map(l=>l.city).filter(Boolean))].join(', ')||'N/A')}
+${mi('Locations',locations.length)}${mi('Providers',practicePhysicians.length)}${mi('Cities',[...new Set(locations.map(l=>l.city).filter(Boolean))].join(', ')||'N/A')}
 </div>
 </div>
 <div class="section">
@@ -160,11 +160,11 @@ locations.map(loc => `
 </div>
 <div class="section">
 <div class="section-header">
-<h3>Physicians & Staff</h3>
+<h3>Providers & Staff</h3>
 <button class="edit-btn" onclick="openAssignPhysicianModal()">+ Assign</button>
 </div>
 ${practicePhysicians.length === 0 ?
-'<div class="empty-notice">No physicians or staff assigned to this practice yet.</div>' :
+'<div class="empty-notice">No providers or staff assigned to this practice yet.</div>' :
 '<div class="contact-grid">' +
 practicePhysicians.map(phys => {
 const isStaffP = phys.specialty === 'Administrative Staff';
@@ -195,7 +195,7 @@ $('mainContent').innerHTML = `
 <div class="profile-name">${loc.label || 'Office'}</div>
 <div class="profile-practice">${[loc.address, loc.city, loc.zip].filter(Boolean).join(', ')}</div>
 <div class="profile-meta">
-${mi('Physicians', locPhysicians.length)}${mi('City', loc.city || '—')}${mi('Zip', loc.zip || '—')}
+${mi('Providers', locPhysicians.length)}${mi('City', loc.city || '—')}${mi('Zip', loc.zip || '—')}
 </div>
 </div>
 <div class="section">
@@ -213,10 +213,10 @@ ${!loc.phone&&!loc.practice_email&&!loc.office_hours&&!loc.office_staff&&!loc.re
 </div>
 <div class="section">
 <div class="section-header">
-<h3>Physicians & Staff</h3>
+<h3>Providers & Staff</h3>
 </div>
 ${locPhysicians.length === 0 ?
-'<div class="empty-notice">No physicians assigned to this location.</div>' :
+'<div class="empty-notice">No providers assigned to this location.</div>' :
 '<div class="contact-grid">' + locPhysicians.map(phys => {
 const isStaffL = phys.specialty === 'Administrative Staff';
 return `
@@ -317,7 +317,7 @@ physRow.id = 'practicePhysSelectRow';
 $('locationSelectRow').parentElement.insertBefore(physRow, $('locationSelectRow'));
 }
 if (practPhys.length > 0) {
-physRow.innerHTML = `<label>Who was present? <span style="font-weight:400;color:#aaa;text-transform:none;letter-spacing:0;">(optional — check if physician was there)</span></label>
+physRow.innerHTML = `<label>Who was present? <span style="font-weight:400;color:#aaa;text-transform:none;letter-spacing:0;">(optional — check if provider was there)</span></label>
 <div id="practicePhysCheckboxes" style="max-height:180px;overflow-y:auto;border:2px solid #e5e5e5;border-radius:8px;padding:0.5rem;">
 ${practPhys.map(p => `<div class="selector-option" style="margin-bottom:0.25rem;" onclick="var c=this.querySelector('input');c.checked=!c.checked;">
 <input type="checkbox" value="${p.id}" class="practice-phys-cb">
