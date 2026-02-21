@@ -84,8 +84,14 @@ list.innerHTML = colleagues.map(p => `<div class="selector-option" style="margin
 function closeContactModal(){closeModal('contactModal');}
 
 async function saveContact(e) {
-e.preventDefault();
-const tv=$('contactTime').value,nv=$('contactNotes').value;
+if(e) e.preventDefault();
+try {
+if(!currentPhysician){showToast('Error: no physician selected','error');return;}
+const dateVal=$('contactDate').value,authorVal=$('authorName').value;
+const nv=($('contactNotes').value||'').trim();
+if(!dateVal){showToast('Please enter a date','error');return;}
+if(!nv){showToast('Please enter note text','error');return;}
+const tv=$('contactTime').value;
 const locVal=$('contactLocation').value||null;
 const reminderOn=$('setReminder').checked;
 const reminderDate=reminderOn?($('reminderSelectedDate')?.value||null):null;
@@ -94,7 +100,6 @@ const baseNote=tv?`[${tv}] ${nv}`:nv;
 const staffVal=$('staffPresent')?$('staffPresent').value.trim():'';
 const withStaff=staffVal?`${baseNote} | Staff: ${staffVal}`:baseNote;
 const noteText=reminderNoteVal?`${withStaff} | [Task: ${reminderNoteVal}]`:withStaff;
-const dateVal=$('contactDate').value,authorVal=$('authorName').value;
 const data={physician_id:currentPhysician.id,contact_date:dateVal,author:authorVal,notes:noteText,practice_location_id:locVal,reminder_date:reminderDate};
 const alsoCbs=document.querySelectorAll('.also-attended-cb:checked');
 const alsoIds=[...alsoCbs].map(cb=>cb.value);
@@ -114,6 +119,7 @@ showToast(`Note logged for ${total} physician${total>1?'s':''}`,'success');
 await db.from('physicians').update({last_contact:dateVal}).eq('id',currentPhysician.id);
 currentPhysician.last_contact=dateVal;await loadContactLogs(currentPhysician.id);renderProfile();setTimeout(()=>closeContactModal(),500);
 });
+}catch(err){showToast('Error saving note: '+err.message,'error');console.error('saveContact error:',err);}
 }
 
 async function editNote(logId) {
