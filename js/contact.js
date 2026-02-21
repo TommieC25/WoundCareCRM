@@ -109,6 +109,16 @@ const{error:ae}=await db.from('contact_logs').insert(alsoEntries);
 if(ae)console.error('Also-attended insert error:',ae);
 for(const pid of alsoIds){await db.from('physicians').update({last_contact:dateVal}).eq('id',pid);}
 }
+// Follow-up task: insert as a SEPARATE contact_log record, independent of the activity
+if(reminderOn&&reminderDate){
+const taskNote=reminderNoteVal||'Follow-up';
+const taskData={physician_id:currentPhysician.id,contact_date:dateVal,author:authorVal,notes:taskNote,practice_location_id:locVal,reminder_date:reminderDate};
+await db.from('contact_logs').insert(taskData);
+if(alsoIds.length>0){
+const alsoTasks=alsoIds.map(pid=>({physician_id:pid,contact_date:dateVal,author:authorVal,notes:taskNote,practice_location_id:locVal,reminder_date:reminderDate}));
+await db.from('contact_logs').insert(alsoTasks);
+}
+}
 const total=1+alsoIds.length;
 showToast(`Note logged for ${total} provider${total>1?'s':''}`,'success');
 }
