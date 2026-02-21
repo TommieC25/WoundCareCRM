@@ -29,22 +29,36 @@ Single-page territory CRM for Miami wound care sales. One file: `index.html` (~2
 - Realtime subscriptions via Supabase channels auto-refresh on external changes
 - `fmtName(p)` formats physician display name with degree/title
 - `withSave(btnId, label, fn)` handles save button state transitions
-- Views: physicians list, practices list, activity log, map, dashboard
+- Views: physicians list (tab label: "HCPs"), practices list, activity log, map, dashboard
 - Routing export tracks export history in localStorage to show NEW vs previously exported rows
+
+## Task Detail Modal (added PR #49, 2026-02-21)
+- Clicking any Task card (Tasks view or Home view reminders) opens `taskDetailModal` instead of navigating to the full provider profile
+- **Global**: `let _taskDetailLogs = {}` in `js/views.js` — a map of `log.id → log record`, populated by `renderTasksView()` and `renderEmptyState()` (nav.js) whenever reminder cards are rendered
+- **Functions**: `openTaskDetailModal(logId)` and `closeTaskDetailModal()` in `js/views.js`
+- Modal shows: provider name + tier badge (or "Staff" badge if `specialty === 'Administrative Staff'`), specialty, email, practice name + location details, reminder status chip (Overdue/Upcoming/Open), full note text
+- Action buttons: ✓ Mark Complete (calls `completeReminder` then re-renders), ✏️ Edit Note (closes modal, calls `editNoteFromActivity`), 🗑️ Delete (closes modal, calls `deleteNoteFromActivity`), 👤 View Full Profile (closes modal, navigates to provider profile)
+- The `_taskDetailLogs` map in nav.js is assigned to `window._taskDetailLogs` so it's accessible from views.js functions
 
 ## CSV Import Format
 Expects columns: first_name, last_name, email, priority, specialty, degree, title, proj_vol (or patient_volume for backward compat), academic_connection/um_connection, general_notes, practice_name, address, city, zip, phone, fax
 
 ## Export Formats
-- **Physicians CSV**: All physicians with practice info, degree, last contact, Status (latest activity)
+- **Providers CSV** (UI label; formerly "Physicians CSV"): All providers with practice info, degree, last contact, Status (latest activity)
 - **Contact Logs CSV**: All activity with dates, locations, notes
 - **Practices CSV**: All locations with details
-- **Field Routing CSV**: Matches Google Sheet "Routing(Field Use)" tab — includes Status column with latest activity per physician
+- **Field Routing CSV**: Matches Google Sheet "Routing(Field Use)" tab — includes Status column with latest activity per provider
 
 ## Naming Conventions
 - "Academic Connection" (UI label) = `academic_connection` column (formerly `um_connection`, still falls back to it)
 - "Projected Volume" (UI) = `proj_vol` column (falls back to `mohs_volume`; formerly `patient_volume`)
 - Priority 1-5 = Tier system (1 = highest)
+- **Provider/HCP/Staff terminology** (as of PR #49, 2026-02-21):
+  - People with medical degrees (MD, DO, DPM, PA-C, NP, RN, PhD) → **"Provider"** in full contexts, **"HCP"** where space is tight
+  - Administrative/office staff (`specialty === 'Administrative Staff'`) → **"Staff"**
+  - The `physicians` DB table name is unchanged — only UI labels changed
+  - Tab label: "HCPs", search placeholder: "Search HCPs...", buttons: "+ New Provider", "Add Provider", "Save Provider", "Edit Provider"
+  - Counts: "X provider(s)", "No providers found", "Providers & Staff" (section headers in profile)
 
 ## Common Gotchas
 - The `degree` and `title` columns were added later (PRs #15-16) — always include them in inserts
@@ -52,6 +66,8 @@ Expects columns: first_name, last_name, email, priority, specialty, degree, titl
 - Contact note times are stored as `[HH:MM]` prefix in the notes text, parsed on display
 - Reminder dates are stored as ISO date strings in `reminder_date` column on `contact_logs`
 - County is guessed from city name via `guessCounty()` helper (Miami-Dade, Broward, Palm Beach)
+- **JS template literals**: When editing HTML-generating template literals in views.js/nav.js, keep the entire string as a single contiguous template literal. Breaking it across lines with raw HTML outside the backtick string causes a JS syntax error. The whole `html += \`...\`` must be one unbroken string.
+- **Merge conflicts when branch is behind main**: If a PR shows "not mergeable", the `claude/` branch has fallen behind. Fix: `git fetch origin main && git merge origin/main --no-edit`, resolve any conflicts (keep HEAD/our version), commit, re-push, then retry the merge API call.
 
 ## User Preferences
 - User is Tom (tom@dynamicoach.com), operates on iPad primarily
@@ -71,7 +87,7 @@ Expects columns: first_name, last_name, email, priority, specialty, degree, titl
 
 **READ THIS FIRST on every new session / conversation compaction.**
 
-### Git Environment — FULLY WORKING (updated 2026-02-21)
+### Git Environment — FULLY WORKING (updated 2026-02-21, confirmed working through PR #49)
 1. **Push access**: ONLY `claude/*` branches work via git. Pushing to `main` returns 403. Do not attempt it.
 2. **`gh` CLI**: NOT installed (command not found). Do not attempt any `gh` commands.
 3. **GitHub REST API**: Works via `curl` to `https://api.github.com` with PAT token. Use this for PR creation and merge.
