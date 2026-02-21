@@ -154,14 +154,15 @@ renderEmptyState();
 
 function setSortBy(sort) {
 sortBy = sort;
-document.querySelectorAll('#sortControls .sort-btn').forEach(btn => btn.classList.remove('active'));
+['Name','City','Zip','Tier'].forEach(s => $('sort'+s).classList.remove('active'));
 $('sort' + sort.charAt(0).toUpperCase() + sort.slice(1)).classList.add('active');
 renderList();
 }
 function setFilterTier(tier) {
 filterTier = tier;
 document.querySelectorAll('#tierFilterControls .sort-btn').forEach(btn => btn.classList.remove('active'));
-$('filter' + (tier ? 'T' + tier : 'All')).classList.add('active');
+$('filterAll').classList.toggle('active', !tier);
+if (tier) $('filterT' + tier).classList.add('active');
 renderList();
 }
 

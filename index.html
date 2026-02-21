@@ -72,6 +72,7 @@ Append New Records from CSV <input type="file" accept=".csv" onchange="importCSV
 <button class="sort-btn" onclick="setSortBy('city')" id="sortCity">City</button>
 <button class="sort-btn" onclick="setSortBy('zip')" id="sortZip">ZIP</button>
 <button class="sort-btn" onclick="setSortBy('tier')" id="sortTier">Tier</button>
+<button class="sort-btn active" onclick="setFilterTier(null)" id="filterAll">All</button>
 </div>
 <div class="sort-controls" id="tierFilterControls">
 <button class="sort-btn" onclick="setFilterTier('1')" id="filterT1" style="background:#ef4444;color:white;font-weight:700;border:none;">P1</button>
@@ -79,7 +80,6 @@ Append New Records from CSV <input type="file" accept=".csv" onchange="importCSV
 <button class="sort-btn" onclick="setFilterTier('3')" id="filterT3" style="background:#3b82f6;color:white;font-weight:700;border:none;">P3</button>
 <button class="sort-btn" onclick="setFilterTier('4')" id="filterT4" style="background:#8b5cf6;color:white;font-weight:700;border:none;">P4</button>
 <button class="sort-btn" onclick="setFilterTier('5')" id="filterT5" style="background:#64748b;color:white;font-weight:700;border:none;">P5</button>
-<button class="sort-btn active" onclick="setFilterTier(null)" id="filterAll">All</button>
 </div>
 <ul class="physician-list" id="physicianList">
 <li class="loading">Loading physicians...</li>
