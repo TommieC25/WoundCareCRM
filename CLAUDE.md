@@ -114,3 +114,4 @@ When picking up from a compacted/previous conversation:
 - No `<details>` / `<summary>` HTML tags — they collapse and can't be expanded on iPad
 - No "see above" references — always include the actual content inline
 - Keep code blocks plain and complete — Tom needs to select-all and copy
+- **For ANY manual step (e.g. Apps Script, Google Sheets): always provide the COMPLETE file/code to paste — never diffs, never "find line X and replace" instructions. Partial instructions waste Tom's time and credits. Lead with the full paste-ready content immediately.**
