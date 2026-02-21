@@ -88,6 +88,7 @@ return result;
 // --- View routing ---
 function setView(view) {
 currentView = view;
+saveViewState();
 $('tabPhysicians').classList.toggle('active', view === 'physicians');
 $('tabPractices').classList.toggle('active', view === 'practices');
 $('tabActivity').classList.toggle('active', view === 'activity');
@@ -565,4 +566,3 @@ else if (s.view && s.view !== 'physicians') { setView(s.view); }
 } catch(e) {}
 }
 document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') saveViewState(); });
-window.addEventListener('beforeunload', saveViewState);
