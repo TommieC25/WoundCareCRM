@@ -72,7 +72,7 @@ return (physicianAssignments[p.id] || []).some(a => myLocIds.includes(a.practice
 });
 }
 if (colleagues.length === 0) {
-list.innerHTML = `<div style="font-size:0.8rem;color:#999;padding:0.2rem 0;">${selectedLocId ? 'No other physicians at this location' : 'No colleague physicians at shared locations'}</div>`;
+list.innerHTML = `<div style="font-size:0.8rem;color:#999;padding:0.2rem 0;">${selectedLocId ? 'No other providers at this location' : 'No colleague providers at shared locations'}</div>`;
 } else {
 list.innerHTML = colleagues.map(p => `<div class="selector-option" style="margin-bottom:0.25rem;" onclick="var c=this.querySelector('input');c.checked=!c.checked;">
 <input type="checkbox" value="${p.id}" class="also-attended-cb">
@@ -114,7 +114,7 @@ if(ae)console.error('Also-attended insert error:',ae);
 for(const pid of alsoIds){await db.from('physicians').update({last_contact:dateVal}).eq('id',pid);}
 }
 const total=1+alsoIds.length;
-showToast(`Note logged for ${total} physician${total>1?'s':''}`,'success');
+showToast(`Note logged for ${total} provider${total>1?'s':''}`,'success');
 }
 await db.from('physicians').update({last_contact:dateVal}).eq('id',currentPhysician.id);
 currentPhysician.last_contact=dateVal;await loadContactLogs(currentPhysician.id);renderProfile();setTimeout(()=>closeContactModal(),500);

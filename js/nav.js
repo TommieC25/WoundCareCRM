@@ -142,8 +142,8 @@ $('tabPhysicians').classList.add('active');
 }
 $('searchInput').parentElement.parentElement.style.display='';
 $('addBtn').style.display='';
-$('searchInput').placeholder = currentView === 'physicians' ? 'Search physicians...' : 'Search practices...';
-$('addBtn').textContent = currentView === 'physicians' ? '+ New Physician' : '+ New Practice';
+$('searchInput').placeholder = currentView === 'physicians' ? 'Search HCPs...' : 'Search practices...';
+$('addBtn').textContent = currentView === 'physicians' ? '+ New Provider' : '+ New Practice';
 $('addBtn').onclick = currentView === 'physicians' ? openPhysicianModal : openPracticeModal;
 $('sortControls').style.display = currentView === 'physicians' ? 'flex' : 'none';
 $('tierFilterControls').style.display = currentView === 'physicians' ? 'flex' : 'none';
@@ -186,7 +186,7 @@ const search = $('searchInput').value.toLowerCase();
 if (currentView === 'physicians') {
 const filtered = getFilteredPhysicians(search);
 $('physicianCount').textContent =
-`${filtered.length} of ${physicians.length} physician${physicians.length !== 1 ? 's' : ''}`;
+`${filtered.length} of ${physicians.length} provider${physicians.length !== 1 ? 's' : ''}`;
 } else {
 const filtered = getFilteredPractices(search);
 $('physicianCount').textContent =
@@ -325,7 +325,7 @@ function renderPhysicianList(list, search) {
 const filtered = getFilteredPhysicians(search);
 const sorted = getSortedPhysicians(filtered);
 if (sorted.length === 0) {
-list.innerHTML = '<li class="loading">No physicians found</li>';
+list.innerHTML = '<li class="loading">No providers found</li>';
 return;
 }
 list.innerHTML = sorted.map(p => {
@@ -375,7 +375,7 @@ async function renderEmptyState() {
 $('mainContent').innerHTML = `
 <div class="empty-state">
 <h2>Welcome to Territory CRM</h2>
-<p>Select a ${currentView === 'physicians' ? 'physician' : 'practice'} from the list to view details</p>
+<p>Select a ${currentView === 'physicians' ? 'provider' : 'practice'} from the list to view details</p>
 </div>
 <div class="section" style="margin-top:1rem;">
 <div class="section-header"><h3 style="color:#92400e;">Follow-Up Reminders</h3></div>
@@ -388,13 +388,14 @@ $('mainContent').innerHTML = `
 <div class="section">
 <div class="section-header"><h3>Quick Stats</h3></div>
 <div class="profile-meta">
-${mi('Physicians',physicians.length)}${mi('Practices',practices.length)}${mi('Locations',practiceLocations.length)}${mi('Cities',[...new Set(practiceLocations.map(l=>l.city).filter(Boolean))].length)}
+${mi('Providers',physicians.length)}${mi('Practices',practices.length)}${mi('Locations',practiceLocations.length)}${mi('Cities',[...new Set(practiceLocations.map(l=>l.city).filter(Boolean))].length)}
 </div>
 </div>
 `;
 try {
 const today = new Date().toISOString().split('T')[0];
 const {data:reminders,error:remErr} = await db.from('contact_logs').select('*').not('reminder_date','is',null).order('reminder_date',{ascending:true});
+if (reminders) { if (!window._taskDetailLogs) window._taskDetailLogs = {}; reminders.forEach(r => window._taskDetailLogs[r.id] = r); }
 const rc = $('remindersContent');
 if (remErr) { rc.innerHTML = '<div class="empty-notice">Could not load reminders</div>'; }
 else if (!reminders || reminders.length === 0) {
@@ -416,10 +417,9 @@ const tm = (r.notes||'').match(/^\[(\d{1,2}:\d{2}(?:\s*[APap][Mm])?)\]\s*/);
 let displayNotes = tm ? r.notes.replace(tm[0], '') : (r.notes||'');
 const taskMatch=displayNotes.match(/\s*\|\s*\[Task:\s*(.*?)\]$/);const taskNote=taskMatch?taskMatch[1].trim():'';if(taskMatch)displayNotes=displayNotes.slice(0,taskMatch.index).trim();
 const preview = displayNotes.length > 100 ? displayNotes.substring(0,100) + '...' : displayNotes;
-const clickFn = r.physician_id ? `viewPhysician('${r.physician_id}')` : r.practice_location_id ? `viewLocation('${r.practice_location_id}')` : '';
-html += `<div class="contact-entry" style="cursor:pointer;border-left-color:#dc2626;background:#fff5f5;margin-bottom:0.5rem;display:flex;gap:0.5rem;align-items:flex-start;">
+html += `<div class="contact-entry" style="cursor:pointer;border-left-color:#dc2626;background:#fff5f5;margin-bottom:0.5rem;display:flex;gap:0.5rem;align-items:flex-start;" onclick="openTaskDetailModal('${r.id}')">
 <button onclick="event.stopPropagation();completeReminder('${r.id}')" title="Mark complete" style="background:none;border:2px solid #dc2626;color:#dc2626;border-radius:50%;width:22px;height:22px;min-width:22px;cursor:pointer;font-size:0.75rem;display:flex;align-items:center;justify-content:center;margin-top:0.15rem;flex-shrink:0;">✓</button>
-<div onclick="${clickFn}" style="flex:1;">
+<div style="flex:1;">
 <div style="font-weight:600;color:#dc2626;font-size:0.9rem;">${physName}${emailLink}</div>
 <div style="font-size:0.75rem;color:#dc2626;font-weight:600;">Due: ${r.reminder_date} (OVERDUE)</div>
 ${taskNote?`<div style="font-size:0.8rem;font-weight:600;color:#92400e;background:#fef3c7;padding:0.15rem 0.4rem;border-radius:4px;margin-top:0.2rem;">📋 ${taskNote}</div>`:''}
@@ -445,10 +445,9 @@ const tm = (r.notes||'').match(/^\[(\d{1,2}:\d{2}(?:\s*[APap][Mm])?)\]\s*/);
 let displayNotes = tm ? r.notes.replace(tm[0], '') : (r.notes||'');
 const taskMatch=displayNotes.match(/\s*\|\s*\[Task:\s*(.*?)\]$/);const taskNote=taskMatch?taskMatch[1].trim():'';if(taskMatch)displayNotes=displayNotes.slice(0,taskMatch.index).trim();
 const preview = displayNotes.length > 100 ? displayNotes.substring(0,100) + '...' : displayNotes;
-const clickFn = r.physician_id ? `viewPhysician('${r.physician_id}')` : r.practice_location_id ? `viewLocation('${r.practice_location_id}')` : '';
-html += `<div class="contact-entry" style="cursor:pointer;border-left-color:#f59e0b;margin-bottom:0.5rem;display:flex;gap:0.5rem;align-items:flex-start;">
+html += `<div class="contact-entry" style="cursor:pointer;border-left-color:#f59e0b;margin-bottom:0.5rem;display:flex;gap:0.5rem;align-items:flex-start;" onclick="openTaskDetailModal('${r.id}')">
 <button onclick="event.stopPropagation();completeReminder('${r.id}')" title="Mark complete" style="background:none;border:2px solid #f59e0b;color:#92400e;border-radius:50%;width:22px;height:22px;min-width:22px;cursor:pointer;font-size:0.75rem;display:flex;align-items:center;justify-content:center;margin-top:0.15rem;flex-shrink:0;">✓</button>
-<div onclick="${clickFn}" style="flex:1;">
+<div style="flex:1;">
 <div style="font-weight:600;color:#0a4d3c;font-size:0.9rem;">${physName}${emailLink}</div>
 ${taskNote?`<div style="font-size:0.8rem;font-weight:600;color:#92400e;background:#fef3c7;padding:0.15rem 0.4rem;border-radius:4px;margin-top:0.2rem;">📋 ${taskNote}</div>`:''}
 <div style="font-size:0.8rem;color:#666;margin-top:0.2rem;">${preview}</div>
@@ -470,10 +469,9 @@ const taskMatch = displayNotes.match(/\s*\|\s*\[Task:\s*(.*?)\]$/);
 const taskNote = taskMatch ? taskMatch[1].trim() : '';
 if (taskMatch) displayNotes = displayNotes.slice(0, taskMatch.index).trim();
 const preview = displayNotes.length > 80 ? displayNotes.substring(0,80) + '...' : displayNotes;
-const clickFn = r.physician_id ? `viewPhysician('${r.physician_id}')` : r.practice_location_id ? `viewLocation('${r.practice_location_id}')` : '';
-html += `<div class="contact-entry" style="cursor:pointer;border-left-color:#6b7280;margin-bottom:0.5rem;display:flex;gap:0.5rem;align-items:flex-start;">
+html += `<div class="contact-entry" style="cursor:pointer;border-left-color:#6b7280;margin-bottom:0.5rem;display:flex;gap:0.5rem;align-items:flex-start;" onclick="openTaskDetailModal('${r.id}')">
 <button onclick="event.stopPropagation();completeReminder('${r.id}')" title="Mark complete" style="background:none;border:2px solid #6b7280;color:#6b7280;border-radius:50%;width:22px;height:22px;min-width:22px;cursor:pointer;font-size:0.75rem;display:flex;align-items:center;justify-content:center;margin-top:0.15rem;flex-shrink:0;">✓</button>
-<div onclick="${clickFn}" style="flex:1;">
+<div style="flex:1;">
 <div style="font-weight:600;color:#0a4d3c;font-size:0.9rem;">${physName}</div>
 ${taskNote?`<div style="font-size:0.8rem;font-weight:600;color:#92400e;background:#fef3c7;padding:0.15rem 0.4rem;border-radius:4px;margin-top:0.2rem;">📋 ${taskNote}</div>`:''}
 <div style="font-size:0.8rem;color:#666;margin-top:0.2rem;">${preview}</div>

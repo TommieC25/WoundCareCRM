@@ -44,7 +44,7 @@
 <label style="display:block;margin-bottom:0.5rem;padding:0.75rem;background:#10b981;color:white;border-radius:8px;font-weight:600;text-align:center;cursor:pointer;font-size:0.95rem;">
 Append New Records from CSV <input type="file" accept=".csv" onchange="importCSV(this.files[0])" style="display:none">
 </label>
-<div style="font-size:0.7rem;color:#888;margin-bottom:0.75rem;text-align:center;">Adds new physicians without affecting existing data</div>
+<div style="font-size:0.7rem;color:#888;margin-bottom:0.75rem;text-align:center;">Adds new providers without affecting existing data</div>
 <div id="importStatus" style="font-size:0.8rem;margin-bottom:0.5rem;color:#ccc;"></div>
 <h4 style="margin-top:1rem;color:#0ea5e9;">Data Export</h4>
 <p style="color:#aaa;font-size:0.8rem;margin-bottom:0.75rem;">Download your CRM data as CSV files.</p>
@@ -55,7 +55,7 @@ Append New Records from CSV <input type="file" accept=".csv" onchange="importCSV
 </div>
 </div>
 <div class="view-tabs">
-<button class="view-tab active" onclick="setView('physicians')" id="tabPhysicians">Physicians</button>
+<button class="view-tab active" onclick="setView('physicians')" id="tabPhysicians">HCPs</button>
 <button class="view-tab" onclick="setView('practices')" id="tabPractices">Practices</button>
 <button class="view-tab" onclick="setView('activity')" id="tabActivity">Activity</button>
 <button class="view-tab" onclick="setView('map')" id="tabMap" style="display:none;"></button>
@@ -63,7 +63,7 @@ Append New Records from CSV <input type="file" accept=".csv" onchange="importCSV
 </div>
 <div class="search-box">
 <div class="search-wrapper">
-<input type="text" class="search-input" id="searchInput" placeholder="Search physicians..." oninput="filterList()">
+<input type="text" class="search-input" id="searchInput" placeholder="Search HCPs..." oninput="filterList()">
 <button class="search-clear" id="searchClear" onclick="clearSearch()" style="display:none">&times;</button>
 </div>
 </div>
@@ -84,13 +84,13 @@ Append New Records from CSV <input type="file" accept=".csv" onchange="importCSV
 <ul class="physician-list" id="physicianList">
 <li class="loading">Loading physicians...</li>
 </ul>
-<button class="add-physician-btn" id="addBtn" onclick="openPhysicianModal()">+ New Physician</button>
+<button class="add-physician-btn" id="addBtn" onclick="openPhysicianModal()">+ New Provider</button>
 </aside>
 <!-- SECTION: HTML-MAIN-CONTENT (main panel, welcome state) -->
 <main class="main-content" id="mainContent">
 <div class="empty-state">
 <h2>Welcome to Territory CRM</h2>
-<p>Select a physician from the list to view their profile</p>
+<p>Select a provider from the list to view their profile</p>
 <div id="importStatusMain" style="font-size:0.85rem;margin-top:0.5rem;color:#666;"></div>
 </div>
 </main>
@@ -99,7 +99,7 @@ Append New Records from CSV <input type="file" accept=".csv" onchange="importCSV
 <div class="modal" id="physicianModal">
 <div class="modal-content">
 <div class="modal-header">
-<h2 id="modalTitle">Add Physician</h2>
+<h2 id="modalTitle">Add Provider</h2>
 <button class="close-btn" onclick="closePhysicianModal()">&times;</button>
 </div>
 <div class="modal-body">
@@ -196,7 +196,7 @@ Append New Records from CSV <input type="file" accept=".csv" onchange="importCSV
 <textarea id="physicianGeneralNotes" rows="3"></textarea>
 </div>
 </div>
-<button type="submit" class="btn-primary" id="physicianSaveBtn" style="margin-top: 1.5rem;">Save Physician</button>
+<button type="submit" class="btn-primary" id="physicianSaveBtn" style="margin-top: 1.5rem;">Save Provider</button>
 </form>
 </div>
 </div>
@@ -443,14 +443,14 @@ Set Follow-Up Reminder
 <div class="modal" id="assignPhysicianModal">
 <div class="modal-content">
 <div class="modal-header">
-<h2>Assign Physician to Location</h2>
+<h2>Assign Provider to Location</h2>
 <button class="close-btn" onclick="closeAssignPhysicianModal()">&times;</button>
 </div>
 <div class="modal-body">
 <p style="margin-bottom: 0.5rem; color: #666;">Select a location at this practice:</p>
 <select id="assignPhysLocationSelect" style="width:100%;margin-bottom:1rem;padding:0.5rem;border:1px solid #e5e5e5;border-radius:6px;font-size:0.9rem;"></select>
 <div id="quickAddPhysSection" style="margin-bottom:1rem;padding:1rem;background:#f0fdf4;border:1px solid #86efac;border-radius:8px;">
-<h4 style="color:#0a4d3c;margin-bottom:0.75rem;font-size:0.9rem;">Quick Add New Physician</h4>
+<h4 style="color:#0a4d3c;margin-bottom:0.75rem;font-size:0.9rem;">Quick Add New Provider</h4>
 <div class="form-row" style="margin-bottom:0.5rem;">
 <div><input type="text" id="quickPhysFirst" placeholder="First Name" style="padding:0.5rem;font-size:0.85rem;"></div>
 <div><input type="text" id="quickPhysLast" placeholder="Last Name" style="padding:0.5rem;font-size:0.85rem;"></div>
@@ -494,10 +494,10 @@ Set Follow-Up Reminder
 </select>
 </div>
 </div>
-<button type="button" class="btn-secondary" style="background:#0a4d3c;color:white;width:100%;" onclick="quickAddPhysician()">Add & Assign Physician</button>
+<button type="button" class="btn-secondary" style="background:#0a4d3c;color:white;width:100%;" onclick="quickAddPhysician()">Add & Assign Provider</button>
 </div>
 <p style="margin-bottom: 0.5rem; color: #666;">Or select existing physicians:</p>
-<input type="text" id="assignPhysSearch" placeholder="Search physicians..." oninput="filterAssignPhysicianOptions()" style="width:100%;padding:0.5rem;border:1px solid #e5e5e5;border-radius:6px;margin-bottom:0.5rem;font-size:0.85rem;">
+<input type="text" id="assignPhysSearch" placeholder="Search providers..." oninput="filterAssignPhysicianOptions()" style="width:100%;padding:0.5rem;border:1px solid #e5e5e5;border-radius:6px;margin-bottom:0.5rem;font-size:0.85rem;">
 <div class="selector-options" id="assignPhysicianOptions" style="max-height: 300px;">
 </div>
 <button type="button" class="btn-primary" style="margin-top: 1rem;" onclick="savePhysicianToLocation()">Save Assignments</button>
@@ -525,7 +525,7 @@ Set Follow-Up Reminder
 <div style="display:flex;flex-direction:column;gap:0.5rem;">
 <button onclick="closeExportModal();openRoutingExport()" style="display:flex;align-items:center;gap:0.75rem;padding:0.875rem 1rem;background:#fef3c7;border:2px solid #f59e0b;border-radius:10px;cursor:pointer;text-align:left;width:100%;margin-bottom:0.5rem;"><span style="font-size:1.5rem;">🗺️</span><div><strong style="color:#92400e;">Field Routing Export</strong><br><small style="color:#a16207;">NEW &amp; updated HCP-to-address rows for routing sheet. Tracks what's already been exported.</small></div></button>
 <div style="border-top:1px solid #e5e5e5;margin:0.5rem 0;padding-top:0.5rem;"><small style="color:#999;">Full data exports:</small></div>
-<button onclick="exportCSV('physicians')" style="display:flex;align-items:center;gap:0.75rem;padding:0.875rem 1rem;background:#f9f9f9;border:2px solid #e5e5e5;border-radius:10px;cursor:pointer;text-align:left;width:100%;"><span style="font-size:1.5rem;">👨‍⚕️</span><div><strong style="color:#0a4d3c;">Physicians</strong><br><small style="color:#999;">All physicians with practice &amp; location info</small></div></button>
+<button onclick="exportCSV('physicians')" style="display:flex;align-items:center;gap:0.75rem;padding:0.875rem 1rem;background:#f9f9f9;border:2px solid #e5e5e5;border-radius:10px;cursor:pointer;text-align:left;width:100%;"><span style="font-size:1.5rem;">👨‍⚕️</span><div><strong style="color:#0a4d3c;">Providers</strong><br><small style="color:#999;">All providers with practice &amp; location info</small></div></button>
 <button onclick="exportCSV('contacts')" style="display:flex;align-items:center;gap:0.75rem;padding:0.875rem 1rem;background:#f9f9f9;border:2px solid #e5e5e5;border-radius:10px;cursor:pointer;text-align:left;width:100%;"><span style="font-size:1.5rem;">📋</span><div><strong style="color:#0a4d3c;">Contact Logs</strong><br><small style="color:#999;">All activity notes with dates &amp; locations</small></div></button>
 <button onclick="exportCSV('practices')" style="display:flex;align-items:center;gap:0.75rem;padding:0.875rem 1rem;background:#f9f9f9;border:2px solid #e5e5e5;border-radius:10px;cursor:pointer;text-align:left;width:100%;"><span style="font-size:1.5rem;">🏥</span><div><strong style="color:#0a4d3c;">Practices &amp; Locations</strong><br><small style="color:#999;">All practices with location details</small></div></button>
 <button onclick="exportCSV('all')" style="display:flex;align-items:center;gap:0.75rem;padding:0.875rem 1rem;background:#f0fdf4;border:2px solid #0a4d3c;border-radius:10px;cursor:pointer;text-align:left;width:100%;"><span style="font-size:1.5rem;">📦</span><div><strong style="color:#0a4d3c;">Export Everything</strong><br><small style="color:#999;">Downloads all three files at once</small></div></button>
@@ -549,6 +549,15 @@ Set Follow-Up Reminder
 <div id="routingExportSummary" style="padding:0.5rem 0.75rem;background:#f0fdf4;border-radius:8px;font-size:0.8rem;color:#166534;margin-bottom:0.75rem;"></div>
 <div id="routingExportList" style="max-height:55vh;overflow-y:auto;"></div>
 </div>
+</div>
+</div>
+<div class="modal" id="taskDetailModal">
+<div class="modal-content">
+<div class="modal-header">
+<h2 id="taskDetailTitle" style="font-size:1.1rem;">Task Details</h2>
+<button class="close-btn" onclick="closeTaskDetailModal()">&times;</button>
+</div>
+<div class="modal-body" id="taskDetailBody"></div>
 </div>
 </div>
 </body>
