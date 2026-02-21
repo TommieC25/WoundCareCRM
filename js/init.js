@@ -37,8 +37,7 @@ await loadAllData();
 await runVolumeMigration();
 await runASMigration();
 setupRealtimeSubscription();
-setView('physicians'); // ensure sidebar controls (sort, tier filter) are always visible on load
-await restoreViewState();
+setView('tasks'); // always start at task list on page load/refresh
 // Prevent background scroll when modals are open (iPad fix)
 document.querySelectorAll('.modal').forEach(modal => {
 modal.addEventListener('touchmove', function(e) {
