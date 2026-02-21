@@ -393,19 +393,11 @@ Append New Records from CSV <input type="file" accept=".csv" onchange="importCSV
 <textarea id="contactNotes" placeholder="What happened during this call/visit?" rows="6"></textarea>
 </div>
 <div id="reminderRow" style="padding:0.75rem;background:#fffbeb;border:1px solid #fcd34d;border-radius:8px;">
-<label style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.25rem;cursor:pointer;text-transform:none;letter-spacing:0;font-size:0.9rem;color:#92400e;">
-<input type="checkbox" id="setReminder" onchange="const s=this.checked;$('reminderDays').style.display=s?'flex':'none';$('reminderNoteRow').style.display=s?'block':'none';if(s)populateReminderDateButtons();">
-Add Follow-Up Task
+<label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer;text-transform:none;letter-spacing:0;font-size:0.9rem;color:#92400e;">
+<input type="checkbox" id="setReminder">
+Add Follow-Up Task after saving
 </label>
-<div style="font-size:0.75rem;color:#b45309;margin-bottom:0.5rem;">Saved as a separate task entry, independent of this activity note.</div>
-<div id="reminderDays" style="display:none;flex-direction:column;gap:0.4rem;">
-<div id="reminderDateButtons" style="display:flex;flex-wrap:wrap;gap:0.3rem;"></div>
-<div id="reminderDatePreview" style="font-size:0.8rem;color:#92400e;font-weight:600;min-height:1.2em;"></div>
-<input type="hidden" id="reminderSelectedDate" value="">
-</div>
-<div id="reminderNoteRow" style="display:none;margin-top:0.5rem;">
-<input type="text" id="reminderNote" placeholder="What to follow up on… (e.g. Call back re: prior auth)" style="width:100%;padding:0.5rem;font-size:0.85rem;border:1px solid #fcd34d;border-radius:6px;background:#fffbeb;font-family:inherit;box-sizing:border-box;">
-</div>
+<div style="font-size:0.75rem;color:#b45309;margin-top:0.25rem;">A separate task window will open after saving this note.</div>
 </div>
 </div>
 <button type="submit" class="btn-primary" id="contactSaveBtn" style="margin-top: 1rem;">Save Note</button>
@@ -559,6 +551,30 @@ Add Follow-Up Task
 <button class="close-btn" onclick="closeTaskDetailModal()">&times;</button>
 </div>
 <div class="modal-body" id="taskDetailBody"></div>
+</div>
+</div>
+<div class="modal" id="addTaskModal">
+<div class="modal-content">
+<div class="modal-header">
+<h2 id="addTaskModalTitle" style="font-size:1.1rem;">New Follow-Up Task</h2>
+<button class="close-btn" onclick="closeAddTaskModal()">&times;</button>
+</div>
+<div class="modal-body">
+<div id="addTaskContext" style="margin-bottom:1rem;padding:0.6rem 0.75rem;background:#f0f9f4;border-radius:8px;font-size:0.875rem;color:#1a5c45;"></div>
+<div style="margin-bottom:1rem;">
+<label>Task *</label>
+<input type="text" id="addTaskNote" placeholder="What to follow up on…" style="width:100%;padding:0.5rem;font-size:0.9rem;border:1px solid #e5e5e5;border-radius:6px;box-sizing:border-box;font-family:inherit;">
+</div>
+<div style="margin-bottom:1.25rem;">
+<label>Due Date</label>
+<div id="taskDateButtons" style="display:flex;flex-wrap:wrap;gap:0.3rem;margin-bottom:0.3rem;"></div>
+<div id="taskDatePreview" style="font-size:0.8rem;color:#92400e;font-weight:600;min-height:1.2em;"></div>
+<input type="hidden" id="taskSelectedDate" value="">
+</div>
+<input type="hidden" id="addTaskPhysicianId" value="">
+<input type="hidden" id="addTaskLocationId" value="">
+<button type="button" class="btn-primary" onclick="saveNewTask()">Save Task</button>
+</div>
 </div>
 </div>
 </body>
