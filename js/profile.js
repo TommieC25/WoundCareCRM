@@ -345,11 +345,7 @@ physRow.innerHTML = `<label>Who was present? <span style="font-weight:400;color:
 physRow.style.display = 'block';
 }
 $('setReminder').checked = false;
-$('reminderDays').style.display = 'none';
-if($('reminderDatePreview'))$('reminderDatePreview').textContent='';
-if($('reminderSelectedDate'))$('reminderSelectedDate').value='';
-if($('reminderNote'))$('reminderNote').value='';
-if($('reminderNoteRow'))$('reminderNoteRow').style.display='none';
+if($('reminderRow'))$('reminderRow').style.display='block';
 $('contactForm').onsubmit = function(ev) { savePracticeContact(ev); return false; };
 $('contactModal').classList.add('active');
 }
@@ -364,27 +360,23 @@ const staffName = ($('officeStaffNameInput')?.value || '').trim();
 const tv = $('contactTime').value, nv = $('contactNotes').value;
 const locVal = $('contactLocation').value || null;
 const reminderOn = $('setReminder').checked;
-const reminderDate = reminderOn ? ($('reminderSelectedDate')?.value || null) : null;
-const reminderNoteVal = reminderOn && $('reminderNote') ? $('reminderNote').value.trim() : '';
 const dateVal = $('contactDate').value, authorVal = $('authorName').value;
 await withSave('contactSaveBtn', 'Save Note', async() => {
 const entries = [];
 const baseNote = tv ? `[${tv}] ${nv}` : nv;
-const finalNote = reminderNoteVal ? `${baseNote} | [Task: ${reminderNoteVal}]` : baseNote;
-// One entry per checked physician
+// Activity entries — clean, no reminder_date, no embedded task text
 physIds.forEach(pid => {
-entries.push({physician_id:pid,contact_date:dateVal,author:authorVal,notes:finalNote,practice_location_id:locVal,reminder_date:reminderDate});
+entries.push({physician_id:pid,contact_date:dateVal,author:authorVal,notes:baseNote,practice_location_id:locVal});
 });
 // Office staff entry always saves with null physician_id
 if (hasOfficeStaff) {
 const staffPrefix = staffName ? `[Office Staff: ${staffName}] ` : '[Office Staff] ';
 const staffNote = tv ? `[${tv}] ${staffPrefix}${nv}` : `${staffPrefix}${nv}`;
-const staffFinal = reminderNoteVal ? `${staffNote} | [Task: ${reminderNoteVal}]` : staffNote;
-entries.push({physician_id:null,contact_date:dateVal,author:authorVal,notes:staffFinal,practice_location_id:locVal,reminder_date:reminderDate});
+entries.push({physician_id:null,contact_date:dateVal,author:authorVal,notes:staffNote,practice_location_id:locVal});
 }
 // If nothing selected, save as pure location-level note (physician_id = null)
 if (entries.length === 0) {
-entries.push({physician_id:null,contact_date:dateVal,author:authorVal,notes:finalNote,practice_location_id:locVal,reminder_date:reminderDate});
+entries.push({physician_id:null,contact_date:dateVal,author:authorVal,notes:baseNote,practice_location_id:locVal});
 }
 const {error} = await db.from('contact_logs').insert(entries);
 if (error) throw error;
@@ -396,7 +388,9 @@ showToast(label, 'success');
 await loadAllData();
 renderPracticeProfile();
 await loadPracticeActivity(currentPractice.id);
-setTimeout(() => { closeContactModal(); $('contactForm').onsubmit = function(ev) { saveContact(ev); return false; }; const pr = $('practicePhysSelectRow'); if (pr) pr.style.display = 'none'; }, 500);
+// If follow-up task requested, open separate task modal after closing activity modal
+const taskPhysId = physIds.length > 0 ? physIds[0] : null;
+setTimeout(() => { closeContactModal(); $('contactForm').onsubmit = function(ev) { saveContact(ev); return false; }; const pr = $('practicePhysSelectRow'); if (pr) pr.style.display = 'none'; if (reminderOn) openAddTaskModal(taskPhysId, locVal); }, 500);
 });
 }
 
@@ -432,11 +426,7 @@ const physHtml = locPhys.length > 0
 physRow.innerHTML = `<label style="font-size:0.75rem;font-weight:600;color:#666;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:0.25rem;">Who was present? <span style="font-weight:400;color:#aaa;text-transform:none;letter-spacing:0;">(optional)</span></label><div style="max-height:180px;overflow-y:auto;border:2px solid #e5e5e5;border-radius:8px;padding:0.5rem;">${physHtml}</div><div style="font-size:0.75rem;color:#999;margin-top:0.25rem;">Leave unchecked to save as a location-level note with no physician attached</div>`;
 physRow.style.display = 'block';
 $('setReminder').checked = false;
-$('reminderDays').style.display = 'none';
-if($('reminderDatePreview'))$('reminderDatePreview').textContent='';
-if($('reminderSelectedDate'))$('reminderSelectedDate').value='';
-if($('reminderNote'))$('reminderNote').value='';
-if($('reminderNoteRow'))$('reminderNoteRow').style.display='none';
+if($('reminderRow'))$('reminderRow').style.display='block';
 $('contactForm').onsubmit = function(ev) { saveLocationContact(ev, locId); return false; };
 $('contactModal').classList.add('active');
 }
@@ -446,22 +436,16 @@ e.preventDefault();
 const tv = $('contactTime').value, nv = $('contactNotes').value;
 const dateVal = $('contactDate').value, authorVal = $('authorName').value;
 const reminderOn = $('setReminder').checked;
-const reminderDate = reminderOn ? ($('reminderSelectedDate')?.value || null) : null;
-const reminderNoteVal = reminderOn && $('reminderNote') ? $('reminderNote').value.trim() : '';
 const cbs = document.querySelectorAll('.loc-phys-cb:checked');
 const physIds = [...cbs].map(cb => cb.value);
-const baseNoteText = tv ? `[${tv}] ${nv}` : nv;
-const noteText = reminderNoteVal ? `${baseNoteText} | [Task: ${reminderNoteVal}]` : baseNoteText;
+const noteText = tv ? `[${tv}] ${nv}` : nv;
+// Activity entries — clean, no reminder_date, no embedded task text
 await withSave('contactSaveBtn', 'Save Note', async () => {
 let entries;
 if (physIds.length > 0) {
-entries = physIds.map(pid => ({
-physician_id: pid, contact_date: dateVal, author: authorVal,
-notes: noteText, practice_location_id: locId, reminder_date: reminderDate
-}));
+entries = physIds.map(pid => ({ physician_id: pid, contact_date: dateVal, author: authorVal, notes: noteText, practice_location_id: locId }));
 } else {
-entries = [{ physician_id: null, contact_date: dateVal, author: authorVal,
-notes: noteText, practice_location_id: locId, reminder_date: reminderDate }];
+entries = [{ physician_id: null, contact_date: dateVal, author: authorVal, notes: noteText, practice_location_id: locId }];
 }
 const { error } = await db.from('contact_logs').insert(entries);
 if (error) throw error;
@@ -476,11 +460,8 @@ if (updatedLoc) {
 currentPractice = practices.find(p => p.id === updatedLoc.practice_id);
 renderLocationProfile(updatedLoc);
 }
-setTimeout(() => {
-closeContactModal();
-$('contactForm').onsubmit = function(ev) { saveContact(ev); return false; };
-const pr = $('practicePhysSelectRow');
-if (pr) pr.style.display = 'none';
-}, 500);
+// If follow-up task requested, open separate task modal after closing activity modal
+const taskPhysId = physIds.length > 0 ? physIds[0] : null;
+setTimeout(() => { closeContactModal(); $('contactForm').onsubmit = function(ev) { saveContact(ev); return false; }; const pr = $('practicePhysSelectRow'); if (pr) pr.style.display = 'none'; if (reminderOn) openAddTaskModal(taskPhysId, locId); }, 500);
 });
 }

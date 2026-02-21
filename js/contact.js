@@ -18,11 +18,6 @@ const sp=$('staffPresent');if(sp)sp.value='';
 const pr = $('practicePhysSelectRow'); if (pr) pr.style.display = 'none';
 $('contactForm').onsubmit = function(ev) { saveContact(ev); return false; };
 $('setReminder').checked = false;
-$('reminderDays').style.display = 'none';
-if($('reminderDatePreview'))$('reminderDatePreview').textContent='';
-if($('reminderSelectedDate'))$('reminderSelectedDate').value='';
-if($('reminderNote'))$('reminderNote').value='';
-if($('reminderNoteRow'))$('reminderNoteRow').style.display='none';
 if($('reminderRow'))$('reminderRow').style.display='block';
 $('contactModal').classList.add('active');
 }
@@ -95,8 +90,6 @@ if(!nv){showToast('Please enter note text','error');return;}
 const tv=$('contactTime').value;
 const locVal=$('contactLocation').value||null;
 const reminderOn=$('setReminder').checked;
-const reminderDate=reminderOn?($('reminderSelectedDate')?.value||null):null;
-const reminderNoteVal=reminderOn&&$('reminderNote')?$('reminderNote').value.trim():'';
 const baseNote=tv?`[${tv}] ${nv}`:nv;
 const staffVal=$('staffPresent')?$('staffPresent').value.trim():'';
 const noteText=staffVal?`${baseNote} | Staff: ${staffVal}`:baseNote;
@@ -130,7 +123,13 @@ const total=1+alsoIds.length;
 showToast(`Note logged for ${total} provider${total>1?'s':''}`,'success');
 }
 await db.from('physicians').update({last_contact:dateVal}).eq('id',currentPhysician.id);
-currentPhysician.last_contact=dateVal;await loadContactLogs(currentPhysician.id);renderProfile();setTimeout(()=>closeContactModal(),500);
+currentPhysician.last_contact=dateVal;await loadContactLogs(currentPhysician.id);renderProfile();
+// If follow-up task requested, open separate task modal after closing activity modal
+if(!editingContactId&&reminderOn){
+setTimeout(()=>{closeContactModal();openAddTaskModal(currentPhysician.id,locVal);},400);
+}else{
+setTimeout(()=>closeContactModal(),500);
+}
 });
 }catch(err){showToast('Error saving note: '+err.message,'error');console.error('saveContact error:',err);}
 }
@@ -158,11 +157,6 @@ $('contactNotes').value = notes;
 // Tasks are now separate records — hide follow-up section when editing an activity
 if($('reminderRow'))$('reminderRow').style.display='none';
 $('setReminder').checked = false;
-$('reminderDays').style.display = 'none';
-if($('reminderNoteRow'))$('reminderNoteRow').style.display='none';
-if($('reminderNote'))$('reminderNote').value='';
-if($('reminderSelectedDate'))$('reminderSelectedDate').value='';
-if($('reminderDatePreview'))$('reminderDatePreview').textContent='';
 $('contactModal').classList.add('active');
 }
 
@@ -198,6 +192,42 @@ currentPractice = null;
 if (!currentPhysician) return;
 await loadContactLogs(physicianId);
 deleteNote(logId);
+}
+
+function openAddTaskModal(physicianId, locationId) {
+$('addTaskNote').value = '';
+$('addTaskPhysicianId').value = physicianId || '';
+$('addTaskLocationId').value = locationId || '';
+const phys = physicianId ? physicians.find(p => p.id === physicianId) : null;
+const loc = locationId ? practiceLocations.find(l => l.id === locationId) : null;
+const practice = loc ? practices.find(p => p.id === loc.practice_id) : null;
+let ctx = '';
+if (phys) { ctx = `<strong>${fmtName(phys)}</strong>`; if (practice) ctx += ` · ${practice.name}`; if (loc && loc.address) ctx += ` · ${loc.address}`; }
+else if (practice) { ctx = `<strong>${practice.name}</strong>`; if (loc) ctx += ` · ${loc.label || loc.address || loc.city || ''}`; }
+else if (loc) { ctx = `<strong>${loc.label || loc.address || 'Location'}</strong>`; }
+$('addTaskContext').innerHTML = ctx;
+populateReminderDateButtons('task');
+$('addTaskModal').classList.add('active');
+setTimeout(() => $('addTaskNote').focus(), 100);
+}
+
+function closeAddTaskModal() { closeModal('addTaskModal'); }
+
+async function saveNewTask() {
+const note = ($('addTaskNote').value || '').trim();
+if (!note) { showToast('Please enter a task note', 'error'); return; }
+const date = $('taskSelectedDate').value;
+if (!date) { showToast('Please select a due date', 'error'); return; }
+const physicianId = $('addTaskPhysicianId').value || null;
+const locationId = $('addTaskLocationId').value || null;
+const today = new Date().toISOString().split('T')[0];
+try {
+const { error } = await db.from('contact_logs').insert({ physician_id: physicianId, contact_date: today, author: 'Tom', notes: note, practice_location_id: locationId, reminder_date: date });
+if (error) throw error;
+showToast('Task saved', 'success');
+closeAddTaskModal();
+if (physicianId && currentPhysician && currentPhysician.id === physicianId) { await loadContactLogs(physicianId); renderProfile(); }
+} catch(e) { showToast('Error saving task: ' + e.message, 'error'); }
 }
 
 function toggleAdminPanel() {

@@ -19,8 +19,10 @@ return d.toISOString().split('T')[0];
 }
 function calcBusinessDate(days) { return calcCalendarDate(days); }
 function updateReminderPreview() { populateReminderDateButtons(); } // legacy alias
-function populateReminderDateButtons() {
-const container = $('reminderDateButtons');
+// prefix defaults to 'reminder'; task modal uses 'task' — IDs: {prefix}DateButtons, {prefix}SelectedDate, {prefix}DatePreview
+function populateReminderDateButtons(prefix) {
+prefix = prefix || 'reminder';
+const container = $(prefix + 'DateButtons');
 if (!container) return;
 const addDays = (base, n) => { const d = new Date(base + 'T12:00:00'); d.setDate(d.getDate() + n); return d.toISOString().split('T')[0]; };
 const today = new Date().toISOString().split('T')[0];
@@ -46,20 +48,21 @@ for (let i = 0; i < 5; i++) {
 buttons.push({ label: '2 weeks', date: addDays(today, 14) });
 buttons.push({ label: 'Open', date: '2099-12-31' });
 container.innerHTML = buttons.map(b =>
-  `<button type="button" class="reminder-date-btn" onclick="selectReminderDate('${b.date}','${b.label}')" data-date="${b.date}" style="padding:0.3rem 0.55rem;font-size:0.78rem;border:1px solid #fcd34d;border-radius:6px;background:#fffbeb;color:#92400e;cursor:pointer;white-space:nowrap;transition:background 0.1s;">${b.label}</button>`
+  `<button type="button" class="reminder-date-btn" data-prefix="${prefix}" onclick="selectReminderDate('${b.date}','${b.label}','${prefix}')" data-date="${b.date}" style="padding:0.3rem 0.55rem;font-size:0.78rem;border:1px solid #fcd34d;border-radius:6px;background:#fffbeb;color:#92400e;cursor:pointer;white-space:nowrap;transition:background 0.1s;">${b.label}</button>`
 ).join('');
 // Default: tomorrow
-selectReminderDate(buttons[1].date, buttons[1].label);
+selectReminderDate(buttons[1].date, buttons[1].label, prefix);
 }
-function selectReminderDate(dateStr, label) {
-const inp = $('reminderSelectedDate');
+function selectReminderDate(dateStr, label, prefix) {
+prefix = prefix || 'reminder';
+const inp = $(prefix + 'SelectedDate');
 if (inp) inp.value = dateStr;
-const prev = $('reminderDatePreview');
+const prev = $(prefix + 'DatePreview');
 if (prev) {
   if (dateStr === '2099-12-31') { prev.textContent = 'Open — no due date, will appear in Open Tasks'; }
   else { const d = new Date(dateStr + 'T12:00:00'); prev.textContent = d.toLocaleDateString('en-US',{weekday:'long',month:'short',day:'numeric'}); }
 }
-document.querySelectorAll('.reminder-date-btn').forEach(btn => {
+document.querySelectorAll(`.reminder-date-btn[data-prefix="${prefix}"]`).forEach(btn => {
   const sel = btn.dataset.date === dateStr;
   btn.style.background = sel ? '#f59e0b' : '#fffbeb';
   btn.style.color = sel ? '#fff' : '#92400e';
