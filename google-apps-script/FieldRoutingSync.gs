@@ -260,7 +260,7 @@ function buildRow_(phys, loc, practice, activity, type) {
   var lastName = phys ? phys.last_name || '' : '';
   var firstLast = (firstName + ' ' + lastName).trim();
   var degree = phys ? phys.degree || '' : '';
-  var rank = phys ? phys.priority || '' : '';
+  var rank = phys ? normPriority_(phys.priority) : '';
   var specialty = phys ? phys.specialty || '' : '';
   var vol = phys ? (phys.proj_vol || phys.mohs_volume || '') : '';
   var county = loc && loc.city ? guessCounty_(loc.city) : '';
@@ -346,6 +346,15 @@ function indexOf_(arr, val) {
     if (arr[i] === val) return i;
   }
   return -1;
+}
+
+// === PRIORITY NORMALIZER (mirrors CRM normPriority) ===
+// Handles legacy "TIER 3 - MODERATE", "P3", plain "3", etc. → returns "1"–"5" or ""
+
+function normPriority_(val) {
+  if (!val && val !== 0) return '';
+  var m = String(val).match(/(\d)/);
+  return m ? m[1] : '';
 }
 
 // === PHONE FORMAT HELPER ===
