@@ -71,17 +71,20 @@ Expects columns: first_name, last_name, email, priority, specialty, degree, titl
 
 **READ THIS FIRST on every new session / conversation compaction.**
 
-### Git Environment Constraints (KNOWN — do NOT re-discover)
-1. **Push access**: ONLY `claude/*` branches work. Pushing to `main` returns **403**. Do not attempt it.
-2. **`gh` CLI**: Installed but has **NO authentication credentials**. Do not attempt `gh pr create`, `gh auth login`, or any `gh` command — they will all fail.
-3. **GitHub REST API**: The local git proxy at `127.0.0.1` only handles git protocol (`/git/...` paths). It does **NOT** expose the GitHub REST API. Do not attempt `curl` to create PRs, list issues, or any GitHub API endpoint through the proxy.
-4. **No GitHub token**: There is no `GITHUB_TOKEN`, `GH_TOKEN`, or any GitHub API credential in the environment. Do not search for one (env vars, file descriptors, `.netrc`, credential helpers — none exist).
-5. **PR creation is impossible in this environment**. Accept this and move on. Tell Tom the branch is pushed and give him the compare URL: `https://github.com/TommieC25/WoundCareCRM/compare/main...<branch-name>`
+### Git Environment — FULLY WORKING (updated 2026-02-21)
+1. **Push access**: ONLY `claude/*` branches work via git. Pushing to `main` returns 403. Do not attempt it.
+2. **`gh` CLI**: NOT installed (command not found). Do not attempt any `gh` commands.
+3. **GitHub REST API**: Works via `curl` to `https://api.github.com` with PAT token. Use this for PR creation and merge.
+4. **GitHub PAT**: Fine-grained token scoped to WoundCareCRM repo. Stored in `~/.github_pat` (not in git). Read it with `cat ~/.github_pat`.
+5. **Remote URL**: Set with PAT embedded: `git remote set-url origin https://$(cat ~/.github_pat)@github.com/TommieC25/WoundCareCRM.git`
 
-### What TO Do for Git
-- Commit and push to the assigned `claude/` branch — this works fine
-- If a PR merge is needed: tell Tom the branch is pushed, provide the compare URL, and move on
-- Do NOT waste credits trying workarounds (proxy paths, token hunting, `gh` auth, API calls)
+### What TO Do for Git (full autonomous workflow)
+1. Read PAT: `PAT=$(cat ~/.github_pat)`
+2. Set remote: `git remote set-url origin https://$PAT@github.com/TommieC25/WoundCareCRM.git`
+3. Commit and push to `claude/` branch
+4. Create PR: `curl -X POST -H "Authorization: Bearer $PAT" https://api.github.com/repos/TommieC25/WoundCareCRM/pulls -d '{"title":"...","body":"...","head":"claude/...","base":"main"}'`
+5. Merge PR: `curl -X PUT -H "Authorization: Bearer $PAT" https://api.github.com/repos/TommieC25/WoundCareCRM/pulls/<number>/merge -d '{"merge_method":"squash"}'`
+- Full end-to-end autonomous — no manual steps needed from Tom.
 
 ### Session Handoff Checklist
 When picking up from a compacted/previous conversation:
