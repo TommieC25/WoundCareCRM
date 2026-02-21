@@ -96,6 +96,7 @@ if(view==='activity'){
 $('searchInput').placeholder='Search activity...';
 $('addBtn').style.display='none';
 $('sortControls').style.display='none';
+$('tierFilterControls').style.display='none';
 $('searchInput').parentElement.parentElement.style.display='';
 $('physicianList').innerHTML='<li class="loading">Loading activity...</li>';
 $('mainContent').innerHTML='<div class="empty-state"><h2>Activity Log</h2><p>Loading recent activity…</p></div>';
@@ -107,6 +108,7 @@ if(view==='tasks'){
 $('searchInput').parentElement.parentElement.style.display='none';
 $('addBtn').style.display='none';
 $('sortControls').style.display='none';
+$('tierFilterControls').style.display='none';
 $('physicianList').innerHTML='';
 currentPhysician=null;currentPractice=null;
 renderTasksView();
@@ -116,6 +118,7 @@ if(view==='map'){
 $('searchInput').parentElement.parentElement.style.display='none';
 $('addBtn').style.display='none';
 $('sortControls').style.display='none';
+$('tierFilterControls').style.display='none';
 $('physicianList').innerHTML='';
 currentPhysician=null;currentPractice=null;
 renderMapView();
@@ -126,6 +129,7 @@ if(view==='dashboard'){
 $('searchInput').parentElement.parentElement.style.display='none';
 $('addBtn').style.display='none';
 $('sortControls').style.display='none';
+$('tierFilterControls').style.display='none';
 $('physicianList').innerHTML='';
 currentPhysician=null;currentPractice=null;
 renderDashboard();

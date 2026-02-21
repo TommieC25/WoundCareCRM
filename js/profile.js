@@ -171,7 +171,7 @@ const isStaffP = phys.specialty === 'Administrative Staff';
 return `<div class="contact-item" style="cursor: pointer;" onclick="setView('physicians');viewPhysician('${phys.id}')">
 <div class="contact-icon">${isStaffP ? '👤' : '👨‍⚕️'}</div>
 <div class="contact-item-content">
-<div class="contact-item-label">${isStaffP ? (phys.title || 'Staff') : (phys.priority ? 'P'+phys.priority : 'No tier')}</div>
+<div class="contact-item-label">${isStaffP ? (phys.title || 'Staff') : (normPriority(phys.priority) ? 'P'+normPriority(phys.priority) : 'No tier')}</div>
 <div class="contact-item-value">${fmtName(phys)}</div>
 </div>
 </div>`;
@@ -223,7 +223,7 @@ return `
 <div class="contact-item" style="cursor:pointer;" onclick="setView('physicians');viewPhysician('${phys.id}')">
 <div class="contact-icon">${isStaffL ? '👤' : '👨‍⚕️'}</div>
 <div class="contact-item-content">
-<div class="contact-item-label">${isStaffL ? (phys.title || 'Staff') : (phys.priority ? 'P' + phys.priority : 'No tier')}${!isStaffL && phys.specialty ? ' · ' + phys.specialty : ''}</div>
+<div class="contact-item-label">${isStaffL ? (phys.title || 'Staff') : (normPriority(phys.priority) ? 'P'+normPriority(phys.priority) : 'No tier')}${!isStaffL && phys.specialty ? ' · ' + phys.specialty : ''}</div>
 <div class="contact-item-value">${fmtName(phys)}</div>
 </div>
 </div>`;
