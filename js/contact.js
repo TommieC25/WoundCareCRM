@@ -23,6 +23,7 @@ if($('reminderDatePreview'))$('reminderDatePreview').textContent='';
 if($('reminderSelectedDate'))$('reminderSelectedDate').value='';
 if($('reminderNote'))$('reminderNote').value='';
 if($('reminderNoteRow'))$('reminderNoteRow').style.display='none';
+if($('reminderRow'))$('reminderRow').style.display='block';
 $('contactModal').classList.add('active');
 }
 
@@ -98,20 +99,32 @@ const reminderDate=reminderOn?($('reminderSelectedDate')?.value||null):null;
 const reminderNoteVal=reminderOn&&$('reminderNote')?$('reminderNote').value.trim():'';
 const baseNote=tv?`[${tv}] ${nv}`:nv;
 const staffVal=$('staffPresent')?$('staffPresent').value.trim():'';
-const withStaff=staffVal?`${baseNote} | Staff: ${staffVal}`:baseNote;
-const noteText=reminderNoteVal?`${withStaff} | [Task: ${reminderNoteVal}]`:withStaff;
-const data={physician_id:currentPhysician.id,contact_date:dateVal,author:authorVal,notes:noteText,practice_location_id:locVal,reminder_date:reminderDate};
+const noteText=staffVal?`${baseNote} | Staff: ${staffVal}`:baseNote;
+// Activity record — clean, no reminder_date, no embedded task text
+const data={physician_id:currentPhysician.id,contact_date:dateVal,author:authorVal,notes:noteText,practice_location_id:locVal};
 const alsoCbs=document.querySelectorAll('.also-attended-cb:checked');
 const alsoIds=[...alsoCbs].map(cb=>cb.value);
 await withSave('contactSaveBtn','Save Note',async()=>{
-if(editingContactId){const{error}=await db.from('contact_logs').update(data).eq('id',editingContactId);if(error)throw error;showToast('Note updated','success');
+if(editingContactId){
+// Edit: update activity only, do not touch reminder_date (tasks are separate)
+const{error}=await db.from('contact_logs').update(data).eq('id',editingContactId);if(error)throw error;showToast('Note updated','success');
 }else{
 const{error}=await db.from('contact_logs').insert(data);if(error)throw error;
 if(alsoIds.length>0){
-const alsoEntries=alsoIds.map(pid=>({physician_id:pid,contact_date:dateVal,author:authorVal,notes:noteText,practice_location_id:locVal,reminder_date:reminderDate}));
+const alsoEntries=alsoIds.map(pid=>({physician_id:pid,contact_date:dateVal,author:authorVal,notes:noteText,practice_location_id:locVal}));
 const{error:ae}=await db.from('contact_logs').insert(alsoEntries);
 if(ae)console.error('Also-attended insert error:',ae);
 for(const pid of alsoIds){await db.from('physicians').update({last_contact:dateVal}).eq('id',pid);}
+}
+// Follow-up task: insert as a SEPARATE contact_log record, independent of the activity
+if(reminderOn&&reminderDate){
+const taskNote=reminderNoteVal||'Follow-up';
+const taskData={physician_id:currentPhysician.id,contact_date:dateVal,author:authorVal,notes:taskNote,practice_location_id:locVal,reminder_date:reminderDate};
+await db.from('contact_logs').insert(taskData);
+if(alsoIds.length>0){
+const alsoTasks=alsoIds.map(pid=>({physician_id:pid,contact_date:dateVal,author:authorVal,notes:taskNote,practice_location_id:locVal,reminder_date:reminderDate}));
+await db.from('contact_logs').insert(alsoTasks);
+}
 }
 const total=1+alsoIds.length;
 showToast(`Note logged for ${total} provider${total>1?'s':''}`,'success');
@@ -135,33 +148,21 @@ $('contactLocation').value = log.practice_location_id || '';
 $('authorName').value = log.author || '';
 let notes = log.notes || '';
 let time = '';
-if (!time) {
 const timeMatch = notes.match(/^\[(\d{1,2}:\d{2})\]\s*/);
-if (timeMatch) {
-time = timeMatch[1];
-notes = notes.replace(timeMatch[0], '');
-}
-}
-const taskMatch=notes.match(/\s*\|\s*\[Task:\s*(.*?)\]$/);
-const taskNote=taskMatch?taskMatch[1].trim():'';
-if(taskMatch)notes=notes.slice(0,taskMatch.index).trim();
+if (timeMatch) { time = timeMatch[1]; notes = notes.replace(timeMatch[0], ''); }
+// Strip legacy embedded task text for clean display (backward compat with old records)
+const taskMatch = notes.match(/\s*\|\s*\[Task:\s*(.*?)\]$/);
+if (taskMatch) notes = notes.slice(0, taskMatch.index).trim();
 $('contactTime').value = time;
 $('contactNotes').value = notes;
-if (log.reminder_date) {
-$('setReminder').checked = true;
-$('reminderDays').style.display = 'flex';
-if($('reminderNoteRow'))$('reminderNoteRow').style.display='block';
-if($('reminderNote'))$('reminderNote').value=taskNote;
-populateReminderDateButtons();
-selectReminderDate(log.reminder_date, log.reminder_date === '2099-12-31' ? 'Open' : '');
-} else {
+// Tasks are now separate records — hide follow-up section when editing an activity
+if($('reminderRow'))$('reminderRow').style.display='none';
 $('setReminder').checked = false;
 $('reminderDays').style.display = 'none';
 if($('reminderNoteRow'))$('reminderNoteRow').style.display='none';
 if($('reminderNote'))$('reminderNote').value='';
 if($('reminderSelectedDate'))$('reminderSelectedDate').value='';
 if($('reminderDatePreview'))$('reminderDatePreview').textContent='';
-}
 $('contactModal').classList.add('active');
 }
 
