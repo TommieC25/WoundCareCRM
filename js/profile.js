@@ -12,14 +12,20 @@ return loc?.practice_id;
 const associatedPractices = practices.filter(pr => practiceIds.includes(pr.id));
 $('mainContent').innerHTML = `
 <div class="profile-header">
-<div class="profile-name">${fmtName(p)}</div>
-<div class="profile-practice">
-${associatedPractices.length > 0 ? associatedPractices.map(pr => `<span style="cursor:pointer;text-decoration:underline;color:#0a4d3c;" onclick="event.stopPropagation();editPracticeFromProfile('${pr.id}')">${pr.name}</span>`).join(' | ') + ` <button class="edit-btn" style="font-size:0.75rem;padding:0.25rem 0.5rem;margin-left:0.5rem;" onclick="editPracticeFromProfile('${associatedPractices[0].id}')">Edit Practice</button>` : 'No practice assigned'}
+<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:0.5rem;flex-wrap:wrap;">
+<div class="profile-name" style="flex:1;">${fmtName(p)}</div>
+<div style="display:flex;gap:0.5rem;flex-shrink:0;">
+<button class="edit-btn" onclick="editPhysicianInfo()" style="background:#0a4d3c;">Edit Physician</button>
+<button class="delete-btn" onclick="deletePhysician()">Delete</button>
+</div>
+</div>
+<div class="profile-practice" style="margin-top:0.35rem;">
+${associatedPractices.length > 0 ? associatedPractices.map(pr => `<span style="cursor:pointer;text-decoration:underline;color:#0a4d3c;" onclick="event.stopPropagation();editPracticeFromProfile('${pr.id}')">${pr.name}</span>`).join(' | ') : 'No practice assigned'}
 </div>
 <div class="profile-meta">
 ${p.specialty==='Administrative Staff'
   ? `${p.title?mi('Role',p.title):mi('Role','Office Staff')}${p.email?`<div class="meta-item"><div class="meta-label">Email</div><div class="meta-value"><a href="mailto:${p.email}" style="color:#0a4d3c;">${p.email}</a></div></div>`:''}<div class="meta-item"><div class="meta-label">Type</div><div class="meta-value" style="color:#7c3aed;font-weight:600;">Staff Contact</div></div>`
-  : `${mi('Priority',normPriority(p.priority)?'P'+normPriority(p.priority):'Not set')}${mi('Specialty',p.specialty||'Not set')}${mi('Degree',p.degree||'—')}${p.title?mi('Title',p.title):''}${p.email?`<div class="meta-item"><div class="meta-label">Email</div><div class="meta-value"><a href="mailto:${p.email}" style="color:#0a4d3c;">${p.email}</a></div></div>`:''}${mi('Academic Connection',p.academic_connection||p.um_connection||'None')}${mi('Projected Volume',p.proj_vol||p.mohs_volume||'Unknown')}`}
+  : `<div class="meta-item"><div class="meta-label">Priority Tier</div><div class="meta-value"><select onchange="quickSavePriority(this.value)" style="font-size:0.85rem;font-weight:700;padding:0.2rem 0.4rem;border:2px solid #0a4d3c;border-radius:6px;color:#0a4d3c;background:white;width:auto;cursor:pointer;">${['','1','2','3','4','5'].map(v=>v===''?`<option value="" ${!normPriority(p.priority)?'selected':''}>— set tier —</option>`:`<option value="${v}" ${normPriority(p.priority)===v?'selected':''}>P${v}</option>`).join('')}</select></div></div>${mi('Specialty',p.specialty||'Not set')}${mi('Degree',p.degree||'—')}${p.title?mi('Title',p.title):''}${p.email?`<div class="meta-item"><div class="meta-label">Email</div><div class="meta-value"><a href="mailto:${p.email}" style="color:#0a4d3c;">${p.email}</a></div></div>`:''}${mi('Academic Connection',p.academic_connection||p.um_connection||'None')}${mi('Projected Volume',p.proj_vol||p.mohs_volume||'Unknown')}`}
 <div class="meta-item"><span class="meta-label">Advanced Solution</span><label style="display:inline-flex;align-items:center;gap:0.4rem;cursor:pointer;padding:0.25rem 0.6rem;border-radius:6px;background:${p.advanced_solution?'#f97316':'#e5e5e5'};color:${p.advanced_solution?'white':'#666'};font-size:0.8rem;font-weight:700;transition:all 0.2s;" onclick="toggleAdvancedSolution(event)"><input type="checkbox" ${p.advanced_solution?'checked':''} style="width:16px;height:16px;min-width:16px;" onchange="toggleAdvancedSolution(event)">${p.advanced_solution?'YES':'NO'}</label></div>
 ${mi('Last Contact',p.last_contact||'Never')}${mi('Locations',assignments.length+' location'+(assignments.length!==1?'s':''))}
 </div>
@@ -29,7 +35,6 @@ ${mi('Last Contact',p.last_contact||'Never')}${mi('Locations',assignments.length
 <h3>${p.specialty==='Administrative Staff'?'Staff Contact':'Physician Profile'}</h3>
 <div>
 <button class="edit-btn" onclick="editPhysicianInfo()">Edit</button>
-<button class="delete-btn" onclick="deletePhysician()">Delete</button>
 </div>
 </div>
 <div class="contact-grid">
@@ -80,6 +85,19 @@ ${logs.length === 0 ?
 }
 </div>
 `;
+}
+
+async function quickSavePriority(val) {
+if (!currentPhysician) return;
+const priority = val || null;
+try {
+const {error} = await db.from('physicians').update({priority}).eq('id', currentPhysician.id);
+if (error) throw error;
+currentPhysician.priority = priority;
+// update sidebar badge without full re-render
+renderList();
+showToast('Priority updated to ' + (val ? 'P'+val : 'unset'), 'success');
+} catch(e) { showToast('Error: '+e.message,'error'); }
 }
 
 async function renderPracticeProfile() {
