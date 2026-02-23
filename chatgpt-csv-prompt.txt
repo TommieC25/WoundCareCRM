@@ -1,0 +1,58 @@
+Export your provider/facility data as a CSV file using the exact format below so it can be imported directly into the CRM.
+
+## EXACT COLUMN HEADERS (in this order, lowercase with underscores)
+first_name,last_name,degree,title,email,specialty,priority,proj_vol,ss_vol,academic_connection,general_notes,is_target,practice_name,address,city,zip,phone,fax,office_hours,office_staff,receptionist_name,best_days,practice_email
+
+## STRUCTURE RULES
+- One row per provider + location combination
+  - Provider at 2 locations = 2 rows with identical provider columns, different location columns
+  - Facility/agency with no specific provider = leave all provider columns blank, fill location columns
+- Leave unknown fields blank — no placeholder text like "N/A" or "TBD"
+- If an address is still unconfirmed, use [Research needed] in the address field
+- Wrap any value containing a comma or line break in double quotes
+
+## COLUMN REFERENCE
+
+| Column | What goes here |
+|--------|----------------|
+| first_name | Provider first name |
+| last_name | Provider last name |
+| degree | MD, DO, DPM, PA-C, NP, RN, PhD, etc. |
+| title | Job title |
+| email | Provider's direct email |
+| specialty | Clinical specialty (see list below) |
+| priority | 1–5 (1 = highest-value target) |
+| proj_vol | Estimated monthly referral volume (number only) |
+| ss_vol | Skin substitute CMS claims volume (number only) |
+| academic_connection | University/academic affiliation |
+| general_notes | Freeform notes about this provider |
+| is_target | Y if this is an active sales target for wound care referrals; leave blank if not |
+| practice_name | Practice or facility name (groups all locations together) |
+| address | Street address |
+| city | City |
+| zip | ZIP code |
+| phone | Phone number (dashes OK, e.g. 305-555-1234) |
+| fax | Fax number |
+| office_hours | e.g. Mon–Fri 8am–5pm |
+| office_staff | Office manager name |
+| receptionist_name | Front desk name |
+| best_days | Best visit days/times |
+| practice_email | Office/facility email |
+
+## SPECIALTY VALUES
+Use one of these exactly:
+Wound Care, Mohs Surgery, Podiatry, Vascular Surgery, Plastic Surgery, General Surgery,
+Internal Medicine, Family Medicine, Geriatrics, Home Health, Skilled Nursing, Hospice,
+Administrative Staff, Other
+
+## PRIORITY GUIDE
+- 1 = High volume referral source, decision-maker, warm/known
+- 2 = Strong potential, active territory
+- 3 = Moderate — worth regular contact
+- 4 = Low priority
+- 5 = Monitor only
+
+## EXAMPLE
+first_name,last_name,degree,title,email,specialty,priority,proj_vol,ss_vol,academic_connection,general_notes,is_target,practice_name,address,city,zip,phone,fax,office_hours,office_staff,receptionist_name,best_days,practice_email
+John,Smith,MD,,jsmith@example.com,Wound Care,1,20,,University of Miami,,Y,Miami Wound Center,123 Main St,Miami,33101,305-555-1000,305-555-1001,Mon-Fri 9am-5pm,,Maria,Tuesday mornings,info@miamiwound.com
+,,,,,,,,,,,,,Miami Wound Center,456 Ponce de Leon Blvd,Coral Gables,33146,305-555-2000,,,,,

@@ -3,7 +3,7 @@
 // --- Provider modal ---
 function openPhysicianModal() {
 editMode=false;selectedPracticeId=null;selectedLocationIds=[];$('modalTitle').textContent='Add Provider';
-$('physicianForm').reset();setFields({priority:'',specialty:''});
+$('physicianForm').reset();setFields({priority:'',specialty:''});$('isTarget').checked=false;
 $('newPracticeFields').style.display='none';$('locationSelector').style.display='none';
 $('physicianSaveBtn').textContent='Save Provider';$('physicianSaveBtn').className='btn-primary';
 populatePracticeOptions();$('physicianModal').classList.add('active');
@@ -110,9 +110,21 @@ if(idx>=0) physicians[idx].advanced_solution=newVal;
 renderProfile();
 showToast(newVal?'Marked as Advanced Solution':'Removed Advanced Solution','success');
 }
+async function toggleTarget(e) {
+e.preventDefault();e.stopPropagation();
+if(!currentPhysician) return;
+const newVal = !currentPhysician.is_target;
+const{error}=await db.from('providers').update({is_target:newVal}).eq('id',currentPhysician.id);
+if(error){showToast('Error updating Target: '+error.message,'error');return;}
+currentPhysician.is_target=newVal;
+const idx=physicians.findIndex(p=>p.id===currentPhysician.id);
+if(idx>=0) physicians[idx].is_target=newVal;
+renderProfile();
+showToast(newVal?'Marked as Sales Target':'Removed from Sales Targets','success');
+}
 function editPhysicianInfo() {
 editMode=true;const p=currentPhysician;$('modalTitle').textContent='Edit Provider';
-setFields({firstName:p.first_name,lastName:p.last_name,physicianEmail:p.email||'',priority:normPriority(p.priority)||'',specialty:p.specialty||'',umConnection:p.academic_connection||p.um_connection||'',patientVolume:p.proj_vol||p.mohs_volume||'',physicianGeneralNotes:p.general_notes||'',degree:p.degree||'',staffTitle:p.title||''});
+setFields({firstName:p.first_name,lastName:p.last_name,physicianEmail:p.email||'',priority:normPriority(p.priority)||'',specialty:p.specialty||'',umConnection:p.academic_connection||p.um_connection||'',patientVolume:p.proj_vol||p.mohs_volume||'',physicianGeneralNotes:p.general_notes||'',degree:p.degree||'',staffTitle:p.title||''});$('isTarget').checked=!!p.is_target;
 $('practiceSelector').style.display='none';$('locationSelector').style.display='none';
 $('physicianSaveBtn').textContent='Save Provider';$('physicianSaveBtn').className='btn-primary';$('physicianModal').classList.add('active');
 }
@@ -120,7 +132,7 @@ async function savePhysician(e) {
 e.preventDefault();
 const data = {first_name:$('firstName').value,last_name:$('lastName').value,email:$('physicianEmail').value||null,priority:$('priority').value||null,specialty:$('specialty').value||null,academic_connection:$('umConnection').value||null,proj_vol:$('patientVolume').value||null,general_notes:$('physicianGeneralNotes').value||null};
 const degreeVal=$('degree').value||null;const titleVal=$('staffTitle').value||null;
-data.degree=degreeVal;data.title=titleVal;
+data.degree=degreeVal;data.title=titleVal;data.is_target=!!$('isTarget').checked;
 await withSave('physicianSaveBtn','Save Provider',async()=>{
 if(editMode){if(!currentPhysician){showToast('Error: provider context lost. Close and try again.','error');return;}const{error}=await db.from('providers').update(data).eq('id',currentPhysician.id);if(error)throw error;Object.assign(currentPhysician,data);renderProfile();showToast('Provider updated','success');
 }else{
