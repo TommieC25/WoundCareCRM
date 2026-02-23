@@ -1,7 +1,7 @@
 Export your provider/facility data as a CSV file using the exact format below so it can be imported directly into the CRM.
 
 ## EXACT COLUMN HEADERS (in this order, lowercase with underscores)
-first_name,last_name,degree,title,email,specialty,priority,proj_vol,ss_vol,academic_connection,general_notes,practice_name,address,city,zip,phone,fax,office_hours,office_staff,receptionist_name,best_days,practice_email
+first_name,last_name,degree,title,email,specialty,priority,proj_vol,ss_vol,academic_connection,general_notes,is_target,practice_name,address,city,zip,phone,fax,office_hours,office_staff,receptionist_name,best_days,practice_email
 
 ## STRUCTURE RULES
 - One row per provider + location combination
@@ -26,6 +26,7 @@ first_name,last_name,degree,title,email,specialty,priority,proj_vol,ss_vol,acade
 | ss_vol | Skin substitute CMS claims volume (number only) |
 | academic_connection | University/academic affiliation |
 | general_notes | Freeform notes about this provider |
+| is_target | Y if this is an active sales target for wound care referrals; leave blank if not |
 | practice_name | Practice or facility name (groups all locations together) |
 | address | Street address |
 | city | City |
@@ -52,6 +53,6 @@ Administrative Staff, Other
 - 5 = Monitor only
 
 ## EXAMPLE
-first_name,last_name,degree,title,email,specialty,priority,proj_vol,ss_vol,academic_connection,general_notes,practice_name,address,city,zip,phone,fax,office_hours,office_staff,receptionist_name,best_days,practice_email
-John,Smith,MD,,jsmith@example.com,Wound Care,1,20,,University of Miami,,Miami Wound Center,123 Main St,Miami,33101,305-555-1000,305-555-1001,Mon-Fri 9am-5pm,,Maria,Tuesday mornings,info@miamiwound.com
-,,,,,,,,,,Coral Gables location,Miami Wound Center,456 Ponce de Leon Blvd,Coral Gables,33146,305-555-2000,,,,,
+first_name,last_name,degree,title,email,specialty,priority,proj_vol,ss_vol,academic_connection,general_notes,is_target,practice_name,address,city,zip,phone,fax,office_hours,office_staff,receptionist_name,best_days,practice_email
+John,Smith,MD,,jsmith@example.com,Wound Care,1,20,,University of Miami,,Y,Miami Wound Center,123 Main St,Miami,33101,305-555-1000,305-555-1001,Mon-Fri 9am-5pm,,Maria,Tuesday mornings,info@miamiwound.com
+,,,,,,,,,,,,,Miami Wound Center,456 Ponce de Leon Blvd,Coral Gables,33146,305-555-2000,,,,,

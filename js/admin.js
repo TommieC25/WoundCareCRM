@@ -51,7 +51,7 @@ if(locRec)locMap[locKey]=locRec;
 const physMap=new Map();
 rows.forEach(r=>{
 const key=`${(r.first_name||'').trim().toLowerCase()}|${(r.last_name||'').trim().toLowerCase()}`;
-if(!physMap.has(key))physMap.set(key,{phys:{first_name:(r.first_name||'').trim(),last_name:(r.last_name||'').trim(),email:r.email||null,priority:r.priority||null,academic_connection:r.academic_connection||r.um_connection||null,specialty:r.specialty||null,degree:r.degree||null,title:r.title||null,proj_vol:r.proj_vol||r.patient_volume||r.vol||null,ss_vol:r.ss_vol?parseInt(r.ss_vol,10)||null:null,general_notes:r.general_notes||null},practiceIds:new Set(),primaryLocKey:null});
+if(!physMap.has(key))physMap.set(key,{phys:{first_name:(r.first_name||'').trim(),last_name:(r.last_name||'').trim(),email:r.email||null,priority:r.priority||null,academic_connection:r.academic_connection||r.um_connection||null,specialty:r.specialty||null,degree:r.degree||null,title:r.title||null,proj_vol:r.proj_vol||r.patient_volume||r.vol||null,ss_vol:r.ss_vol?parseInt(r.ss_vol,10)||null:null,general_notes:r.general_notes||null,is_target:r.is_target==='Y'||r.is_target==='y'||r.is_target==='true'||r.is_target==='1'?true:false},practiceIds:new Set(),primaryLocKey:null});
 const e=physMap.get(key);
 const practId=getPractId(r.practice_name);
 if(practId)e.practiceIds.add(practId);
@@ -247,7 +247,7 @@ $('routingExportModal').classList.add('active');
 }
 function closeRoutingExport() { closeModal('routingExportModal'); }
 function getRoutingCSVHeaders() {
-return ['ORIG','CALL','AS?','Rank','Provider First Name','Provider Last Name','First Last','Degree','Status','Specialty','Facility (full name)','Address','City','Zip','Phone Number','Vol','County','Notes'];
+return ['ORIG','CALL','AS?','Target','Rank','Provider First Name','Provider Last Name','First Last','Degree','Status','Specialty','Facility (full name)','Address','City','Zip','Phone Number','Vol','County','Notes'];
 }
 function routingRowToCSV(r) {
 const p = r.phys;
@@ -261,7 +261,7 @@ const preview = note.length > 80 ? note.substring(0, 80) + '...' : note;
 status = r.activity.contact_date + ': ' + preview;
 }
 if (r.type === 'loc-only') {
-return ['','','','','(Enter HCP first name)','(Enter HCP last name)','','',status,'',practiceName,l?.address||'',l?.city||'',l?.zip||'',fmtPhone(l?.phone),'',l?.city?guessCounty(l.city):'',l?.practice_email?'Email: '+l.practice_email:''];
+return ['','','','','','(Enter HCP first name)','(Enter HCP last name)','','',status,'',practiceName,l?.address||'',l?.city||'',l?.zip||'',fmtPhone(l?.phone),'',l?.city?guessCounty(l.city):'',l?.practice_email?'Email: '+l.practice_email:''];
 }
 const firstName = p?.first_name || '';
 const lastName = p?.last_name || '';
@@ -272,7 +272,8 @@ const vol = p?.proj_vol || p?.mohs_volume || '';
 const county = l?.city ? guessCounty(l.city) : '';
 const notes = p?.general_notes || '';
 const asVal = p?.advanced_solution ? 'Y' : '';
-return ['','' ,asVal,rank,firstName,lastName,firstLast,degree,status,p?.specialty||'',practiceName,l?.address||'',l?.city||'',l?.zip||'',fmtPhone(l?.phone),vol,county,notes];
+const targetVal = p?.is_target ? 'Y' : '';
+return ['','' ,asVal,targetVal,rank,firstName,lastName,firstLast,degree,status,p?.specialty||'',practiceName,l?.address||'',l?.city||'',l?.zip||'',fmtPhone(l?.phone),vol,county,notes];
 }
 function guessCounty(city) {
 if (!city) return '';
