@@ -1,6 +1,8 @@
 // === js/admin.js === CSV import, database clear, CSV export, field routing export
 
 // --- CSV Import ---
+function importCSVPaste(){const t=(document.getElementById('csvPasteArea')?.value||'').trim();if(!t){showToast('Paste CSV text first','error');return;}importCSV({text:()=>Promise.resolve(t)});}
+async function importCSVText(text){await importCSV({text:()=>Promise.resolve(text)});}
 async function importCSV(file) {
 if(!file)return;
 const status=s=>{const el=$('importStatus');if(el)el.textContent=s;const el2=$('importStatusMain');if(el2)el2.textContent=s;};
