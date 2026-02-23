@@ -30,7 +30,7 @@ if(np)practiceMap[name]=np.id;
 }}
 function getPractId(practName){const n=(practName||'').trim();return practiceMap[n]||practiceMap[Object.keys(practiceMap).find(k=>k.toLowerCase()===n.toLowerCase())];}
 
-// Phase 2: Find/create ALL locations first (independent of which physician is listed)
+// Phase 2: Find/create ALL locations first (independent of which provider is listed)
 status('Creating practice locations...');
 const locMap={};// key: `${practiceId}|${address}` -> location record
 const seenLocKeys=new Set();
@@ -47,7 +47,7 @@ const locRec=exLoc||(await db.from('practice_locations').insert({practice_id:pra
 if(locRec)locMap[locKey]=locRec;
 }
 
-// Phase 3: Build physician map — track which practices each physician belongs to
+// Phase 3: Build provider map — track which practices each provider belongs to
 const physMap=new Map();
 rows.forEach(r=>{
 const key=`${(r.first_name||'').trim().toLowerCase()}|${(r.last_name||'').trim().toLowerCase()}`;
@@ -55,52 +55,52 @@ if(!physMap.has(key))physMap.set(key,{phys:{first_name:(r.first_name||'').trim()
 const e=physMap.get(key);
 const practId=getPractId(r.practice_name);
 if(practId)e.practiceIds.add(practId);
-// Track primary location (first address listed for this physician)
+// Track primary location (first address listed for this provider)
 const addr=(r.address||'').trim();
 if(!e.primaryLocKey&&practId&&addr&&addr!=='[Research needed]')e.primaryLocKey=`${practId}|${addr}`;
 });
 
-// Phase 4: Find/create each physician then assign to ALL locations of their practice(s)
+// Phase 4: Find/create each provider then assign to ALL locations of their practice(s)
 let count=0;const total=physMap.size;
 for(const[key,entry] of physMap){
-count++;if(count%5===0||count===total)status(`Assigning physicians ${count} of ${total}...`);
-const{data:exArr}=await db.from('physicians').select('*').ilike('first_name',entry.phys.first_name).ilike('last_name',entry.phys.last_name).limit(1);
+count++;if(count%5===0||count===total)status(`Assigning providers ${count} of ${total}...`);
+const{data:exArr}=await db.from('providers').select('*').ilike('first_name',entry.phys.first_name).ilike('last_name',entry.phys.last_name).limit(1);
 const ex=exArr&&exArr.length>0?exArr[0]:null;
-const phys=ex||(await db.from('physicians').insert(entry.phys).select().maybeSingle()).data;
+const phys=ex||(await db.from('providers').insert(entry.phys).select().maybeSingle()).data;
 if(!phys)continue;
-// Assign to ALL locations of every practice this physician belongs to
+// Assign to ALL locations of every practice this provider belongs to
 for(const practId of entry.practiceIds){
 const{data:allLocs}=await db.from('practice_locations').select('id').eq('practice_id',practId);
 for(const loc of allLocs||[]){
 const isPrimary=entry.primaryLocKey&&locMap[entry.primaryLocKey]?.id===loc.id;
-const{data:exA}=await db.from('physician_location_assignments').select('id').eq('physician_id',phys.id).eq('practice_location_id',loc.id).maybeSingle();
-if(!exA)await db.from('physician_location_assignments').insert({physician_id:phys.id,practice_location_id:loc.id,is_primary:!!isPrimary});
+const{data:exA}=await db.from('provider_location_assignments').select('id').eq('provider_id',phys.id).eq('practice_location_id',loc.id).maybeSingle();
+if(!exA)await db.from('provider_location_assignments').insert({provider_id:phys.id,practice_location_id:loc.id,is_primary:!!isPrimary});
 }}}
 await loadAllData();
-status(`Done! Imported ${physMap.size} physicians, ${practiceNames.length} practices.`);
-showToast(`Imported ${physMap.size} physicians`,'success');
+status(`Done! Imported ${physMap.size} providers, ${practiceNames.length} practices.`);
+showToast(`Imported ${physMap.size} providers`,'success');
 updateSyncIndicators('synced');
 }catch(e){console.error('Import error:',e);status('Error: '+e.message);showToast('Import failed: '+e.message,'error');updateSyncIndicators('error');}
 }
 
 async function clearDatabase() {
-const confirmMsg = 'Are you sure you want to DELETE ALL DATA?\n\nThis will remove:\n- All physicians\n- All practices\n- All locations\n- All contact logs\n\nThis cannot be undone!';
+const confirmMsg = 'Are you sure you want to DELETE ALL DATA?\n\nThis will remove:\n- All providers\n- All practices\n- All locations\n- All contact logs\n\nThis cannot be undone!';
 if (!confirm(confirmMsg)) return;
 if (!confirm('FINAL WARNING: Click OK to permanently delete all data.')) return;
 try {
 updateSyncIndicators('syncing');
 showToast('Clearing database...', 'info');
-for(const t of ['contact_logs','physician_location_assignments','physicians','practice_locations','practices']){
+for(const t of ['contact_logs','provider_location_assignments','providers','practice_locations','practices']){
 const{error,count}=await db.from(t).delete().neq('id','00000000-0000-0000-0000-000000000000');
 console.log(`Deleted from ${t}: error=${error?.message||'none'}`);
 if(error) throw error;
 }
-const{data:remaining}=await db.from('physicians').select('id,first_name,last_name');
+const{data:remaining}=await db.from('providers').select('id,first_name,last_name');
 if(remaining&&remaining.length>0){
-console.warn(`${remaining.length} physicians survived delete! RLS may be blocking deletions.`);
+console.warn(`${remaining.length} providers survived delete! RLS may be blocking deletions.`);
 showToast(`Warning: ${remaining.length} records could not be deleted (database permissions issue). Check Supabase RLS policies.`,'error');
 for(const r of remaining){
-const{error:e2}=await db.from('physicians').delete().eq('id',r.id);
+const{error:e2}=await db.from('providers').delete().eq('id',r.id);
 console.log(`Individual delete ${r.first_name} ${r.last_name}: ${e2?.message||'ok'}`);
 }
 }
@@ -109,7 +109,7 @@ currentPhysician=null;currentPractice=null;
 await loadAllData();
 renderList();
 if(physicians.length>0){
-showToast(`Clear incomplete: ${physicians.length} physicians remain. Check Supabase RLS/policies.`,'error');
+showToast(`Clear incomplete: ${physicians.length} providers remain. Check Supabase RLS/policies.`,'error');
 }else{
 renderEmptyState();
 showToast('Database cleared successfully!', 'success');
@@ -132,7 +132,7 @@ function todayStamp(){const d=new Date();return d.toISOString().slice(0,10)+'_'+
 async function exportCSV(type){
 const st=document.getElementById('exportStatus');st.style.display='block';st.style.background='#e0f2fe';st.style.color='#075985';st.textContent='Preparing export...';
 try{
-if(type==='physicians'||type==='all') await exportPhysicians();
+if(type==='providers'||type==='all') await exportPhysicians();
 if(type==='contacts'||type==='all') await exportContacts();
 if(type==='practices'||type==='all') await exportPractices();
 st.style.background='#dcfce7';st.style.color='#166534';st.textContent='Export complete!';
@@ -141,23 +141,23 @@ showToast('CSV exported successfully','success');
 }
 
 async function exportPhysicians(){
-const{data:allPhys,error}=await db.from('physicians').select('*').order('last_name');if(error)throw error;
-const{data:allAssign}=await db.from('physician_location_assignments').select('*, practice_locations(*, practices(name))');
-const am={};(allAssign||[]).forEach(a=>{if(!am[a.physician_id])am[a.physician_id]=[];am[a.physician_id].push(a);});
+const{data:allPhys,error}=await db.from('providers').select('*').order('last_name');if(error)throw error;
+const{data:allAssign}=await db.from('provider_location_assignments').select('*, practice_locations(*, practices(name))');
+const am={};(allAssign||[]).forEach(a=>{if(!am[a.provider_id])am[a.provider_id]=[];am[a.provider_id].push(a);});
 const{data:allLogs}=await db.from('contact_logs').select('*').order('contact_date',{ascending:false});
-const latestLog={};(allLogs||[]).forEach(l=>{if(!latestLog[l.physician_id])latestLog[l.physician_id]=l;});
+const latestLog={};(allLogs||[]).forEach(l=>{if(!latestLog[l.provider_id])latestLog[l.provider_id]=l;});
 const h=['Last Name','First Name','Degree','Practice','Tier','Specialty','Email','Academic Connection','Projected Volume','SS Volume','Primary Address','Primary City','Primary ZIP','Primary Phone','Primary Fax','Office Hours','Best Days','Receptionist','Location Count','Last Contact','Status','General Notes'];
 const rows=(allPhys||[]).map(p=>{const as=am[p.id]||[];const pl=(as.find(a=>a.is_primary)||as[0])?.practice_locations||{};
 const log=latestLog[p.id];const statusNote=log?(log.notes||'').replace(/^\[\d{1,2}:\d{2}\]\s*/,''):'';const statusPreview=statusNote.length>80?statusNote.substring(0,80)+'...':statusNote;const status=log?log.contact_date+': '+statusPreview:'';
 return[p.last_name,p.first_name,p.degree||'',pl.practices?.name||p.practice_name||'',p.priority||'',p.specialty||'',p.email||'',p.academic_connection||'',p.proj_vol||p.mohs_volume||'',p.ss_vol||'',pl.address||'',pl.city||'',pl.zip||'',fmtPhone(pl.phone),fmtPhone(pl.fax),pl.office_hours||'',pl.best_days||'',pl.receptionist_name||'',as.length,p.last_contact||'',status,p.general_notes||''];});
-downloadCSV('physicians_export_'+todayStamp()+'.csv',h,rows);
+downloadCSV('providers_export_'+todayStamp()+'.csv',h,rows);
 }
 
 async function exportContacts(){
 const{data:allLogs,error}=await db.from('contact_logs').select('*').order('contact_date',{ascending:false});if(error)throw error;
 const pm={};physicians.forEach(p=>pm[p.id]=p);
-const h=['Date','Time','Author','Physician Last Name','Physician First Name','Location','Notes'];
-const rows=(allLogs||[]).map(l=>{const p=pm[l.physician_id]||{};const loc=l.practice_location_id?getLocationLabel(l.practice_location_id):'';
+const h=['Date','Time','Author','Provider Last Name','Provider First Name','Location','Notes'];
+const rows=(allLogs||[]).map(l=>{const p=pm[l.provider_id]||{};const loc=l.practice_location_id?getLocationLabel(l.practice_location_id):'';
 let notes=l.notes||'',time=l.contact_time||'';
 if(!time&&notes.startsWith('[')){const m=notes.match(/^\[(\d{1,2}:\d{2})\]\s*/);if(m){time=m[1];notes=notes.slice(m[0].length);}}
 return[l.contact_date,time,l.author||'',p.last_name||'',p.first_name||'',loc,notes];});
@@ -209,7 +209,7 @@ cachedLatestActivity = {};
 try {
 const {data:allLogs} = await db.from('contact_logs').select('*').order('contact_date',{ascending:false});
 if (allLogs) {
-allLogs.forEach(l => { if (!cachedLatestActivity[l.physician_id]) cachedLatestActivity[l.physician_id] = l; });
+allLogs.forEach(l => { if (!cachedLatestActivity[l.provider_id]) cachedLatestActivity[l.provider_id] = l; });
 }
 } catch(e) { console.error('Could not load activity for routing:', e); }
 const history = getRoutingExportHistory();
@@ -220,7 +220,7 @@ const exported = history[r.key];
 const isNew = !exported;
 if (r.type === 'loc-only') noPhysCount++;
 if (isNew) newCount++; else exportedCount++;
-const physName = r.phys ? `${r.phys.first_name} ${r.phys.last_name}${r.phys.degree ? ', ' + r.phys.degree : ''}` : '(No physician assigned)';
+const physName = r.phys ? `${r.phys.first_name} ${r.phys.last_name}${r.phys.degree ? ', ' + r.phys.degree : ''}` : '(No provider assigned)';
 const practiceName = r.practice?.name || r.loc?.practices?.name || 'No practice';
 const addr = r.loc ? [r.loc.address, r.loc.city, r.loc.zip].filter(Boolean).join(', ') : 'No location';
 const activityNote = r.activity ? r.activity.notes || '' : '';
@@ -240,14 +240,14 @@ ${statusLine}
 <span class="routing-row-badge ${badgeClass}">${badgeText}</span>
 </div>`;
 }).join('');
-$('routingExportSummary').innerHTML = `<strong>${newCount}</strong> new row${newCount !== 1 ? 's' : ''} to export &nbsp;|&nbsp; <strong>${exportedCount}</strong> previously exported &nbsp;|&nbsp; <strong>${noPhysCount}</strong> practice${noPhysCount !== 1 ? 's' : ''} without physicians`;
-$('routingExportList').innerHTML = listHTML || '<div class="empty-notice">No data to export. Add physicians or practices first.</div>';
+$('routingExportSummary').innerHTML = `<strong>${newCount}</strong> new row${newCount !== 1 ? 's' : ''} to export &nbsp;|&nbsp; <strong>${exportedCount}</strong> previously exported &nbsp;|&nbsp; <strong>${noPhysCount}</strong> practice${noPhysCount !== 1 ? 's' : ''} without providers`;
+$('routingExportList').innerHTML = listHTML || '<div class="empty-notice">No data to export. Add providers or practices first.</div>';
 $('routingExportNewBtn').textContent = `Export New Only (${newCount})`;
 $('routingExportModal').classList.add('active');
 }
 function closeRoutingExport() { closeModal('routingExportModal'); }
 function getRoutingCSVHeaders() {
-return ['ORIG','CALL','AS?','Rank','Physician First Name','Physician Last Name','First Last','Degree','Status','Specialty','Facility (full name)','Address','City','Zip','Phone Number','Vol','County','Notes'];
+return ['ORIG','CALL','AS?','Rank','Provider First Name','Provider Last Name','First Last','Degree','Status','Specialty','Facility (full name)','Address','City','Zip','Phone Number','Vol','County','Notes'];
 }
 function routingRowToCSV(r) {
 const p = r.phys;

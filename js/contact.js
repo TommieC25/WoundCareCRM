@@ -82,7 +82,7 @@ function closeContactModal(){closeModal('contactModal');}
 async function saveContact(e) {
 if(e) e.preventDefault();
 try {
-if(!currentPhysician){showToast('Error: no physician selected','error');return;}
+if(!currentPhysician){showToast('Error: no provider selected','error');return;}
 const dateVal=$('contactDate').value,authorVal=$('authorName').value;
 const nv=($('contactNotes').value||'').trim();
 if(!dateVal){showToast('Please enter a date','error');return;}
@@ -94,7 +94,7 @@ const baseNote=tv?`[${tv}] ${nv}`:nv;
 const staffVal=$('staffPresent')?$('staffPresent').value.trim():'';
 const noteText=staffVal?`${baseNote} | Staff: ${staffVal}`:baseNote;
 // Activity record — clean, no reminder_date, no embedded task text
-const data={physician_id:currentPhysician.id,contact_date:dateVal,author:authorVal,notes:noteText,practice_location_id:locVal};
+const data={provider_id:currentPhysician.id,contact_date:dateVal,author:authorVal,notes:noteText,practice_location_id:locVal};
 const alsoCbs=document.querySelectorAll('.also-attended-cb:checked');
 const alsoIds=[...alsoCbs].map(cb=>cb.value);
 await withSave('contactSaveBtn','Save Note',async()=>{
@@ -104,25 +104,25 @@ const{error}=await db.from('contact_logs').update(data).eq('id',editingContactId
 }else{
 const{error}=await db.from('contact_logs').insert(data);if(error)throw error;
 if(alsoIds.length>0){
-const alsoEntries=alsoIds.map(pid=>({physician_id:pid,contact_date:dateVal,author:authorVal,notes:noteText,practice_location_id:locVal}));
+const alsoEntries=alsoIds.map(pid=>({provider_id:pid,contact_date:dateVal,author:authorVal,notes:noteText,practice_location_id:locVal}));
 const{error:ae}=await db.from('contact_logs').insert(alsoEntries);
 if(ae)console.error('Also-attended insert error:',ae);
-for(const pid of alsoIds){await db.from('physicians').update({last_contact:dateVal}).eq('id',pid);}
+for(const pid of alsoIds){await db.from('providers').update({last_contact:dateVal}).eq('id',pid);}
 }
 // Follow-up task: insert as a SEPARATE contact_log record, independent of the activity
 if(reminderOn&&reminderDate){
 const taskNote=reminderNoteVal||'Follow-up';
-const taskData={physician_id:currentPhysician.id,contact_date:dateVal,author:authorVal,notes:taskNote,practice_location_id:locVal,reminder_date:reminderDate};
+const taskData={provider_id:currentPhysician.id,contact_date:dateVal,author:authorVal,notes:taskNote,practice_location_id:locVal,reminder_date:reminderDate};
 await db.from('contact_logs').insert(taskData);
 if(alsoIds.length>0){
-const alsoTasks=alsoIds.map(pid=>({physician_id:pid,contact_date:dateVal,author:authorVal,notes:taskNote,practice_location_id:locVal,reminder_date:reminderDate}));
+const alsoTasks=alsoIds.map(pid=>({provider_id:pid,contact_date:dateVal,author:authorVal,notes:taskNote,practice_location_id:locVal,reminder_date:reminderDate}));
 await db.from('contact_logs').insert(alsoTasks);
 }
 }
 const total=1+alsoIds.length;
 showToast(`Note logged for ${total} provider${total>1?'s':''}`,'success');
 }
-await db.from('physicians').update({last_contact:dateVal}).eq('id',currentPhysician.id);
+await db.from('providers').update({last_contact:dateVal}).eq('id',currentPhysician.id);
 currentPhysician.last_contact=dateVal;await loadContactLogs(currentPhysician.id);renderProfile();
 // If follow-up task requested, open separate task modal after closing activity modal
 if(!editingContactId&&reminderOn){
@@ -228,9 +228,9 @@ const taskMatch = noteText.match(/\s*\|\s*\[Task:\s*(.*?)\]$/);
 const taskNote = taskMatch ? taskMatch[1].trim() : noteText;
 if($('addTaskEditId'))$('addTaskEditId').value = rec.id;
 $('addTaskNote').value = taskNote;
-$('addTaskPhysicianId').value = rec.physician_id || '';
+$('addTaskPhysicianId').value = rec.provider_id || '';
 $('addTaskLocationId').value = rec.practice_location_id || '';
-$('addTaskContext').innerHTML = _buildTaskContext(rec.physician_id, rec.practice_location_id);
+$('addTaskContext').innerHTML = _buildTaskContext(rec.provider_id, rec.practice_location_id);
 $('addTaskModalTitle').textContent = 'Edit Task';
 populateReminderDateButtons('task');
 if (rec.reminder_date) selectReminderDate(rec.reminder_date, '', 'task');
@@ -254,7 +254,7 @@ let error;
 if (editId) {
 ({error} = await db.from('contact_logs').update({ notes: note, reminder_date: date }).eq('id', editId));
 } else {
-({error} = await db.from('contact_logs').insert({ physician_id: physicianId, contact_date: today, author: 'Tom', notes: note, practice_location_id: locationId, reminder_date: date }));
+({error} = await db.from('contact_logs').insert({ provider_id: physicianId, contact_date: today, author: 'Tom', notes: note, practice_location_id: locationId, reminder_date: date }));
 }
 if (error) throw error;
 showToast(editId ? 'Task updated' : 'Task saved', 'success');

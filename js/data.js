@@ -3,7 +3,7 @@ async function loadAllData() {
 try {
 updateSyncIndicators('syncing');
 const { data: physData, error: physError } = await db
-.from('physicians')
+.from('providers')
 .select('*')
 .order('last_name', { ascending: true });
 if (physError) throw physError;
@@ -23,15 +23,15 @@ if (!locError) {
 practiceLocations = locData || [];
 }
 const { data: assignData, error: assignError } = await db
-.from('physician_location_assignments')
+.from('provider_location_assignments')
 .select('*, practice_locations(*, practices(name))');
 if (!assignError) {
 physicianAssignments = {};
 (assignData || []).forEach(a => {
-if (!physicianAssignments[a.physician_id]) {
-physicianAssignments[a.physician_id] = [];
+if (!physicianAssignments[a.provider_id]) {
+physicianAssignments[a.provider_id] = [];
 }
-physicianAssignments[a.physician_id].push(a);
+physicianAssignments[a.provider_id].push(a);
 });
 }
 territoryMapCache=null;
@@ -69,14 +69,14 @@ let updated = 0;
 for (const p of physicians) {
 const key = `${p.first_name}|${p.last_name}`;
 if (volData[key] !== undefined && p.proj_vol != String(volData[key])) {
-const { error } = await db.from('physicians').update({ proj_vol: String(volData[key]) }).eq('id', p.id);
+const { error } = await db.from('providers').update({ proj_vol: String(volData[key]) }).eq('id', p.id);
 if (!error) updated++;
 else console.warn('Volume migration failed for', key, error);
 }
 }
 if (updated > 0) {
 await loadAllData();
-showToast(`Volume data updated for ${updated} physician(s)`, 'info');
+showToast(`Volume data updated for ${updated} provider(s)`, 'info');
 }
 localStorage.setItem('volumeMigration20260217', 'done');
 console.log(`Volume migration complete: ${updated} updated`);
@@ -102,14 +102,14 @@ let updated = 0;
 for (const p of physicians) {
 const key = `${p.first_name}|${p.last_name}`;
 if (asPhysicians.has(key) && !p.advanced_solution) {
-const { error } = await db.from('physicians').update({ advanced_solution: true }).eq('id', p.id);
+const { error } = await db.from('providers').update({ advanced_solution: true }).eq('id', p.id);
 if (!error) { p.advanced_solution = true; updated++; }
 else console.warn('AS migration failed for', key, error);
 }
 }
 if (updated > 0) {
 await loadAllData();
-showToast(`Advanced Solution set for ${updated} physician(s)`, 'info');
+showToast(`Advanced Solution set for ${updated} provider(s)`, 'info');
 }
 localStorage.setItem('asMigration20260217', 'done');
 console.log(`AS migration complete: ${updated} updated`);
@@ -120,7 +120,7 @@ try {
 const { data, error } = await db
 .from('contact_logs')
 .select('*')
-.eq('physician_id', physicianId)
+.eq('provider_id', physicianId)
 .order('contact_date', { ascending: false })
 .order('created_at', { ascending: false });
 if (error) throw error;
