@@ -1,7 +1,7 @@
 # WoundCareCRM — Claude Code Context
 
 ## Project Overview
-Single-page territory CRM for Miami wound care sales. One file: `index.html` (~2400 lines). No build system, no framework — vanilla HTML/CSS/JS with Supabase backend. Deployed via GitHub Pages from `main` branch.
+Single-page territory CRM for Miami wound care sales. `index.html` + `js/` folder (admin.js, data.js, views.js, nav.js, modals.js, profile.js, contact.js, init.js). No build system, no framework — vanilla HTML/CSS/JS with Supabase backend. Deployed via GitHub Pages from `main` branch.
 
 ## Git & Deployment
 - **Default branch: `main`** (NOT master)
@@ -18,11 +18,13 @@ Single-page territory CRM for Miami wound care sales. One file: `index.html` (~2
 ## Supabase Database Tables
 | Table | Purpose |
 |-------|---------|
-| `physicians` | HCPs — first_name, last_name, degree, title, email, specialty, priority (1-5 tier), academic_connection, proj_vol (projected volume, replaces patient_volume), ss_vol (skin substitute CMS claims volume), general_notes, last_contact |
+| `providers` | HCPs — first_name, last_name, degree, title, email, specialty, priority (1-5 tier), academic_connection, proj_vol (projected volume, replaces patient_volume), ss_vol (skin substitute CMS claims volume), general_notes, last_contact, is_target |
 | `practices` | Practice groups — name, website, notes |
 | `practice_locations` | Physical offices — practice_id, label, address, city, zip, phone, fax, practice_email, office_hours, office_staff, receptionist_name, best_days |
-| `physician_location_assignments` | Many-to-many — physician_id, practice_location_id, is_primary |
-| `contact_logs` | Activity notes — physician_id, contact_date, contact_time, author, notes, practice_location_id, reminder_date |
+| `provider_location_assignments` | Many-to-many — provider_id, practice_location_id, is_primary |
+| `contact_logs` | Activity notes — provider_id, contact_date, contact_time, author, notes, practice_location_id, reminder_date |
+
+**Note**: Table was renamed from `physicians`→`providers` and `physician_location_assignments`→`provider_location_assignments`. CLAUDE.md previously had the old names — all JS files use the new names.
 
 ## Key Architecture Patterns
 - All data loaded into JS arrays on startup: `physicians`, `practices`, `practiceLocations`, `physicianAssignments` (object keyed by physician_id), `contactLogs` (lazy-loaded per physician)
@@ -41,7 +43,18 @@ Single-page territory CRM for Miami wound care sales. One file: `index.html` (~2
 - The `_taskDetailLogs` map in nav.js is assigned to `window._taskDetailLogs` so it's accessible from views.js functions
 
 ## CSV Import Format
-Expects columns: first_name, last_name, email, priority, specialty, degree, title, proj_vol (or patient_volume for backward compat), academic_connection/um_connection, general_notes, practice_name, address, city, zip, phone, fax
+Expects columns: first_name, last_name, email, priority, specialty, degree, title, proj_vol (or patient_volume for backward compat), ss_vol, academic_connection/um_connection, general_notes, is_target, practice_name, address, city, zip, phone, fax, office_hours, office_staff, receptionist_name, best_days, practice_email
+
+**Facility-only rows** (no first_name/last_name): creates the practice + location only, no provider record.
+
+**Address normalization** (applied automatically on import, in `js/admin.js`):
+- Strips `nan` word tokens (pandas NaN artifact): `173 Magnolia Way nan` → `173 Magnolia Way`
+- Suite/unit → `#NNN`: `Suite 250`, `Suite #250`, `Ste 406` → `#250`, `#250`, `#406`
+- Directional abbreviations uppercased: `Sw`, `Nw`, `Northwest` → `SW`, `NW`, `NW`
+
+**Paste-CSV option**: Admin panel has a textarea for pasting CSV text directly (iPad-friendly). Functions: `importCSVPaste()`, `importCSVText(str)` in admin.js — both duck-type into `importCSV()`.
+
+**Supabase network note**: The Claude Code server environment has outbound HTTPS blocked to external hosts (`403 host_not_allowed`). Server-side import scripts cannot reach Supabase. All imports must run through the browser. GitHub API works because it uses a different path (git remote with embedded PAT).
 
 ## Export Formats
 - **Providers CSV** (UI label; formerly "Physicians CSV"): All providers with practice info, degree, last contact, Status (latest activity)
@@ -56,7 +69,7 @@ Expects columns: first_name, last_name, email, priority, specialty, degree, titl
 - **Provider/HCP/Staff terminology** (as of PR #49, 2026-02-21):
   - People with medical degrees (MD, DO, DPM, PA-C, NP, RN, PhD) → **"Provider"** in full contexts, **"HCP"** where space is tight
   - Administrative/office staff (`specialty === 'Administrative Staff'`) → **"Staff"**
-  - The `physicians` DB table name is unchanged — only UI labels changed
+  - The DB table is now `providers` (renamed from `physicians`)
   - Tab label: "HCPs", search placeholder: "Search HCPs...", buttons: "+ New Provider", "Add Provider", "Save Provider", "Edit Provider"
   - Counts: "X provider(s)", "No providers found", "Providers & Staff" (section headers in profile)
 
@@ -88,7 +101,7 @@ Expects columns: first_name, last_name, email, priority, specialty, degree, titl
 
 **READ THIS FIRST on every new session / conversation compaction.**
 
-### Git Environment — FULLY WORKING (updated 2026-02-21, confirmed working through PR #49)
+### Git Environment — FULLY WORKING (updated 2026-02-23, confirmed working through PR #66)
 1. **Push access**: ONLY `claude/*` branches work via git. Pushing to `main` returns 403. Do not attempt it.
 2. **`gh` CLI**: NOT installed (command not found). Do not attempt any `gh` commands.
 3. **GitHub REST API**: Works via `curl` to `https://api.github.com` with PAT token. Use this for PR creation and merge.
