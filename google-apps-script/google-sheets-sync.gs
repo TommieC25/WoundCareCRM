@@ -104,27 +104,27 @@ function syncFieldRouting() {
   var existingManualData = readManualColumns_(sheet);
 
   // Fetch data from Supabase
-  var physicians = supaFetch_('physicians', 'order=last_name.asc');
+  var physicians = supaFetch_('providers', 'order=last_name.asc');
   var practices = supaFetch_('practices', 'order=name.asc');
   var locations = supaFetch_('practice_locations', 'select=*,practices(name)&order=city.asc');
-  var assignments = supaFetch_('physician_location_assignments', 'select=*,practice_locations(*,practices(name))');
+  var assignments = supaFetch_('provider_location_assignments', 'select=*,practice_locations(*,practices(name))');
   var contactLogs = supaFetch_('contact_logs', 'select=*&order=contact_date.desc');
 
-  // Build latest activity per physician
+  // Build latest activity per provider
   var latestActivity = {};
   for (var i = 0; i < contactLogs.length; i++) {
     var log = contactLogs[i];
-    if (!latestActivity[log.physician_id]) {
-      latestActivity[log.physician_id] = log;
+    if (!latestActivity[log.provider_id]) {
+      latestActivity[log.provider_id] = log;
     }
   }
 
-  // Build assignment map: physician_id → [assignments]
+  // Build assignment map: provider_id → [assignments]
   var assignMap = {};
   for (var i = 0; i < assignments.length; i++) {
     var a = assignments[i];
-    if (!assignMap[a.physician_id]) assignMap[a.physician_id] = [];
-    assignMap[a.physician_id].push(a);
+    if (!assignMap[a.provider_id]) assignMap[a.provider_id] = [];
+    assignMap[a.provider_id].push(a);
   }
 
   // Build practice map for quick lookup
@@ -143,14 +143,14 @@ function syncFieldRouting() {
   var rows = [];
   var assignedLocIds = {};
 
-  // 1. Physician-location rows
+  // 1. Provider-location rows
   for (var pi = 0; pi < physicians.length; pi++) {
     var phys = physicians[pi];
     var assigns = assignMap[phys.id] || [];
     var activity = latestActivity[phys.id] || null;
 
     if (assigns.length === 0) {
-      // Physician with no location
+      // Provider with no location
       rows.push(buildRow_(phys, null, null, activity, 'phys-only'));
     } else {
       for (var ai = 0; ai < assigns.length; ai++) {
@@ -164,7 +164,7 @@ function syncFieldRouting() {
     }
   }
 
-  // 2. Practice locations with NO assigned physicians
+  // 2. Practice locations with NO assigned providers
   for (var li = 0; li < locations.length; li++) {
     var loc = locations[li];
     if (assignedLocIds[loc.id]) continue;

@@ -1,6 +1,6 @@
-// === js/modals.js === Physician modal, practice modal, location modal, assign modals
+// === js/modals.js === Provider modal, practice modal, location modal, assign modals
 
-// --- Physician modal ---
+// --- Provider modal ---
 function openPhysicianModal() {
 editMode=false;selectedPracticeId=null;selectedLocationIds=[];$('modalTitle').textContent='Add Provider';
 $('physicianForm').reset();setFields({priority:'',specialty:''});
@@ -102,7 +102,7 @@ async function toggleAdvancedSolution(e) {
 e.preventDefault();e.stopPropagation();
 if(!currentPhysician) return;
 const newVal = !currentPhysician.advanced_solution;
-const{error}=await db.from('physicians').update({advanced_solution:newVal}).eq('id',currentPhysician.id);
+const{error}=await db.from('providers').update({advanced_solution:newVal}).eq('id',currentPhysician.id);
 if(error){showToast('Error updating AS: '+error.message,'error');return;}
 currentPhysician.advanced_solution=newVal;
 const idx=physicians.findIndex(p=>p.id===currentPhysician.id);
@@ -122,21 +122,21 @@ const data = {first_name:$('firstName').value,last_name:$('lastName').value,emai
 const degreeVal=$('degree').value||null;const titleVal=$('staffTitle').value||null;
 data.degree=degreeVal;data.title=titleVal;
 await withSave('physicianSaveBtn','Save Provider',async()=>{
-if(editMode){if(!currentPhysician){showToast('Error: physician context lost. Close and try again.','error');return;}const{error}=await db.from('physicians').update(data).eq('id',currentPhysician.id);if(error)throw error;Object.assign(currentPhysician,data);renderProfile();showToast('Physician updated','success');
+if(editMode){if(!currentPhysician){showToast('Error: provider context lost. Close and try again.','error');return;}const{error}=await db.from('providers').update(data).eq('id',currentPhysician.id);if(error)throw error;Object.assign(currentPhysician,data);renderProfile();showToast('Provider updated','success');
 }else{
 let practiceId=selectedPracticeId;const npn=$('newPracticeName').value;
 if(npn&&!practiceId){const{data:np,error:pe}=await db.from('practices').insert({name:npn}).select().single();if(pe)throw pe;practiceId=np.id;practices.push(np);}
-const{data:newP,error}=await db.from('physicians').insert(data).select().single();if(error)throw error;
-if(selectedLocationIds.length>0){const a=selectedLocationIds.map((lid,i)=>({physician_id:newP.id,practice_location_id:lid,is_primary:i===0}));const{error:ae}=await db.from('physician_location_assignments').insert(a);if(ae)throw ae;}
+const{data:newP,error}=await db.from('providers').insert(data).select().single();if(error)throw error;
+if(selectedLocationIds.length>0){const a=selectedLocationIds.map((lid,i)=>({provider_id:newP.id,practice_location_id:lid,is_primary:i===0}));const{error:ae}=await db.from('provider_location_assignments').insert(a);if(ae)throw ae;}
 else if(practiceId){
 const existingLocs=practiceLocations.filter(l=>l.practice_id===practiceId);
 if(existingLocs.length>0){
-const{error:ae}=await db.from('physician_location_assignments').insert({physician_id:newP.id,practice_location_id:existingLocs[0].id,is_primary:true});
+const{error:ae}=await db.from('provider_location_assignments').insert({provider_id:newP.id,practice_location_id:existingLocs[0].id,is_primary:true});
 if(ae)throw ae;
 }else{
 const{data:newLoc,error:le}=await db.from('practice_locations').insert({practice_id:practiceId,label:'Main Office'}).select().single();
 if(le)throw le;
-const{error:ae}=await db.from('physician_location_assignments').insert({physician_id:newP.id,practice_location_id:newLoc.id,is_primary:true});
+const{error:ae}=await db.from('provider_location_assignments').insert({provider_id:newP.id,practice_location_id:newLoc.id,is_primary:true});
 if(ae)throw ae;
 }
 }
@@ -146,7 +146,7 @@ await loadAllData();renderList();setTimeout(()=>closePhysicianModal(),500);
 });
 }
 async function deletePhysician() {
-await dbDel('physicians',currentPhysician.id,`Delete ${fmtName(currentPhysician)}?`,async()=>{physicians=physicians.filter(p=>p.id!==currentPhysician.id);currentPhysician=null;renderList();renderEmptyState();});
+await dbDel('providers',currentPhysician.id,`Delete ${fmtName(currentPhysician)}?`,async()=>{physicians=physicians.filter(p=>p.id!==currentPhysician.id);currentPhysician=null;renderList();renderEmptyState();});
 }
 
 // --- Practice modal ---
@@ -255,7 +255,7 @@ const{error:le}=await db.from('practice_locations').update(locData).eq('id',loc.
 }
 }
 for (const delId of locationsToDelete) {
-await db.from('physician_location_assignments').delete().eq('practice_location_id',delId);
+await db.from('provider_location_assignments').delete().eq('practice_location_id',delId);
 await db.from('practice_locations').delete().eq('id',delId);
 }
 locationsToDelete = [];
@@ -357,7 +357,7 @@ await loadAllData();if(currentPractice)renderPracticeProfile();if(currentPhysici
 });
 }
 async function deleteLocation(locationId) {
-await dbDel('practice_locations',locationId,'Delete this location and all physician assignments?',async()=>{await loadAllData();if(currentPractice)renderPracticeProfile();});
+await dbDel('practice_locations',locationId,'Delete this location and all provider assignments?',async()=>{await loadAllData();if(currentPractice)renderPracticeProfile();});
 }
 
 // --- Assign location modal ---
@@ -400,18 +400,18 @@ if (cb && cb.checked && locId) selectedIds.push(locId);
 try {
 updateSyncIndicators('syncing');
 const {error:delErr} = await db
-.from('physician_location_assignments')
+.from('provider_location_assignments')
 .delete()
-.eq('physician_id', currentPhysician.id);
+.eq('provider_id', currentPhysician.id);
 if (delErr) throw delErr;
 if (selectedIds.length > 0) {
 const assignments = selectedIds.map((locId, index) => ({
-physician_id: currentPhysician.id,
+provider_id: currentPhysician.id,
 practice_location_id: locId,
 is_primary: index === 0
 }));
 const { error } = await db
-.from('physician_location_assignments')
+.from('provider_location_assignments')
 .insert(assignments);
 if (error) throw error;
 }
@@ -436,7 +436,7 @@ if (pe) throw pe;
 const locData = {practice_id:newPract.id,label:'Main Office',address:$('quickPracticeAddr').value||null,city:$('quickPracticeCity').value||null,zip:$('quickPracticeZip').value||null,phone:$('quickPracticePhone').value||null};
 const {data:newLoc,error:le} = await db.from('practice_locations').insert(locData).select().single();
 if (le) throw le;
-const {error:ae} = await db.from('physician_location_assignments').insert({physician_id:currentPhysician.id,practice_location_id:newLoc.id,is_primary:false});
+const {error:ae} = await db.from('provider_location_assignments').insert({provider_id:currentPhysician.id,practice_location_id:newLoc.id,is_primary:false});
 if (ae) throw ae;
 ['quickPracticeName','quickPracticeAddr','quickPracticeCity','quickPracticeZip','quickPracticePhone'].forEach(id=>{const el=$(id);if(el)el.value='';});
 await loadAllData();
@@ -451,10 +451,10 @@ updateSyncIndicators('error');
 }
 }
 async function removeAssignment(assignmentId) {
-await dbDel('physician_location_assignments',assignmentId,'Remove this location assignment?',async()=>{await loadAllData();renderProfile();});
+await dbDel('provider_location_assignments',assignmentId,'Remove this location assignment?',async()=>{await loadAllData();renderProfile();});
 }
 
-// --- Assign physician modal (from practice view) ---
+// --- Assign provider modal (from practice view) ---
 function openAssignPhysicianModal() {
 const locations = practiceLocations.filter(l => l.practice_id === currentPractice.id);
 const select = $('assignPhysLocationSelect');
@@ -511,9 +511,9 @@ if (!locId) { showToast('Select a location first', 'error'); return; }
 try {
 updateSyncIndicators('syncing');
 const data = {first_name:first,last_name:last,degree:$('quickPhysDegree').value||null,specialty:$('quickPhysSpecialty').value||null,priority:$('quickPhysPriority').value||null};
-const {data:newPhys,error} = await db.from('physicians').insert(data).select().single();
+const {data:newPhys,error} = await db.from('providers').insert(data).select().single();
 if (error) throw error;
-const {error:assignErr} = await db.from('physician_location_assignments').insert({physician_id:newPhys.id,practice_location_id:locId,is_primary:true});
+const {error:assignErr} = await db.from('provider_location_assignments').insert({provider_id:newPhys.id,practice_location_id:locId,is_primary:true});
 if (assignErr) throw assignErr;
 await loadAllData();
 $('quickPhysFirst').value = '';
@@ -553,14 +553,14 @@ else unselectedPhysIds.push(physId);
 try {
 updateSyncIndicators('syncing');
 for (const physId of selectedPhysIds) {
-const {data:existing} = await db.from('physician_location_assignments').select('id').eq('physician_id',physId).eq('practice_location_id',locId).maybeSingle();
+const {data:existing} = await db.from('provider_location_assignments').select('id').eq('provider_id',physId).eq('practice_location_id',locId).maybeSingle();
 if (!existing) {
-const {error} = await db.from('physician_location_assignments').insert({physician_id:physId,practice_location_id:locId,is_primary:false});
+const {error} = await db.from('provider_location_assignments').insert({provider_id:physId,practice_location_id:locId,is_primary:false});
 if (error) throw error;
 }
 }
 for (const physId of unselectedPhysIds) {
-await db.from('physician_location_assignments').delete().eq('physician_id',physId).eq('practice_location_id',locId);
+await db.from('provider_location_assignments').delete().eq('provider_id',physId).eq('practice_location_id',locId);
 }
 await loadAllData();
 renderPracticeProfile();
