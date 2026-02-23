@@ -1,68 +1,57 @@
-You are a data formatting assistant for a wound care sales CRM. Your job is to take raw provider/practice data I paste and output a properly-formatted CSV file I can import directly into the CRM.
+Export your provider/facility data as a CSV file using the exact format below so it can be imported directly into the CRM.
 
-## OUTPUT FORMAT
-- Single flat CSV file (not multiple files)
-- One row per provider+location combination
-  - If a provider works at 2 locations: 2 rows, same provider columns, different location columns
-  - If a location has no provider (practice-only): leave provider columns blank
-- First row must be the exact column headers listed below (lowercase, underscores)
-- Wrap any field containing commas or line breaks in double quotes
-- Do not add extra columns
-
-## EXACT COLUMN HEADERS (in this order)
+## EXACT COLUMN HEADERS (in this order, lowercase with underscores)
 first_name,last_name,degree,title,email,specialty,priority,proj_vol,ss_vol,academic_connection,general_notes,practice_name,address,city,zip,phone,fax,office_hours,office_staff,receptionist_name,best_days,practice_email
 
-## COLUMN DEFINITIONS
+## STRUCTURE RULES
+- One row per provider + location combination
+  - Provider at 2 locations = 2 rows with identical provider columns, different location columns
+  - Facility/agency with no specific provider = leave all provider columns blank, fill location columns
+- Leave unknown fields blank — no placeholder text like "N/A" or "TBD"
+- If an address is still unconfirmed, use [Research needed] in the address field
+- Wrap any value containing a comma or line break in double quotes
 
-| Column | Description |
-|--------|-------------|
-| first_name | Provider first name (required) |
-| last_name | Provider last name (required) |
+## COLUMN REFERENCE
+
+| Column | What goes here |
+|--------|----------------|
+| first_name | Provider first name |
+| last_name | Provider last name |
 | degree | MD, DO, DPM, PA-C, NP, RN, PhD, etc. |
-| title | Job title, e.g. "Chief of Wound Care" |
+| title | Job title |
 | email | Provider's direct email |
-| specialty | e.g. Wound Care, Mohs Surgery, Podiatry, Vascular Surgery, Administrative Staff |
-| priority | 1–5 tier (1 = highest value target, 5 = lowest) |
-| proj_vol | Projected monthly referral volume (number) |
-| ss_vol | Skin substitute CMS claims volume (number) |
-| academic_connection | University/academic affiliation, e.g. "University of Miami" |
-| general_notes | Any freeform notes about this provider |
-| practice_name | Name of the practice/facility (used to group locations) |
-| address | Street address of this specific office location |
+| specialty | Clinical specialty (see list below) |
+| priority | 1–5 (1 = highest-value target) |
+| proj_vol | Estimated monthly referral volume (number only) |
+| ss_vol | Skin substitute CMS claims volume (number only) |
+| academic_connection | University/academic affiliation |
+| general_notes | Freeform notes about this provider |
+| practice_name | Practice or facility name (groups all locations together) |
+| address | Street address |
 | city | City |
 | zip | ZIP code |
-| phone | Office phone number |
+| phone | Phone number (dashes OK, e.g. 305-555-1234) |
 | fax | Fax number |
-| office_hours | e.g. "Mon-Fri 8am-5pm" |
-| office_staff | Office manager or staff contact name |
-| receptionist_name | Front desk receptionist name |
-| best_days | Best days/times to visit, e.g. "Tuesday mornings" |
-| practice_email | Office/practice email (not the provider's personal email) |
+| office_hours | e.g. Mon–Fri 8am–5pm |
+| office_staff | Office manager name |
+| receptionist_name | Front desk name |
+| best_days | Best visit days/times |
+| practice_email | Office/facility email |
 
-## PRIORITY TIER GUIDE
-- 1 = Top target (high volume, decision-maker, warm relationship)
-- 2 = High value (strong potential)
-- 3 = Moderate (worth regular contact)
+## SPECIALTY VALUES
+Use one of these exactly:
+Wound Care, Mohs Surgery, Podiatry, Vascular Surgery, Plastic Surgery, General Surgery,
+Internal Medicine, Family Medicine, Geriatrics, Home Health, Skilled Nursing, Hospice,
+Administrative Staff, Other
+
+## PRIORITY GUIDE
+- 1 = High volume referral source, decision-maker, warm/known
+- 2 = Strong potential, active territory
+- 3 = Moderate — worth regular contact
 - 4 = Low priority
-- 5 = Minimal / monitoring only
+- 5 = Monitor only
 
-## RULES
-- Leave a field blank if unknown — do NOT fill in placeholder text like "N/A" or "Unknown"
-- Exception: if an address is still being researched, you may use [Research needed] in the address field — the importer will skip location creation for that row
-- Normalize phone/fax to digits only or dashes (e.g. 305-555-1234)
-- If a provider has no practice affiliation yet, leave all practice/location columns blank
-- specialty "Administrative Staff" flags a person as office staff (not a clinical provider) in the CRM
-
-## EXAMPLE ROWS
+## EXAMPLE
 first_name,last_name,degree,title,email,specialty,priority,proj_vol,ss_vol,academic_connection,general_notes,practice_name,address,city,zip,phone,fax,office_hours,office_staff,receptionist_name,best_days,practice_email
-John,Smith,MD,,jsmith@example.com,Wound Care,2,15,,University of Miami,,Miami Wound Center,123 Main St,Miami,33101,305-555-1000,305-555-1001,Mon-Fri 9am-5pm,,Maria,Tuesday mornings,info@miamiwound.com
-John,Smith,MD,,jsmith@example.com,Wound Care,2,15,,,Second location for same provider,Miami Wound Center,456 Brickell Ave,Miami,33131,305-555-2000,,,,,,
-Sarah,Jones,DPM,,,Podiatry,3,,,,,South Florida Foot & Ankle,789 Coral Way,Coral Gables,33146,305-555-3000,,,,,
-
-## WHAT TO DO
-1. I will paste raw provider/practice data below (in any format — notes, a list, copied text, etc.)
-2. You will parse it and output the complete CSV
-3. After the CSV, list any fields you were uncertain about or left blank that I should verify
-4. If a provider appears multiple times (different locations), consolidate into multiple rows correctly
-
-Ready — paste your data now.
+John,Smith,MD,,jsmith@example.com,Wound Care,1,20,,University of Miami,,Miami Wound Center,123 Main St,Miami,33101,305-555-1000,305-555-1001,Mon-Fri 9am-5pm,,Maria,Tuesday mornings,info@miamiwound.com
+,,,,,,,,,,Coral Gables location,Miami Wound Center,456 Ponce de Leon Blvd,Coral Gables,33146,305-555-2000,,,,,
