@@ -110,7 +110,7 @@ const clickFn=l.provider_id?`viewPhysician('${l.provider_id}')`:l.practice_locat
 return`<li class="physician-item" onclick="${clickFn}">
 <div class="name">${nameDisplay}</div>
 <div class="practice">${l.contact_date}${time?' '+time:''}${l.author?' - '+l.author:''}</div>
-<div style="font-size:0.75rem;color:#666;margin-top:0.25rem;">${preview}</div>
+<div style="font-size:0.75rem;color:rgba(255,255,255,0.75);margin-top:0.25rem;">${preview}</div>
 </li>`;}).join('');
 $('physicianCount').textContent=filtered.length+' of '+allLogs.length+' activities';
 $('mainContent').innerHTML=`<div class="section"><div class="section-header"><h3>Activity Log</h3><div style="font-size:0.8rem;color:#666;">${filtered.length} entries${search?' matching "'+search+'"':''}</div></div>
