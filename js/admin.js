@@ -36,7 +36,7 @@ const locMap={};// key: `${practiceId}|${address}` -> location record
 const seenLocKeys=new Set();
 for(const r of rows){
 const practId=getPractId(r.practice_name);
-const addr=(r.address||'').trim().replace(/\bnan\b/gi,'').replace(/\s+/g,' ').trim().replace(/(Suite|Ste|Apt|Unit)\s*#\s*/gi,'$1 ');
+const addr=(r.address||'').trim().replace(/\bnan\b/gi,'').replace(/\s+/g,' ').trim().replace(/(Suite|Ste\.?|Apt\.?|Unit)\.?\s*#?\s*(\d+)/gi,'#$2').replace(/\s+/g,' ').trim();
 if(!practId||!addr||addr==='[Research needed]')continue;
 const locKey=`${practId}|${addr}`;
 if(seenLocKeys.has(locKey))continue;
@@ -57,7 +57,7 @@ const e=physMap.get(key);
 const practId=getPractId(r.practice_name);
 if(practId)e.practiceIds.add(practId);
 // Track primary location (first address listed for this provider)
-const addr=(r.address||'').trim().replace(/\bnan\b/gi,'').replace(/\s+/g,' ').trim().replace(/(Suite|Ste|Apt|Unit)\s*#\s*/gi,'$1 ');
+const addr=(r.address||'').trim().replace(/\bnan\b/gi,'').replace(/\s+/g,' ').trim().replace(/(Suite|Ste\.?|Apt\.?|Unit)\.?\s*#?\s*(\d+)/gi,'#$2').replace(/\s+/g,' ').trim();
 if(!e.primaryLocKey&&practId&&addr&&addr!=='[Research needed]')e.primaryLocKey=`${practId}|${addr}`;
 });
 
