@@ -68,6 +68,7 @@ Expects columns: first_name, last_name, email, priority, specialty, degree, titl
 - County is guessed from city name via `guessCounty()` helper (Miami-Dade, Broward, Palm Beach)
 - **JS template literals**: When editing HTML-generating template literals in views.js/nav.js, keep the entire string as a single contiguous template literal. Breaking it across lines with raw HTML outside the backtick string causes a JS syntax error. The whole `html += \`...\`` must be one unbroken string.
 - **Merge conflicts when branch is behind main**: If a PR shows "not mergeable", the `claude/` branch has fallen behind. Fix: `git fetch origin main && git merge origin/main --no-edit`, resolve any conflicts (keep HEAD/our version), commit, re-push, then retry the merge API call.
+- **NEVER use `sed -i` on source code files** — `sed -i` has silently wiped entire JS files to 0 bytes in this repo (PR #58 incident, 2026-02-23), costing significant credits and time to recover. **ALWAYS use the Edit tool for any source file modification**, no exceptions. Reserve Bash/sed exclusively for config files, non-source text, or throwaway temp files where a wipe would be harmless. For multi-file refactors, use Edit on each file individually, verify line counts before and after, and never chain sed commands across multiple source files in one Bash call.
 
 ## User Preferences
 - User is Tom (tom@dynamicoach.com), operates on iPad primarily
