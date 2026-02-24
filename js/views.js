@@ -30,6 +30,25 @@ function downloadTaskICS(r, phys, loc, practice) {
   document.body.appendChild(a); a.click(); document.body.removeChild(a);
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
+function buildGoogleCalendarUrl(r, phys, loc, practice) {
+  const name = phys ? fmtName(phys) : (practice ? practice.name : (loc ? (loc.label || 'Office') : 'Task'));
+  const tm = (r.notes||'').match(/^\[(\d{1,2}:\d{2}(?:\s*[APap][Mm])?)\]\s*/);
+  let dn = tm ? r.notes.replace(tm[0], '') : (r.notes||'');
+  const txm = dn.match(/\s*\|\s*\[Task:\s*(.*?)\]$/);
+  const taskNote = txm ? txm[1].trim() : '';
+  if (txm) dn = dn.slice(0, txm.index).trim();
+  const ds = r.reminder_date.replace(/-/g, '');
+  const parts = [];
+  if (taskNote) parts.push('Task: ' + taskNote);
+  if (phys && phys.specialty) parts.push(phys.specialty);
+  const np = phys ? normPriority(phys.priority) : null;
+  if (np) parts.push('Tier ' + np);
+  if (dn) parts.push(dn);
+  let location = '';
+  if (loc) { const lp = [practice ? practice.name : null, loc.address, loc.city, loc.zip].filter(Boolean); location = lp.join(', '); }
+  const params = new URLSearchParams({ action:'TEMPLATE', text:'Visit \u2014 '+name, dates:ds+'T080000/'+ds+'T090000', details:parts.join('\n'), location });
+  return 'https://calendar.google.com/calendar/render?' + params.toString();
+}
 function exportTaskToCalendar(logId) {
   const r = (_taskDetailLogs||{})[logId] || (window._taskDetailLogs||{})[logId];
   if (!r) return;
@@ -37,6 +56,15 @@ function exportTaskToCalendar(logId) {
   const loc = r.practice_location_id ? practiceLocations.find(l=>l.id===r.practice_location_id) : null;
   const practice = loc ? practices.find(p=>p.id===loc.practice_id) : null;
   downloadTaskICS(r, phys, loc, practice);
+}
+function openGoogleCalendar(logId) {
+  const r = (_taskDetailLogs||{})[logId] || (window._taskDetailLogs||{})[logId];
+  if (!r) return;
+  if (!r.reminder_date || r.reminder_date === '2099-12-31') { showToast('No due date — set a date before adding to calendar', 'error'); return; }
+  const phys = r.provider_id ? physicians.find(p=>p.id===r.provider_id) : null;
+  const loc = r.practice_location_id ? practiceLocations.find(l=>l.id===r.practice_location_id) : null;
+  const practice = loc ? practices.find(p=>p.id===loc.practice_id) : null;
+  window.open(buildGoogleCalendarUrl(r, phys, loc, practice), '_blank');
 }
 function openTaskDetailModal(logId) {
 const r = _taskDetailLogs[logId];
@@ -107,7 +135,7 @@ html += `<div style="display:flex;flex-direction:column;gap:0.5rem;">
 ${delFn?`<button onclick="${delFn}" style="flex:1;padding:0.7rem;background:#dc2626;color:white;border:none;border-radius:8px;font-weight:600;font-size:0.875rem;cursor:pointer;">🗑️ Delete</button>`:''}
 </div>
 ${profileFn?`<button onclick="${profileFn}" style="padding:0.7rem;background:rgba(10,77,60,0.08);color:#0a4d3c;border:2px solid #0a4d3c;border-radius:8px;font-weight:600;font-size:0.875rem;cursor:pointer;">👤 View Full Profile</button>`:''}
-${(!isOpen && r.reminder_date)?`<button onclick="exportTaskToCalendar('${r.id}')" style="padding:0.7rem;background:rgba(59,130,246,0.08);color:#1d4ed8;border:2px solid #3b82f6;border-radius:8px;font-weight:600;font-size:0.875rem;cursor:pointer;-webkit-tap-highlight-color:transparent;">📅 Add to Calendar</button>`:''}
+${(!isOpen && r.reminder_date)?`<div style="display:flex;gap:0.5rem;"><button onclick="openGoogleCalendar('${r.id}')" style="flex:1;padding:0.7rem;background:rgba(59,130,246,0.08);color:#1d4ed8;border:2px solid #3b82f6;border-radius:8px;font-weight:600;font-size:0.875rem;cursor:pointer;-webkit-tap-highlight-color:transparent;">📅 Google Calendar</button><button onclick="exportTaskToCalendar('${r.id}')" style="padding:0.7rem 0.85rem;background:rgba(59,130,246,0.08);color:#1d4ed8;border:2px solid #3b82f6;border-radius:8px;font-weight:600;font-size:0.875rem;cursor:pointer;-webkit-tap-highlight-color:transparent;" title="Download .ics for Apple/Outlook">⬇ .ics</button></div>`:''}
 </div>`;
 $('taskDetailTitle').textContent = phys ? fmtName(phys) : (practice?.name || loc?.label || 'Task');
 $('taskDetailBody').innerHTML = html;

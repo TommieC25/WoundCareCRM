@@ -101,20 +101,40 @@ Expects columns: first_name, last_name, email, priority, specialty, degree, titl
 
 **READ THIS FIRST on every new session / conversation compaction.**
 
-### Git Environment — FULLY WORKING (updated 2026-02-23, confirmed working through PR #66)
-1. **Push access**: ONLY `claude/*` branches work via git. Pushing to `main` returns 403. Do not attempt it.
+### Git Environment — FULLY WORKING (updated 2026-02-24, confirmed working through PR #66)
+1. **Push access**: ONLY `claude/*` branches work via git. The remote is pre-configured as `http://local_proxy@127.0.0.1:61985/git/TommieC25/WoundCareCRM` — git push works with no extra setup.
 2. **`gh` CLI**: NOT installed (command not found). Do not attempt any `gh` commands.
 3. **GitHub REST API**: Works via `curl` to `https://api.github.com` with PAT token. Use this for PR creation and merge.
-4. **GitHub PAT**: Fine-grained token scoped to WoundCareCRM repo. Stored in `~/.github_pat` (not in git). Read it with `cat ~/.github_pat`.
-5. **Remote URL**: Set with PAT embedded: `git remote set-url origin https://$(cat ~/.github_pat)@github.com/TommieC25/WoundCareCRM.git`
+4. **GitHub PAT**: Fine-grained token scoped to WoundCareCRM repo. Stored in `~/.github_pat` = `/root/.github_pat` (not in git). **CHECK FIRST**: `PAT=$(cat /root/.github_pat 2>/dev/null)`. If empty/missing, PAT is gone (new container) — see fallback below.
+5. **Remote URL for git push**: Already set correctly via local proxy — do NOT try to reset it with a PAT. `git push -u origin <branch>` works as-is.
+6. **Remote URL for GitHub API**: Direct `https://api.github.com` calls work only if the PAT file exists.
 
 ### What TO Do for Git (full autonomous workflow)
-1. Read PAT: `PAT=$(cat ~/.github_pat)`
-2. Set remote: `git remote set-url origin https://$PAT@github.com/TommieC25/WoundCareCRM.git`
-3. Commit and push to `claude/` branch
-4. Create PR: `curl -X POST -H "Authorization: Bearer $PAT" https://api.github.com/repos/TommieC25/WoundCareCRM/pulls -d '{"title":"...","body":"...","head":"claude/...","base":"main"}'`
-5. Merge PR: `curl -X PUT -H "Authorization: Bearer $PAT" https://api.github.com/repos/TommieC25/WoundCareCRM/pulls/<number>/merge -d '{"merge_method":"squash"}'`
-- Full end-to-end autonomous — no manual steps needed from Tom.
+```bash
+# Step 1: Check PAT exists FIRST — if missing, see fallback before proceeding
+PAT=$(cat /root/.github_pat 2>/dev/null)
+if [ -z "$PAT" ]; then echo "PAT MISSING — PR creation will fail. See fallback."; fi
+
+# Step 2: Commit and push (git remote already configured, no setup needed)
+git add <files> && git commit -m "..." && git push -u origin claude/<branch>
+
+# Step 3: Create PR (requires PAT)
+PR=$(curl -s -X POST -H "Authorization: Bearer $PAT" -H "Content-Type: application/json" \
+  https://api.github.com/repos/TommieC25/WoundCareCRM/pulls \
+  -d '{"title":"...","body":"...","head":"claude/...","base":"main"}')
+PR_NUM=$(echo $PR | grep -o '"number":[0-9]*' | grep -o '[0-9]*')
+
+# Step 4: Merge PR (requires PAT)
+curl -s -X PUT -H "Authorization: Bearer $PAT" -H "Content-Type: application/json" \
+  https://api.github.com/repos/TommieC25/WoundCareCRM/pulls/$PR_NUM/merge \
+  -d '{"merge_method":"squash"}'
+```
+
+### PAT Missing Fallback (new container session)
+If `cat /root/.github_pat` returns nothing, the PAT was lost when the container was recreated. **Do NOT spend time probing ports or environment variables** — the PAT is not stored anywhere else accessible. Instead:
+1. Push the branch (still works via local proxy)
+2. Tell Tom: "Code is pushed to `claude/<branch>`. PAT is missing from this container — please run: `echo 'ghp_YOURTOKEN' > /root/.github_pat` and I'll complete the PR/merge."
+3. Tom provides the token → run steps 3-4 above immediately.
 
 ### Session Handoff Checklist
 When picking up from a compacted/previous conversation:

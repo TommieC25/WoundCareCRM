@@ -310,7 +310,7 @@ showToast(editId ? 'Task updated' : 'Task saved', 'success');
 closeAddTaskModal();
 if (physicianId && currentPhysician && currentPhysician.id === physicianId) { await loadContactLogs(physicianId); renderProfile(); }
 if (typeof renderTasksView === 'function') renderTasksView();
-if (!editId && _newRec && date) { const _p=physicianId?physicians.find(p=>p.id===physicianId):null,_l=locationId?practiceLocations.find(l=>l.id===locationId):null,_pr=_l?practices.find(p=>p.id===_l.practice_id):null; setTimeout(()=>downloadTaskICS(_newRec,_p,_l,_pr),400); }
+if (!editId && _newRec && date) { const _p=physicianId?physicians.find(p=>p.id===physicianId):null,_l=locationId?practiceLocations.find(l=>l.id===locationId):null,_pr=_l?practices.find(p=>p.id===_l.practice_id):null; setTimeout(()=>window.open(buildGoogleCalendarUrl(_newRec,_p,_l,_pr),'_blank'),400); }
 } catch(e) { showToast('Error saving task: ' + e.message, 'error'); }
 }
 
