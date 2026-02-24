@@ -6,11 +6,19 @@
  *   - On open (when anyone opens the spreadsheet)
  *   - Every hour (via time-driven trigger)
  *
- * PRESERVES: column widths, formatting, sort order, filter views.
- * Only cell values in the data range are updated.
+ * PRESERVES: column widths and TH / TC manual-entry values across syncs.
+ * Rows with no zip code are excluded (unroutable for field use).
  *
- * TIP: Use Data → Filter Views to create a persistent custom sort.
- *      Filter Views survive data refreshes automatically.
+ * COLUMN ORDER:
+ *   TH | TC | Target | AS? | Tier | Provider First Name | Provider Last Name |
+ *   First Last | Degree | Status | Specialty | Facility (full name) |
+ *   Address | City | Zip | Phone Number | Vol | County | Notes
+ *
+ *   TH    = Travis Horn  (manual entry, preserved across syncs)
+ *   TC    = Tom Cobin    (manual entry, preserved across syncs)
+ *   Target = Y if HCP is marked as Target in CRM, else blank
+ *   AS?   = Y if Advanced Solution in CRM, else blank
+ *   Tier  = Priority tier 1-5 from CRM
  *
  * SETUP:
  *   1. Open your Google Sheet
@@ -24,37 +32,52 @@
 // === CONFIG ===
 var SUPABASE_URL = 'https://xhdjywibdjzbczfjmctp.supabase.co';
 var SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhoZGp5d2liZGp6YmN6ZmptY3RwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk3NzE4MTYsImV4cCI6MjA4NTM0NzgxNn0.vHAfeYTVbu2Isu5AoFONvzrtJ2sS3YwF00QRe3LNrbU';
-var SHEET_NAME = 'Routing(Field Use)'; // Name of the tab to write to
+var SHEET_NAME = 'Routing(Field Use)';
 
 // === HEADERS ===
+// Indices:  0    1       2        3     4
 var HEADERS = [
-  'ORIG','CALL','AS?','Rank','Provider First Name','Provider Last Name',
-  'First Last','Degree','Status','Specialty',
-  'Facility (full name)','Address','City','Zip','Phone Number',
-  'Vol','County','Notes'
+  'TH', 'TC', 'Target', 'AS?', 'Tier',
+  'Provider First Name', 'Provider Last Name',
+  'First Last', 'Degree', 'Status', 'Specialty',
+  'Facility (full name)', 'Address', 'City', 'Zip', 'Phone Number',
+  'Vol', 'County', 'Notes'
 ];
+// Index reference (used in sort, filter, row-key restore):
+//   0  TH             (manual)
+//   1  TC             (manual)
+//   2  Target         (auto: is_target)
+//   3  AS?            (auto: advanced_solution)
+//   4  Tier           (auto: priority 1-5)
+//   5  Provider First Name
+//   6  Provider Last Name
+//   7  First Last
+//   8  Degree
+//   9  Status
+//  10  Specialty
+//  11  Facility (full name)
+//  12  Address
+//  13  City
+//  14  Zip
+//  15  Phone Number
+//  16  Vol
+//  17  County
+//  18  Notes
 
-// Manual-entry column indices (preserved across syncs)
-var MANUAL_COLS = [0, 1]; // ORIG, CALL
+// Manual-entry columns preserved across syncs (TH, TC)
+var MANUAL_COLS = [0, 1];
 
 // === TRIGGERS ===
 
-/**
- * Run this ONCE to install the onOpen and hourly triggers.
- * Go to Run → installTriggers in the Apps Script editor.
- */
 function installTriggers() {
-  // Remove any existing triggers from this project to avoid duplicates
   var existing = ScriptApp.getProjectTriggers();
   for (var i = 0; i < existing.length; i++) {
     ScriptApp.deleteTrigger(existing[i]);
   }
-  // Trigger on spreadsheet open
   ScriptApp.newTrigger('syncFieldRouting')
     .forSpreadsheet(SpreadsheetApp.getActive())
     .onOpen()
     .create();
-  // Trigger every hour
   ScriptApp.newTrigger('syncFieldRouting')
     .timeBased()
     .everyHours(1)
@@ -63,9 +86,6 @@ function installTriggers() {
   SpreadsheetApp.getUi().alert('Triggers installed successfully!\n\nThe sheet will now auto-refresh when opened and every hour.');
 }
 
-/**
- * Simple onOpen menu for manual refresh
- */
 function onOpen() {
   SpreadsheetApp.getUi()
     .createMenu('WoundCare CRM')
@@ -76,13 +96,6 @@ function onOpen() {
 
 // === MAIN SYNC FUNCTION ===
 
-/**
- * Fetches all data from Supabase and updates the Field Routing sheet.
- * Writes data in-place — does NOT clear the sheet, so column widths,
- * formatting, and filter views are preserved.
- * Preserves values in ORIG and CALL columns (manual-entry columns).
- * AS? column is populated from CRM data (advanced_solution field).
- */
 function syncFieldRouting() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var sheet = ss.getSheetByName(SHEET_NAME);
@@ -97,7 +110,7 @@ function syncFieldRouting() {
     savedWidths.push(sheet.getColumnWidth(w));
   }
 
-  // Read existing manual-entry columns before overwriting
+  // Read existing manual-entry columns (TH, TC) before overwriting
   var existingManualData = readManualColumns_(sheet);
 
   // Fetch data from Supabase
@@ -124,13 +137,13 @@ function syncFieldRouting() {
     assignMap[a.provider_id].push(a);
   }
 
-  // Build practice map for quick lookup
+  // Build practice map
   var practiceMap = {};
   for (var i = 0; i < practices.length; i++) {
     practiceMap[practices[i].id] = practices[i];
   }
 
-  // Build location map for quick lookup
+  // Build location map
   var locationMap = {};
   for (var i = 0; i < locations.length; i++) {
     locationMap[locations[i].id] = locations[i];
@@ -147,7 +160,6 @@ function syncFieldRouting() {
     var activity = latestActivity[phys.id] || null;
 
     if (assigns.length === 0) {
-      // Provider with no location
       rows.push(buildRow_(phys, null, null, activity, 'phys-only'));
     } else {
       for (var ai = 0; ai < assigns.length; ai++) {
@@ -169,55 +181,53 @@ function syncFieldRouting() {
     rows.push(buildRow_(null, loc, practice, null, 'loc-only'));
   }
 
-  // *** FILTER: exclude rows with no zip code (unroutable for field use) ***
+  // FILTER: exclude rows with no zip code (unroutable for field use)
   rows = rows.filter(function(row) {
-    var zip = String(row[13] || '').trim();
+    var zip = String(row[14] || '').trim(); // index 14 = Zip
     return zip !== '' && zip !== '0';
   });
 
-  // Restore manual-entry columns from previous data
+  // Restore TH / TC manual-entry columns from previous data
   rows = restoreManualColumns_(rows, existingManualData);
 
-  // Sort rows: Zip (asc), Address (asc), Vol (desc) — field routing order
+  // Sort: Zip asc, Address asc, Vol desc — field routing order
   rows.sort(function(a, b) {
-    var zipA = String(a[13] || ''), zipB = String(b[13] || '');
+    var zipA = String(a[14] || ''), zipB = String(b[14] || ''); // Zip = idx 14
     if (zipA !== zipB) return zipA < zipB ? -1 : 1;
-    var addrA = String(a[11] || '').toLowerCase(), addrB = String(b[11] || '').toLowerCase();
+    var addrA = String(a[12] || '').toLowerCase(), addrB = String(b[12] || '').toLowerCase(); // Address = idx 12
     if (addrA !== addrB) return addrA < addrB ? -1 : 1;
-    var volA = Number(a[15]) || 0, volB = Number(b[15]) || 0;
-    return volB - volA; // descending
+    var volA = Number(a[16]) || 0, volB = Number(b[16]) || 0; // Vol = idx 16
+    return volB - volA;
   });
 
-  // --- Write to sheet IN-PLACE (no clearContents, preserves formatting) ---
+  // --- Write to sheet IN-PLACE ---
 
-  // Write headers (row 1)
   sheet.getRange(1, 1, 1, HEADERS.length).setValues([HEADERS]);
   sheet.getRange(1, 1, 1, HEADERS.length).setFontWeight('bold');
 
-  // Write data rows (overwrite in-place)
   if (rows.length > 0) {
     sheet.getRange(2, 1, rows.length, HEADERS.length).setValues(rows);
   }
 
-  // Clear any leftover rows from a previous larger dataset
+  // Clear leftover rows from a previous larger dataset
   var lastRow = sheet.getLastRow();
-  var dataEndRow = rows.length + 1; // row 1 = headers
+  var dataEndRow = rows.length + 1;
   if (lastRow > dataEndRow) {
     sheet.getRange(dataEndRow + 1, 1, lastRow - dataEndRow, HEADERS.length).clearContent();
   }
 
-  // Clear any leftover columns if the sheet previously had more columns (e.g. old Duplicate? column)
+  // Clear leftover columns
   var lastCol = sheet.getLastColumn();
   if (lastCol > HEADERS.length) {
-    sheet.getRange(1, HEADERS.length + 1, lastRow, lastCol - HEADERS.length).clearContent();
+    sheet.getRange(1, HEADERS.length + 1, Math.max(lastRow, 1), lastCol - HEADERS.length).clearContent();
   }
 
-  // Add last-synced timestamp
+  // Last-synced timestamp
   var timestamp = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd HH:mm:ss');
   sheet.getRange(rows.length + 3, 1).setValue('Last synced: ' + timestamp);
   sheet.getRange(rows.length + 3, 1).setFontColor('#999999').setFontSize(9);
 
-  // Restore column widths to exactly what they were before sync
+  // Restore column widths
   for (var w = 0; w < savedWidths.length && w < HEADERS.length; w++) {
     if (savedWidths[w] > 0) {
       sheet.setColumnWidth(w + 1, savedWidths[w]);
@@ -237,7 +247,6 @@ function buildRow_(phys, loc, practice, activity, type) {
     practiceName = loc.practices.name;
   }
 
-  // Status from latest activity
   var status = '';
   if (activity) {
     var note = (activity.notes || '').replace(/^\[\d{1,2}:\d{2}\]\s*/, '');
@@ -247,7 +256,9 @@ function buildRow_(phys, loc, practice, activity, type) {
 
   if (type === 'loc-only') {
     return [
-      '', '', '', '',                                    // ORIG, CALL, AS?, Rank
+      '', '',                                             // TH, TC (manual)
+      '', '',                                             // Target, AS?
+      '',                                                 // Tier
       '(Enter HCP first name)', '(Enter HCP last name)', // First, Last
       '', '',                                             // First Last, Degree
       status, '',                                         // Status, Specialty
@@ -257,47 +268,52 @@ function buildRow_(phys, loc, practice, activity, type) {
       loc ? loc.zip || '' : '',                           // Zip
       fmtPhone_(loc ? loc.phone : ''),                    // Phone
       '',                                                 // Vol
-      loc && loc.city ? guessCounty_(loc.city) : '',     // County
+      loc && loc.city ? guessCounty_(loc.city) : '',      // County
       loc && loc.practice_email ? 'Email: ' + loc.practice_email : '' // Notes
     ];
   }
 
-  var firstName = phys ? phys.first_name || '' : '';
-  var lastName = phys ? phys.last_name || '' : '';
-  var firstLast = (firstName + ' ' + lastName).trim();
-  var degree = phys ? phys.degree || '' : '';
-  var rank = phys ? normPriority_(phys.priority) : '';
-  var specialty = phys ? phys.specialty || '' : '';
-  var vol = phys ? (phys.proj_vol || phys.mohs_volume || '') : '';
-  var county = loc && loc.city ? guessCounty_(loc.city) : '';
-  var notes = phys ? phys.general_notes || '' : '';
-  var asVal = phys && phys.advanced_solution ? 'Y' : '';
+  var firstName  = phys ? phys.first_name || '' : '';
+  var lastName   = phys ? phys.last_name  || '' : '';
+  var firstLast  = (firstName + ' ' + lastName).trim();
+  var degree     = phys ? phys.degree   || '' : '';
+  var tier       = phys ? normPriority_(phys.priority) : '';
+  var specialty  = phys ? phys.specialty || '' : '';
+  var county     = loc && loc.city ? guessCounty_(loc.city) : '';
+  var notes      = phys ? phys.general_notes || '' : '';
+  var asVal      = phys && phys.advanced_solution ? 'Y' : '';
+  var targetVal  = phys && phys.is_target ? 'Y' : '';
+
+  // Guard against corrupt non-numeric vol values (e.g. text accidentally saved to proj_vol)
+  var rawVol = phys ? (phys.proj_vol || phys.mohs_volume || '') : '';
+  var vol = (rawVol !== '' && !isNaN(Number(String(rawVol)))) ? rawVol : '';
 
   return [
-    '',                             // ORIG (manual)
-    '',                             // CALL (manual)
-    asVal,                          // AS? (from CRM)
-    rank,                           // Rank
-    firstName,                      // Provider First Name
-    lastName,                       // Provider Last Name
-    firstLast,                      // First Last
-    degree,                         // Degree
-    status,                         // Status
-    specialty,                      // Specialty
-    practiceName,                   // Facility (full name)
-    loc ? loc.address || '' : '',   // Address
-    loc ? loc.city || '' : '',      // City
-    loc ? loc.zip || '' : '',       // Zip
+    '',                              // TH (manual)
+    '',                              // TC (manual)
+    targetVal,                       // Target
+    asVal,                           // AS?
+    tier,                            // Tier
+    firstName,                       // Provider First Name
+    lastName,                        // Provider Last Name
+    firstLast,                       // First Last
+    degree,                          // Degree
+    status,                          // Status
+    specialty,                       // Specialty
+    practiceName,                    // Facility (full name)
+    loc ? loc.address || '' : '',    // Address
+    loc ? loc.city    || '' : '',    // City
+    loc ? loc.zip     || '' : '',    // Zip
     fmtPhone_(loc ? loc.phone : ''), // Phone Number
-    vol,                            // Vol
-    county,                         // County
-    notes                           // Notes
+    vol,                             // Vol
+    county,                          // County
+    notes                            // Notes
   ];
 }
 
-// === PRESERVE MANUAL COLUMNS ===
-// ORIG (col 0) and CALL (col 1) are manual-entry.
-// We match rows by "First Last" + "Facility" to restore these values after sync.
+// === PRESERVE MANUAL COLUMNS (TH, TC) ===
+// Matched by "First Last" + "Facility (full name)" key across syncs.
+// Also accepts old column names ORIG/CALL so any legacy data migrates on first sync.
 
 function readManualColumns_(sheet) {
   var lastRow = sheet.getLastRow();
@@ -307,12 +323,16 @@ function readManualColumns_(sheet) {
   var data = sheet.getRange(2, 1, lastRow - 1, lastCol).getValues();
   var manual = {};
 
-  // Find column indices dynamically from header row
   var headers = sheet.getRange(1, 1, 1, lastCol).getValues()[0];
   var colFirstLast = indexOf_(headers, 'First Last');
-  var colFacility = indexOf_(headers, 'Facility (full name)');
-  var colOrig = indexOf_(headers, 'ORIG');
-  var colCall = indexOf_(headers, 'CALL');
+  var colFacility  = indexOf_(headers, 'Facility (full name)');
+
+  // Accept new names (TH/TC) or legacy names (ORIG/CALL) — whichever is present
+  var colTH = indexOf_(headers, 'TH');
+  if (colTH < 0) colTH = indexOf_(headers, 'ORIG');   // legacy migration
+
+  var colTC = indexOf_(headers, 'TC');
+  if (colTC < 0) colTC = indexOf_(headers, 'CALL');   // legacy migration
 
   if (colFirstLast < 0 || colFacility < 0) return {};
 
@@ -321,8 +341,8 @@ function readManualColumns_(sheet) {
     var key = makeRowKey_(row[colFirstLast], row[colFacility]);
     if (key) {
       manual[key] = {
-        orig: colOrig >= 0 ? row[colOrig] : '',
-        call: colCall >= 0 ? row[colCall] : ''
+        th: colTH >= 0 ? row[colTH] : '',
+        tc: colTC >= 0 ? row[colTC] : ''
       };
     }
   }
@@ -331,18 +351,18 @@ function readManualColumns_(sheet) {
 
 function restoreManualColumns_(rows, manual) {
   for (var i = 0; i < rows.length; i++) {
-    var key = makeRowKey_(rows[i][6], rows[i][10]); // First Last (idx 6) + Facility (idx 10)
+    var key = makeRowKey_(rows[i][7], rows[i][11]); // First Last = idx 7, Facility = idx 11
     if (key && manual[key]) {
-      rows[i][0] = manual[key].orig || '';  // ORIG
-      rows[i][1] = manual[key].call || '';  // CALL
+      rows[i][0] = manual[key].th || ''; // TH
+      rows[i][1] = manual[key].tc || ''; // TC
     }
   }
   return rows;
 }
 
 function makeRowKey_(firstLast, facility) {
-  var fl = String(firstLast || '').trim().toLowerCase();
-  var fac = String(facility || '').trim().toLowerCase();
+  var fl  = String(firstLast || '').trim().toLowerCase();
+  var fac = String(facility  || '').trim().toLowerCase();
   if (!fl && !fac) return '';
   return fl + '|||' + fac;
 }
@@ -354,13 +374,18 @@ function indexOf_(arr, val) {
   return -1;
 }
 
-// === PRIORITY NORMALIZER (mirrors CRM normPriority) ===
-// Handles legacy "TIER 3 - MODERATE", "P3", plain "3", etc. → returns "1"–"5" or ""
+// === TIER NORMALIZER ===
+// Handles legacy "TIER 3 - MODERATE", "P3", plain "3", etc.
+// Returns "1"–"5" only. Values outside that range are clamped.
 
 function normPriority_(val) {
   if (!val && val !== 0) return '';
   var m = String(val).match(/(\d)/);
-  return m ? m[1] : '';
+  if (!m) return '';
+  var n = parseInt(m[1], 10);
+  if (n < 1) n = 1;
+  if (n > 5) n = 5;
+  return String(n);
 }
 
 // === PHONE FORMAT HELPER ===
@@ -373,7 +398,7 @@ function fmtPhone_(p) {
   return p;
 }
 
-// === COUNTY HELPER (mirrors CRM guessCounty) ===
+// === COUNTY HELPER ===
 
 function guessCounty_(city) {
   if (!city) return '';
@@ -401,7 +426,6 @@ function supaFetch_(table, queryParams) {
     },
     muteHttpExceptions: true
   };
-
   var response = UrlFetchApp.fetch(url, options);
   var code = response.getResponseCode();
   if (code !== 200) {
