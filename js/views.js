@@ -13,7 +13,7 @@ const taskMatch = displayNotes.match(/\s*\|\s*\[Task:\s*(.*?)\]$/);
 const taskNote = taskMatch ? taskMatch[1].trim() : '';
 if (taskMatch) displayNotes = displayNotes.slice(0, taskMatch.index).trim();
 const noteTime = tm ? tm[1] : '';
-const today = new Date().toISOString().split('T')[0];
+const today = localDate();
 const isOverdue = r.reminder_date && r.reminder_date !== '2099-12-31' && r.reminder_date < today;
 const isOpen = r.reminder_date === '2099-12-31';
 const isStaff = phys?.specialty === 'Administrative Staff';
@@ -48,7 +48,7 @@ ${taskNote?`<div style="font-weight:700;color:#92400e;background:#fef3c7;padding
 ${r.reminder_date?`<div style="margin-top:0.6rem;padding:0.3rem 0.6rem;border-radius:6px;font-size:0.82rem;font-weight:600;${isOpen?'background:#e5e7eb;color:#6b7280;':isOverdue?'background:#fef2f2;color:#dc2626;':'background:#fef3c7;color:#92400e;'}">${isOpen?'📌 Open task — no due date':isOverdue?`⚠️ OVERDUE — Due ${fmtD(r.reminder_date)}`:`🔔 Due ${fmtD(r.reminder_date)}`}</div>`:''}
 </div>`;
 // Reschedule buttons — quick date change without opening the edit modal
-const rAdd = (n) => { const d = new Date(today+'T12:00:00'); d.setDate(d.getDate()+n); return d.toISOString().split('T')[0]; };
+const rAdd = (n) => { const d = new Date(today+'T12:00:00'); d.setDate(d.getDate()+n); return localDate(d); };
 const dow = new Date(today+'T12:00:00').getDay();
 const daysToNextMon = ((8-dow)%7)||7;
 const rBtns = [{label:'Today',date:today},{label:'Tom',date:rAdd(1)}];
@@ -123,7 +123,7 @@ ${filtered.length===0?'<div class="empty-notice">No activity found.</div>':
 // --- Tasks view ---
 async function renderTasksView(){
 $('physicianCount').textContent='Tasks & Reminders';
-const today = new Date().toISOString().split('T')[0];
+const today = localDate();
 try {
 const{data:reminders,error}=await db.from('contact_logs').select('*').not('reminder_date','is',null).order('reminder_date',{ascending:true});
 if(error)throw error;
@@ -199,9 +199,9 @@ $('mainContent').innerHTML=html;
 async function renderDashboard(){
 const{data:allLogs,error}=await db.from('contact_logs').select('*').order('contact_date',{ascending:false});
 const logs=allLogs||[];
-const now=new Date();const today=now.toISOString().slice(0,10);
-const weekAgo=new Date(now-7*86400000).toISOString().slice(0,10);
-const monthAgo=new Date(now-30*86400000).toISOString().slice(0,10);
+const now=new Date();const today=localDate(now);
+const weekAgo=localDate(new Date(now-7*86400000));
+const monthAgo=localDate(new Date(now-30*86400000));
 const thisWeek=logs.filter(l=>l.contact_date>=weekAgo).length;
 const thisMonth=logs.filter(l=>l.contact_date>=monthAgo).length;
 const tierCounts={};physicians.forEach(p=>{const t=p.priority||'Unset';tierCounts[t]=(tierCounts[t]||0)+1;});

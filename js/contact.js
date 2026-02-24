@@ -297,7 +297,7 @@ const locRow=$('addTaskLocationRow');
 const locationId = (locRow&&locRow.style.display!=='none'&&$('addTaskLocationSelect'))
   ? ($('addTaskLocationSelect').value||null)
   : ($('addTaskLocationId').value||null);
-const today = new Date().toISOString().split('T')[0];
+const today = localDate();
 try {
 let error;
 if (editId) {
