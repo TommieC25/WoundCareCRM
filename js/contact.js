@@ -299,11 +299,11 @@ const locationId = (locRow&&locRow.style.display!=='none'&&$('addTaskLocationSel
   : ($('addTaskLocationId').value||null);
 const today = localDate();
 try {
-let error;
+let error, _newRec = null;
 if (editId) {
 ({error} = await db.from('contact_logs').update({ notes: note, reminder_date: date }).eq('id', editId));
 } else {
-({error} = await db.from('contact_logs').insert({ provider_id: physicianId, contact_date: today, author: 'Tom', notes: note, practice_location_id: locationId, reminder_date: date }));
+({data:_newRec,error} = await db.from('contact_logs').insert({ provider_id: physicianId, contact_date: today, author: 'Tom', notes: note, practice_location_id: locationId, reminder_date: date }).select().single());
 }
 if (error) throw error;
 showToast(editId ? 'Task updated' : 'Task saved', 'success');
