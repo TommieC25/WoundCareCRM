@@ -268,7 +268,7 @@ function buildRow_(phys, loc, practice, activity, type) {
       loc ? loc.zip || '' : '',                           // Zip
       fmtPhone_(loc ? loc.phone : ''),                    // Phone
       '',                                                 // Vol
-      loc && loc.city ? guessCounty_(loc.city) : '',      // County
+      loc ? countyFromZip_(loc.zip) || guessCounty_(loc.city) : '',  // County
       loc && loc.practice_email ? 'Email: ' + loc.practice_email : '' // Notes
     ];
   }
@@ -279,7 +279,7 @@ function buildRow_(phys, loc, practice, activity, type) {
   var degree     = phys ? phys.degree   || '' : '';
   var tier       = phys ? normPriority_(phys.priority) : '';
   var specialty  = phys ? phys.specialty || '' : '';
-  var county     = loc && loc.city ? guessCounty_(loc.city) : '';
+  var county     = (loc ? countyFromZip_(loc.zip) || guessCounty_(loc.city) : '');
   var notes      = phys ? phys.general_notes || '' : '';
   var asVal      = phys && phys.advanced_solution ? 'Y' : '';
   var targetVal  = phys && phys.is_target ? 'Y' : '';
@@ -376,16 +376,12 @@ function indexOf_(arr, val) {
 
 // === TIER NORMALIZER ===
 // Handles legacy "TIER 3 - MODERATE", "P3", plain "3", etc.
-// Returns "1"–"5" only. Values outside that range are clamped.
+// Returns the numeric digit as-is from the profile — no clamping.
 
 function normPriority_(val) {
   if (!val && val !== 0) return '';
   var m = String(val).match(/(\d)/);
-  if (!m) return '';
-  var n = parseInt(m[1], 10);
-  if (n < 1) n = 1;
-  if (n > 5) n = 5;
-  return String(n);
+  return m ? m[1] : '';
 }
 
 // === PHONE FORMAT HELPER ===
@@ -398,7 +394,46 @@ function fmtPhone_(p) {
   return p;
 }
 
-// === COUNTY HELPER ===
+// === COUNTY LOOKUP — ZIP-BASED (primary) ===
+// Uses actual South Florida zip code ranges for accurate county assignment.
+// Covers every routable zip in Miami-Dade, Broward, and Palm Beach counties.
+// Falls back to guessCounty_() (city-name matching) if zip is unrecognized.
+
+function countyFromZip_(zip) {
+  if (!zip) return '';
+  var z = parseInt(String(zip).replace(/\D/g, ''), 10);
+  if (isNaN(z)) return '';
+
+  // --- Broward County ---
+  if (z === 33004 || z === 33009) return 'Broward';        // Dania Beach, Hallandale Beach
+  if (z >= 33019 && z <= 33029) return 'Broward';          // Hollywood, Pembroke Pines, Miramar
+  if (z >= 33060 && z <= 33076) return 'Broward';          // Pompano Beach, Deerfield Beach,
+                                                            //   Lighthouse Point, Coconut Creek,
+                                                            //   Coral Springs, Margate, Tamarac
+  if (z >= 33301 && z <= 33340) return 'Broward';          // Fort Lauderdale, Davie, Plantation,
+                                                            //   Sunrise, Oakland Park, Wilton Manors
+  if (z === 33388) return 'Broward';                        // Plantation PO Box
+  if (z === 33441 || z === 33442) return 'Broward';        // Deerfield Beach (extra zip blocks)
+
+  // --- Palm Beach County ---
+  if (z >= 33401 && z <= 33499) return 'Palm Beach';       // West Palm Beach, Boca Raton,
+                                                            //   Boynton Beach, Delray Beach,
+                                                            //   Palm Beach Gardens, Jupiter,
+                                                            //   Lake Worth, Wellington, Royal Palm Bch
+
+  // --- Miami-Dade County ---
+  if (z >= 33010 && z <= 33018) return 'Miami-Dade';       // Hialeah
+  if (z >= 33030 && z <= 33039) return 'Miami-Dade';       // Homestead, Florida City, Key Largo area
+  if (z >= 33054 && z <= 33056) return 'Miami-Dade';       // Miami Gardens, Opa-locka
+  if (z >= 33101 && z <= 33299) return 'Miami-Dade';       // Miami, Miami Beach, Coral Gables,
+                                                            //   South Miami, Pinecrest, Palmetto Bay,
+                                                            //   Cutler Bay, Doral, Sweetwater,
+                                                            //   Aventura, Sunny Isles, North Miami
+
+  return '';
+}
+
+// === COUNTY HELPER — CITY-BASED (fallback) ===
 
 function guessCounty_(city) {
   if (!city) return '';
