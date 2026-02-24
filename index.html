@@ -567,7 +567,20 @@ Add Follow-Up Task after saving
 <button class="close-btn" onclick="closeAddTaskModal()">&times;</button>
 </div>
 <div class="modal-body">
-<div id="addTaskContext" style="margin-bottom:1rem;padding:0.6rem 0.75rem;background:#f0f9f4;border-radius:8px;font-size:0.875rem;color:#1a5c45;"></div>
+<div id="addTaskContext" style="margin-bottom:1rem;padding:0.6rem 0.75rem;background:#f0f9f4;border-radius:8px;font-size:0.875rem;color:#1a5c45;display:none;"></div>
+<div id="addTaskProviderRow" style="margin-bottom:1rem;display:none;">
+<label>Provider (optional)</label>
+<div style="position:relative;">
+<input type="text" id="addTaskProviderSearch" placeholder="Search providers..." autocomplete="off" oninput="filterAddTaskProviders()" style="width:100%;padding:0.75rem;font-size:0.9rem;border:2px solid #e5e5e5;border-radius:8px;box-sizing:border-box;font-family:inherit;">
+<div id="addTaskProviderResults" style="display:none;position:absolute;top:100%;left:0;right:0;background:white;border:1px solid #d1d5db;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,0.1);z-index:200;max-height:200px;overflow-y:auto;margin-top:2px;"></div>
+</div>
+</div>
+<div id="addTaskLocationRow" style="margin-bottom:1rem;display:none;">
+<label>Location (optional)</label>
+<select id="addTaskLocationSelect" onchange="$('addTaskLocationId').value=this.value" style="width:100%;padding:0.75rem;font-size:0.9rem;border:2px solid #e5e5e5;border-radius:8px;box-sizing:border-box;font-family:inherit;">
+<option value="">No specific location</option>
+</select>
+</div>
 <div style="margin-bottom:1rem;">
 <label>Task *</label>
 <textarea id="addTaskNote" placeholder="What to follow up on…" rows="3" style="width:100%;padding:0.5rem;font-size:0.9rem;border:1px solid #e5e5e5;border-radius:6px;box-sizing:border-box;font-family:inherit;resize:vertical;"></textarea>

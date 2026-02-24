@@ -109,16 +109,6 @@ const{error:ae}=await db.from('contact_logs').insert(alsoEntries);
 if(ae)console.error('Also-attended insert error:',ae);
 for(const pid of alsoIds){await db.from('providers').update({last_contact:dateVal}).eq('id',pid);}
 }
-// Follow-up task: insert as a SEPARATE contact_log record, independent of the activity
-if(reminderOn&&reminderDate){
-const taskNote=reminderNoteVal||'Follow-up';
-const taskData={provider_id:currentPhysician.id,contact_date:dateVal,author:authorVal,notes:taskNote,practice_location_id:locVal,reminder_date:reminderDate};
-await db.from('contact_logs').insert(taskData);
-if(alsoIds.length>0){
-const alsoTasks=alsoIds.map(pid=>({provider_id:pid,contact_date:dateVal,author:authorVal,notes:taskNote,practice_location_id:locVal,reminder_date:reminderDate}));
-await db.from('contact_logs').insert(alsoTasks);
-}
-}
 const total=1+alsoIds.length;
 showToast(`Note logged for ${total} provider${total>1?'s':''}`,'success');
 }
@@ -210,11 +200,63 @@ if($('addTaskEditId'))$('addTaskEditId').value = '';
 $('addTaskNote').value = '';
 $('addTaskPhysicianId').value = physicianId || '';
 $('addTaskLocationId').value = locationId || '';
-$('addTaskContext').innerHTML = _buildTaskContext(physicianId, locationId);
-$('addTaskModalTitle').textContent = 'New Follow-Up Task';
+$('addTaskModalTitle').textContent = 'New Task';
+const isGlobal = !physicianId;
+// Context block: show pre-filled context when provider known, hide when global
+const ctx = $('addTaskContext');
+if(ctx){ctx.innerHTML=_buildTaskContext(physicianId,locationId);ctx.style.display=(physicianId||locationId)?'block':'none';}
+// Provider search row: show only when opened globally
+const provRow=$('addTaskProviderRow');
+if(provRow){
+  provRow.style.display=isGlobal?'block':'none';
+  if(isGlobal){$('addTaskProviderSearch').value='';$('addTaskProviderResults').style.display='none';}
+}
+// Location row: show when pre-filled (single location) or let global mode manage it
+const locRow=$('addTaskLocationRow');
+if(locRow){
+  if(isGlobal){locRow.style.display='block';$('addTaskLocationSelect').innerHTML='<option value="">No specific location</option>';}
+  else{locRow.style.display='none';}
+}
 populateReminderDateButtons('task');
 $('addTaskModal').classList.add('active');
 setTimeout(() => $('addTaskNote').focus(), 100);
+}
+
+function filterAddTaskProviders() {
+const q=($('addTaskProviderSearch').value||'').toLowerCase().trim();
+const results=$('addTaskProviderResults');
+if(!q){results.style.display='none';return;}
+const matches=physicians.filter(p=>fmtName(p).toLowerCase().includes(q)||(p.specialty||'').toLowerCase().includes(q)).slice(0,8);
+if(!matches.length){results.innerHTML='<div style="padding:0.5rem 0.75rem;font-size:0.85rem;color:#999;">No providers found</div>';results.style.display='block';return;}
+results.innerHTML=matches.map(p=>{
+  const locs=(physicianAssignments[p.id]||[]).map(a=>practiceLocations.find(l=>l.id===a.practice_location_id)).filter(Boolean);
+  const prac=locs.length?(practices.find(pr=>pr.id===locs[0].practice_id)||{}).name||'':'';
+  return `<div onclick="selectAddTaskProvider('${p.id}')" style="padding:0.5rem 0.75rem;cursor:pointer;border-bottom:1px solid #f0f0f0;font-size:0.875rem;" onmouseover="this.style.background='#f0f9f4'" onmouseout="this.style.background=''"><span style="font-weight:600;">${fmtName(p)}</span>${prac?`<span style="color:#888;font-size:0.8rem;"> · ${prac}</span>`:''}</div>`;
+}).join('');
+results.style.display='block';
+}
+
+function selectAddTaskProvider(physicianId) {
+const phys=physicians.find(p=>p.id===physicianId);
+if(!phys)return;
+$('addTaskPhysicianId').value=physicianId;
+$('addTaskProviderSearch').value=fmtName(phys);
+$('addTaskProviderResults').style.display='none';
+// Populate location dropdown for this provider
+const assignments=(physicianAssignments[physicianId]||[]);
+const locs=assignments.map(a=>{
+  const loc=practiceLocations.find(l=>l.id===a.practice_location_id);
+  if(!loc)return null;
+  const prac=practices.find(pr=>pr.id===loc.practice_id);
+  return{id:loc.id,label:`${prac?prac.name+' — ':''}${loc.label&&loc.label!==loc.city?loc.label:loc.city||'Office'}${loc.address?' ('+loc.address+')':''}`};
+}).filter(Boolean);
+const sel=$('addTaskLocationSelect');
+sel.innerHTML='<option value="">No specific location</option>'+locs.map(l=>`<option value="${l.id}">${l.label}</option>`).join('');
+if(locs.length===1){sel.value=locs[0].id;$('addTaskLocationId').value=locs[0].id;}
+$('addTaskLocationRow').style.display='block';
+// Update context
+const ctx=$('addTaskContext');
+if(ctx){ctx.innerHTML=_buildTaskContext(physicianId,null);ctx.style.display='block';}
 }
 
 // Opens addTaskModal in edit mode for an existing task record (called from task detail modal)
@@ -230,7 +272,10 @@ if($('addTaskEditId'))$('addTaskEditId').value = rec.id;
 $('addTaskNote').value = taskNote;
 $('addTaskPhysicianId').value = rec.provider_id || '';
 $('addTaskLocationId').value = rec.practice_location_id || '';
-$('addTaskContext').innerHTML = _buildTaskContext(rec.provider_id, rec.practice_location_id);
+const ctx=$('addTaskContext');
+if(ctx){ctx.innerHTML=_buildTaskContext(rec.provider_id,rec.practice_location_id);ctx.style.display=(rec.provider_id||rec.practice_location_id)?'block':'none';}
+if($('addTaskProviderRow'))$('addTaskProviderRow').style.display='none';
+if($('addTaskLocationRow'))$('addTaskLocationRow').style.display='none';
 $('addTaskModalTitle').textContent = 'Edit Task';
 populateReminderDateButtons('task');
 if (rec.reminder_date) selectReminderDate(rec.reminder_date, '', 'task');
@@ -247,7 +292,11 @@ const date = $('taskSelectedDate').value;
 if (!date) { showToast('Please select a due date', 'error'); return; }
 const editId = ($('addTaskEditId')?.value) || null;
 const physicianId = $('addTaskPhysicianId').value || null;
-const locationId = $('addTaskLocationId').value || null;
+// When in global mode the location comes from the visible select; otherwise use the hidden field
+const locRow=$('addTaskLocationRow');
+const locationId = (locRow&&locRow.style.display!=='none'&&$('addTaskLocationSelect'))
+  ? ($('addTaskLocationSelect').value||null)
+  : ($('addTaskLocationId').value||null);
 const today = new Date().toISOString().split('T')[0];
 try {
 let error;

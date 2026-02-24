@@ -381,7 +381,7 @@ $('mainContent').innerHTML = `
 <p>Select a ${currentView === 'physicians' ? 'provider' : 'practice'} from the list to view details</p>
 </div>
 <div class="section" style="margin-top:1rem;">
-<div class="section-header"><h3 style="color:#92400e;">Follow-Up Reminders</h3></div>
+<div class="section-header"><h3 style="color:#92400e;">Follow-Up Reminders</h3><button onclick="openAddTaskModal(null,null)" style="padding:0.4rem 0.9rem;background:#0a4d3c;color:white;border:none;border-radius:6px;font-size:0.85rem;font-weight:600;cursor:pointer;">+ New Task</button></div>
 <div id="remindersContent"><div class="loading">Loading reminders...</div></div>
 </div>
 <div class="section">
