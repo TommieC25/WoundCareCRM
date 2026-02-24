@@ -1,6 +1,43 @@
 // === js/views.js === Activity view, Tasks view, Dashboard view, Map view
 let _taskDetailLogs = {};
 function closeTaskDetailModal() { closeModal('taskDetailModal'); }
+
+// === CALENDAR EXPORT (.ics) ===
+function downloadTaskICS(r, phys, loc, practice) {
+  if (!r.reminder_date || r.reminder_date === '2099-12-31') { showToast('No due date — set a date before exporting to calendar', 'error'); return; }
+  const name = phys ? fmtName(phys) : (practice ? practice.name : (loc ? (loc.label || 'Office') : 'Task'));
+  const tm = (r.notes||'').match(/^\[(\d{1,2}:\d{2}(?:\s*[APap][Mm])?)\]\s*/);
+  let dn = tm ? r.notes.replace(tm[0], '') : (r.notes||'');
+  const txm = dn.match(/\s*\|\s*\[Task:\s*(.*?)\]$/);
+  const taskNote = txm ? txm[1].trim() : '';
+  if (txm) dn = dn.slice(0, txm.index).trim();
+  const ds = r.reminder_date.replace(/-/g, '');
+  let desc = '';
+  if (taskNote) desc += 'Task: ' + taskNote + '\\n';
+  if (phys && phys.specialty) desc += phys.specialty + '\\n';
+  const np = phys ? normPriority(phys.priority) : null;
+  if (np) desc += 'Tier ' + np + '\\n';
+  if (dn) desc += dn.replace(/[\r\n]+/g, '\\n');
+  let location = '';
+  if (loc) { const parts = [practice ? practice.name : null, loc.address, loc.city, loc.zip].filter(Boolean); location = parts.join(', '); }
+  const uid = 'woundcare-' + (r.id || Date.now()) + '@woundcarecrm';
+  const stamp = new Date().toISOString().replace(/[-:.]/g,'').slice(0,15) + 'Z';
+  const ics = ['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//WoundCareCRM//EN','CALSCALE:GREGORIAN','METHOD:PUBLISH','BEGIN:VEVENT','UID:'+uid,'DTSTAMP:'+stamp,'DTSTART:'+ds+'T080000','DTEND:'+ds+'T090000','SUMMARY:Visit \u2014 '+name,location?'LOCATION:'+location:null,desc?'DESCRIPTION:'+desc:null,'BEGIN:VALARM','TRIGGER:-PT30M','ACTION:DISPLAY','DESCRIPTION:Upcoming: '+name,'END:VALARM','END:VEVENT','END:VCALENDAR'].filter(l=>l!==null).join('\r\n');
+  const blob = new Blob([ics], {type:'text/calendar;charset=utf-8'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'visit-' + name.replace(/\s+/g,'-').replace(/[^a-z0-9-]/gi,'').toLowerCase() + '.ics';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+function exportTaskToCalendar(logId) {
+  const r = (_taskDetailLogs||{})[logId] || (window._taskDetailLogs||{})[logId];
+  if (!r) return;
+  const phys = r.provider_id ? physicians.find(p=>p.id===r.provider_id) : null;
+  const loc = r.practice_location_id ? practiceLocations.find(l=>l.id===r.practice_location_id) : null;
+  const practice = loc ? practices.find(p=>p.id===loc.practice_id) : null;
+  downloadTaskICS(r, phys, loc, practice);
+}
 function openTaskDetailModal(logId) {
 const r = _taskDetailLogs[logId];
 if (!r) return;
@@ -70,6 +107,7 @@ html += `<div style="display:flex;flex-direction:column;gap:0.5rem;">
 ${delFn?`<button onclick="${delFn}" style="flex:1;padding:0.7rem;background:#dc2626;color:white;border:none;border-radius:8px;font-weight:600;font-size:0.875rem;cursor:pointer;">🗑️ Delete</button>`:''}
 </div>
 ${profileFn?`<button onclick="${profileFn}" style="padding:0.7rem;background:rgba(10,77,60,0.08);color:#0a4d3c;border:2px solid #0a4d3c;border-radius:8px;font-weight:600;font-size:0.875rem;cursor:pointer;">👤 View Full Profile</button>`:''}
+${(!isOpen && r.reminder_date)?`<button onclick="exportTaskToCalendar('${r.id}')" style="padding:0.7rem;background:rgba(59,130,246,0.08);color:#1d4ed8;border:2px solid #3b82f6;border-radius:8px;font-weight:600;font-size:0.875rem;cursor:pointer;-webkit-tap-highlight-color:transparent;">📅 Add to Calendar</button>`:''}
 </div>`;
 $('taskDetailTitle').textContent = phys ? fmtName(phys) : (practice?.name || loc?.label || 'Task');
 $('taskDetailBody').innerHTML = html;
