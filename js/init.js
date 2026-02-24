@@ -48,6 +48,9 @@ e.preventDefault();
 });
 });
 
+// Returns YYYY-MM-DD in the user's LOCAL timezone (not UTC)
+function localDate(d) { const dt=d||new Date(); return dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0')+'-'+String(dt.getDate()).padStart(2,'0'); }
+
 function setToday() {
 const today = new Date();
 const yyyy = today.getFullYear();

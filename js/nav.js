@@ -15,7 +15,7 @@ if(currentPhysician&&pid===currentPhysician.id) loadContactLogs(currentPhysician
 function calcCalendarDate(days) {
 const d = new Date();
 d.setDate(d.getDate() + days);
-return d.toISOString().split('T')[0];
+return localDate(d);
 }
 function calcBusinessDate(days) { return calcCalendarDate(days); }
 function updateReminderPreview() { populateReminderDateButtons(); } // legacy alias
@@ -24,8 +24,8 @@ function populateReminderDateButtons(prefix) {
 prefix = prefix || 'reminder';
 const container = $(prefix + 'DateButtons');
 if (!container) return;
-const addDays = (base, n) => { const d = new Date(base + 'T12:00:00'); d.setDate(d.getDate() + n); return d.toISOString().split('T')[0]; };
-const today = new Date().toISOString().split('T')[0];
+const addDays = (base, n) => { const d = new Date(base + 'T12:00:00'); d.setDate(d.getDate() + n); return localDate(d); };
+const today = localDate();
 const dow = new Date(today + 'T12:00:00').getDay(); // 0=Sun,6=Sat
 const buttons = [];
 buttons.push({ label: 'Today', date: today });
@@ -73,7 +73,7 @@ document.querySelectorAll(`.reminder-date-btn[data-prefix="${prefix}"]`).forEach
 function getUpcomingBusinessDays(count) {
 const result = [];
 const d = new Date();
-const today = d.toISOString().split('T')[0];
+const today = localDate(d);
 let cursor = new Date(d);
 if (cursor.getDay() !== 0 && cursor.getDay() !== 6) {
 result.push({date: today, label: d.toLocaleDateString('en-US', {weekday:'short', month:'short', day:'numeric'})});
@@ -81,7 +81,7 @@ result.push({date: today, label: d.toLocaleDateString('en-US', {weekday:'short',
 while (result.length < count) {
 cursor.setDate(cursor.getDate() + 1);
 if (cursor.getDay() === 0 || cursor.getDay() === 6) continue;
-const iso = cursor.toISOString().split('T')[0];
+const iso = localDate(cursor);
 const label = cursor.toLocaleDateString('en-US', {weekday:'short', month:'short', day:'numeric'});
 result.push({date: iso, label});
 }
@@ -396,7 +396,7 @@ ${mi('Providers',physicians.length)}${mi('Practices',practices.length)}${mi('Loc
 </div>
 `;
 try {
-const today = new Date().toISOString().split('T')[0];
+const today = localDate();
 const {data:reminders,error:remErr} = await db.from('contact_logs').select('*').not('reminder_date','is',null).order('reminder_date',{ascending:true});
 if (reminders) { if (!window._taskDetailLogs) window._taskDetailLogs = {}; reminders.forEach(r => window._taskDetailLogs[r.id] = r); }
 const rc = $('remindersContent');
