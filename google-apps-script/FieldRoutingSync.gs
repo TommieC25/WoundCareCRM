@@ -169,6 +169,12 @@ function syncFieldRouting() {
     rows.push(buildRow_(null, loc, practice, null, 'loc-only'));
   }
 
+  // *** FILTER: exclude rows with no zip code (unroutable for field use) ***
+  rows = rows.filter(function(row) {
+    var zip = String(row[13] || '').trim();
+    return zip !== '' && zip !== '0';
+  });
+
   // Restore manual-entry columns from previous data
   rows = restoreManualColumns_(rows, existingManualData);
 
