@@ -22,7 +22,9 @@ function downloadTaskICS(r, phys, loc, practice) {
   if (loc) { const parts = [practice ? practice.name : null, loc.address, loc.city, loc.zip].filter(Boolean); location = parts.join(', '); }
   const uid = 'woundcare-' + (r.id || Date.now()) + '@woundcarecrm';
   const stamp = new Date().toISOString().replace(/[-:.]/g,'').slice(0,15) + 'Z';
-  const ics = ['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//WoundCareCRM//EN','CALSCALE:GREGORIAN','METHOD:PUBLISH','BEGIN:VEVENT','UID:'+uid,'DTSTAMP:'+stamp,'DTSTART:'+ds+'T080000','DTEND:'+ds+'T090000','SUMMARY:Visit \u2014 '+name,location?'LOCATION:'+location:null,desc?'DESCRIPTION:'+desc:null,'BEGIN:VALARM','TRIGGER:-PT30M','ACTION:DISPLAY','DESCRIPTION:Upcoming: '+name,'END:VALARM','END:VEVENT','END:VCALENDAR'].filter(l=>l!==null).join('\r\n');
+  // Use all-day event (VALUE=DATE) to avoid timezone/UTC conversion issues
+  const dsNext = (()=>{ const d=new Date(r.reminder_date+'T12:00:00'); d.setDate(d.getDate()+1); return d.toISOString().slice(0,10).replace(/-/g,''); })();
+  const ics = ['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//WoundCareCRM//EN','CALSCALE:GREGORIAN','METHOD:PUBLISH','BEGIN:VEVENT','UID:'+uid,'DTSTAMP:'+stamp,'DTSTART;VALUE=DATE:'+ds,'DTEND;VALUE=DATE:'+dsNext,'SUMMARY:Visit \u2014 '+name,location?'LOCATION:'+location:null,desc?'DESCRIPTION:'+desc:null,'BEGIN:VALARM','TRIGGER:-PT30M','ACTION:DISPLAY','DESCRIPTION:Upcoming: '+name,'END:VALARM','END:VEVENT','END:VCALENDAR'].filter(l=>l!==null).join('\r\n');
   const blob = new Blob([ics], {type:'text/calendar;charset=utf-8'});
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -46,7 +48,9 @@ function buildGoogleCalendarUrl(r, phys, loc, practice) {
   if (dn) parts.push(dn);
   let location = '';
   if (loc) { const lp = [practice ? practice.name : null, loc.address, loc.city, loc.zip].filter(Boolean); location = lp.join(', '); }
-  const params = new URLSearchParams({ action:'TEMPLATE', text:'Visit \u2014 '+name, dates:ds+'T080000/'+ds+'T090000', details:parts.join('\n'), location });
+  // All-day format for Google Calendar (YYYYMMDD/YYYYMMDD+1) avoids UTC conversion
+  const dsNext = (()=>{ const d=new Date(r.reminder_date+'T12:00:00'); d.setDate(d.getDate()+1); return d.toISOString().slice(0,10).replace(/-/g,''); })();
+  const params = new URLSearchParams({ action:'TEMPLATE', text:'Visit \u2014 '+name, dates:ds+'/'+dsNext, details:parts.join('\n'), location });
   return 'https://calendar.google.com/calendar/render?' + params.toString();
 }
 function exportTaskToCalendar(logId) {
