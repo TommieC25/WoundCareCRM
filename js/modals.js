@@ -158,7 +158,17 @@ await loadAllData();renderList();setTimeout(()=>closePhysicianModal(),500);
 });
 }
 async function deletePhysician() {
-await dbDel('providers',currentPhysician.id,`Delete ${fmtName(currentPhysician)}?`,async()=>{physicians=physicians.filter(p=>p.id!==currentPhysician.id);currentPhysician=null;renderList();renderEmptyState();});
+if(!currentPhysician)return;
+if(!confirm(`Delete ${fmtName(currentPhysician)}?`))return;
+try{
+updateSyncIndicators('syncing');
+const pid=currentPhysician.id;
+const{error:e1}=await db.from('provider_location_assignments').delete().eq('provider_id',pid);if(e1)throw e1;
+const{error:e2}=await db.from('contact_logs').delete().eq('provider_id',pid);if(e2)throw e2;
+const{error:e3}=await db.from('providers').delete().eq('id',pid);if(e3)throw e3;
+physicians=physicians.filter(p=>p.id!==pid);currentPhysician=null;renderList();renderEmptyState();
+showToast('Deleted','success');updateSyncIndicators('synced');
+}catch(e){console.error('Delete error:',e);showToast('Error: '+e.message,'error');updateSyncIndicators('error');}
 }
 
 // --- Practice modal ---
@@ -283,7 +293,20 @@ setTimeout(()=>closePracticeModal(),500);
 });
 }
 async function deletePractice() {
-await dbDel('practices',currentPractice.id,`Delete ${currentPractice.name}? This will also delete all its locations.`,async()=>{practices=practices.filter(p=>p.id!==currentPractice.id);currentPractice=null;await loadAllData();renderList();renderEmptyState();});
+if(!currentPractice)return;
+if(!confirm(`Delete ${currentPractice.name}? This will also delete all its locations.`))return;
+try{
+updateSyncIndicators('syncing');
+const pid=currentPractice.id;
+const locIds=practiceLocations.filter(l=>l.practice_id===pid).map(l=>l.id);
+if(locIds.length>0){
+const{error:e1}=await db.from('provider_location_assignments').delete().in('practice_location_id',locIds);if(e1)throw e1;
+const{error:e2}=await db.from('practice_locations').delete().eq('practice_id',pid);if(e2)throw e2;
+}
+const{error:e3}=await db.from('practices').delete().eq('id',pid);if(e3)throw e3;
+practices=practices.filter(p=>p.id!==pid);currentPractice=null;await loadAllData();renderList();renderEmptyState();
+showToast('Deleted','success');updateSyncIndicators('synced');
+}catch(e){console.error('Delete error:',e);showToast('Error: '+e.message,'error');updateSyncIndicators('error');}
 }
 function parseAddressBlock() {
 const raw = ($('addressBlock')?.value || '').trim();
@@ -369,7 +392,14 @@ await loadAllData();if(currentPractice)renderPracticeProfile();if(currentPhysici
 });
 }
 async function deleteLocation(locationId) {
-await dbDel('practice_locations',locationId,'Delete this location and all provider assignments?',async()=>{await loadAllData();if(currentPractice)renderPracticeProfile();});
+if(!confirm('Delete this location and all provider assignments?'))return;
+try{
+updateSyncIndicators('syncing');
+const{error:e1}=await db.from('provider_location_assignments').delete().eq('practice_location_id',locationId);if(e1)throw e1;
+const{error:e2}=await db.from('practice_locations').delete().eq('id',locationId);if(e2)throw e2;
+await loadAllData();if(currentPractice)renderPracticeProfile();
+showToast('Deleted','success');updateSyncIndicators('synced');
+}catch(e){console.error('Delete error:',e);showToast('Error: '+e.message,'error');updateSyncIndicators('error');}
 }
 
 // --- Assign location modal ---
@@ -468,6 +498,7 @@ await dbDel('provider_location_assignments',assignmentId,'Remove this location a
 
 // --- Assign provider modal (from practice view) ---
 function openAssignPhysicianModal() {
+if(!currentPractice)return;
 const locations = practiceLocations.filter(l => l.practice_id === currentPractice.id);
 const select = $('assignPhysLocationSelect');
 select.innerHTML = locations.map(loc => `<option value="${loc.id}">${loc.label || 'Office'} - ${loc.address || ''}, ${loc.city || ''}</option>`).join('');
@@ -495,6 +526,7 @@ $('assignPhysicianOptions').innerHTML = filtered.map(p => `
 `).join('') || '<div class="empty-notice">No providers found</div>';
 }
 function filterAssignPhysicianOptions() {
+if(!currentPractice)return;
 const currentChecked = new Set();
 document.querySelectorAll('#assignPhysicianOptions .selector-option').forEach(opt => {
 const cb = opt.querySelector('input[type="checkbox"]');
