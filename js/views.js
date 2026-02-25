@@ -67,7 +67,7 @@ function openGoogleCalendar(logId) {
   window.open(buildGoogleCalendarUrl(r, phys, loc, practice), '_blank');
 }
 function openTaskDetailModal(logId) {
-const r = _taskDetailLogs[logId];
+const r = _taskDetailLogs[logId] || (window._taskDetailLogs||{})[logId];
 if (!r) return;
 const phys = r.provider_id ? physicians.find(p => p.id === r.provider_id) : null;
 const loc = r.practice_location_id ? practiceLocations.find(l => l.id === r.practice_location_id) : null;
@@ -144,7 +144,7 @@ $('taskDetailModal').classList.add('active');
 $('taskDetailModal').onclick = function(e){ if(e.target===this) closeTaskDetailModal(); };
 }
 async function rescheduleTask(logId, newDate) {
-const r = _taskDetailLogs[logId];
+const r = _taskDetailLogs[logId] || (window._taskDetailLogs||{})[logId];
 if (!r) return;
 try {
 const {error} = await db.from('contact_logs').update({reminder_date: newDate}).eq('id', logId);

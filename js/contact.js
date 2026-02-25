@@ -151,7 +151,7 @@ $('contactModal').classList.add('active');
 }
 
 async function deleteNote(logId) {
-await dbDel('contact_logs',logId,'Delete this note?',async()=>{await loadContactLogs(currentPhysician.id);if(currentView==='activity'){renderActivityView();}else{renderProfile();}});
+await dbDel('contact_logs',logId,'Delete this note?',async()=>{if(!currentPhysician)return;await loadContactLogs(currentPhysician.id);if(currentView==='activity'){renderActivityView();}else if(currentView==='tasks'){renderTasksView();}else{renderProfile();}});
 }
 
 async function completeReminder(logId) {
@@ -185,7 +185,7 @@ currentPhysician = physicians.find(p => p.id === physicianId);
 currentPractice = null;
 if (!currentPhysician) return;
 await loadContactLogs(physicianId);
-deleteNote(logId);
+await deleteNote(logId);
 }
 
 function _buildTaskContext(physicianId, locationId) {
