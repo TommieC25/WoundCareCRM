@@ -320,7 +320,18 @@ showToast(editId ? 'Task updated' : 'Task saved', 'success');
 closeAddTaskModal();
 if (physicianId && currentPhysician && currentPhysician.id === physicianId) { await loadContactLogs(physicianId); renderProfile(); }
 if (typeof renderTasksView === 'function') renderTasksView();
-if (!editId && _newRec && date) { const _p=physicianId?physicians.find(p=>p.id===physicianId):null,_l=locationId?practiceLocations.find(l=>l.id===locationId):null,_pr=_l?practices.find(p=>p.id===_l.practice_id):null; setTimeout(()=>window.open(buildGoogleCalendarUrl(_newRec,_p,_l,_pr),'_blank'),400); }
+if (!editId && _newRec && date && date !== '2099-12-31') {
+const _p=physicianId?physicians.find(p=>p.id===physicianId):null,_l=locationId?practiceLocations.find(l=>l.id===locationId):null,_pr=_l?practices.find(p=>p.id===_l.practice_id):null;
+const calUrl=buildGoogleCalendarUrl(_newRec,_p,_l,_pr);
+const _tc=$('toastContainer'),_t=document.createElement('div');
+_t.className='toast success';
+_t.style.cssText='display:flex;align-items:center;justify-content:space-between;gap:0.75rem;padding:0.85rem 1rem;';
+const _a=document.createElement('a');_a.href=calUrl;_a.target='_blank';_a.rel='noopener';
+_a.textContent='📅 Add to Google Calendar';_a.style.cssText='color:white;font-weight:600;text-decoration:underline;font-size:0.95rem;';
+const _x=document.createElement('button');_x.textContent='×';_x.style.cssText='background:none;border:none;color:white;font-size:1.5rem;line-height:1;cursor:pointer;padding:0;flex-shrink:0;';
+_x.onclick=()=>_t.remove();_t.appendChild(_a);_t.appendChild(_x);_tc.appendChild(_t);
+setTimeout(()=>_t.remove(),15000);
+}
 } catch(e) { showToast('Error saving task: ' + e.message, 'error'); }
 }
 
