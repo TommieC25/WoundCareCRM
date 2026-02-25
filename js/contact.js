@@ -24,6 +24,7 @@ $('contactModal').classList.add('active');
 
 function populateLocationDropdown() {
 const select = $('contactLocation');
+if (!currentPhysician) return;
 const assignments = physicianAssignments[currentPhysician.id] || [];
 const locations = assignments.map(a => {
 const loc = practiceLocations.find(l => l.id === a.practice_location_id);
@@ -125,6 +126,7 @@ setTimeout(()=>closeContactModal(),500);
 }
 
 async function editNote(logId) {
+if (!currentPhysician) return;
 const log = (contactLogs[currentPhysician.id] || []).find(l => l.id === logId);
 if (!log) return;
 editingContactId = logId;
@@ -166,6 +168,7 @@ if (!currentPhysician && !currentPractice) { renderEmptyState(); }
 }
 
 async function editNoteFromActivity(logId, physicianId) {
+try {
 currentPhysician = physicians.find(p => p.id === physicianId);
 currentPractice = null;
 if (!currentPhysician) return;
@@ -178,14 +181,17 @@ renderProfile();
 if (window.innerWidth <= 768) closeSidebar();
 setTimeout(() => editNote(logId), 150);
 }
+} catch(e) { showToast('Error loading note: ' + e.message, 'error'); }
 }
 
 async function deleteNoteFromActivity(logId, physicianId) {
+try {
 currentPhysician = physicians.find(p => p.id === physicianId);
 currentPractice = null;
 if (!currentPhysician) return;
 await loadContactLogs(physicianId);
 await deleteNote(logId);
+} catch(e) { showToast('Error: ' + e.message, 'error'); }
 }
 
 function _buildTaskContext(physicianId, locationId) {

@@ -7,7 +7,7 @@ db.channel(t+'-ch').on('postgres_changes',{event:'*',schema:'public',table:t},()
 db.channel('contact-logs-ch')
 .on('postgres_changes',{event:'*',schema:'public',table:'contact_logs'},(payload)=>{
 const pid=payload.new?.provider_id||payload.old?.provider_id;
-if(currentPhysician&&pid===currentPhysician.id) loadContactLogs(currentPhysician.id).then(()=>renderProfile());
+if(currentPhysician&&pid===currentPhysician.id&&currentView==='physicians') loadContactLogs(currentPhysician.id).then(()=>renderProfile());
 }).subscribe();
 }
 
