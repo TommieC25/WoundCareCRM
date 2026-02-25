@@ -170,7 +170,14 @@ currentPhysician = physicians.find(p => p.id === physicianId);
 currentPractice = null;
 if (!currentPhysician) return;
 await loadContactLogs(physicianId);
+if (currentView === 'activity') {
 setTimeout(() => editNote(logId), 50);
+} else {
+renderList();
+renderProfile();
+if (window.innerWidth <= 768) closeSidebar();
+setTimeout(() => editNote(logId), 150);
+}
 }
 
 async function deleteNoteFromActivity(logId, physicianId) {

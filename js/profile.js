@@ -284,7 +284,8 @@ return;
 }
 el.innerHTML = '<div class="contact-entries">' + logs.map(e => {
 const phys = e.provider_id ? physicians.find(p => p.id === e.provider_id) : null;
-return renderLogEntry(e, { physName: phys ? fmtName(phys) : null });
+const canEdit = !!e.provider_id;
+return renderLogEntry(e, { physName: phys ? fmtName(phys) : null, editable: canEdit, editFn: canEdit ? `editNoteFromActivity('${e.id}','${e.provider_id}')` : undefined, deleteFn: canEdit ? `deleteNoteFromActivity('${e.id}','${e.provider_id}')` : undefined, onClick: phys ? `viewPhysician('${phys.id}')` : undefined, full: true });
 }).join('') + '</div>';
 } catch(e) {
 const el = $('practiceActivityContent');
