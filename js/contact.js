@@ -113,7 +113,7 @@ const total=1+alsoIds.length;
 showToast(`Note logged for ${total} provider${total>1?'s':''}`,'success');
 }
 await db.from('providers').update({last_contact:dateVal}).eq('id',currentPhysician.id);
-currentPhysician.last_contact=dateVal;await loadContactLogs(currentPhysician.id);renderProfile();
+currentPhysician.last_contact=dateVal;await loadContactLogs(currentPhysician.id);if(currentView==='activity'){renderActivityView();}else{renderProfile();}
 // If follow-up task requested, open separate task modal after closing activity modal
 if(!editingContactId&&reminderOn){
 setTimeout(()=>{closeContactModal();openAddTaskModal(currentPhysician.id,locVal);},400);
@@ -151,7 +151,7 @@ $('contactModal').classList.add('active');
 }
 
 async function deleteNote(logId) {
-await dbDel('contact_logs',logId,'Delete this note?',async()=>{await loadContactLogs(currentPhysician.id);renderProfile();});
+await dbDel('contact_logs',logId,'Delete this note?',async()=>{await loadContactLogs(currentPhysician.id);if(currentView==='activity'){renderActivityView();}else{renderProfile();}});
 }
 
 async function completeReminder(logId) {
@@ -170,10 +170,7 @@ currentPhysician = physicians.find(p => p.id === physicianId);
 currentPractice = null;
 if (!currentPhysician) return;
 await loadContactLogs(physicianId);
-renderList();
-renderProfile();
-if (window.innerWidth <= 768) closeSidebar();
-setTimeout(() => editNote(logId), 150);
+setTimeout(() => editNote(logId), 50);
 }
 
 async function deleteNoteFromActivity(logId, physicianId) {
