@@ -204,12 +204,15 @@ if(!reminders||reminders.length===0){
 $('mainContent').innerHTML=`<div class="section"><div class="section-header"><h3>Tasks &amp; Reminders</h3>${newTaskBtn}</div><div class="empty-notice">No tasks yet. Use the button above to create one.</div></div>`;
 return;
 }
+const search=$('searchInput').value.toLowerCase();
+const filtered=search?reminders.filter(r=>{const ph=physMap[r.provider_id]||{};return(r.notes||'').toLowerCase().includes(search)||(r.author||'').toLowerCase().includes(search)||(ph.first_name||'').toLowerCase().includes(search)||(ph.last_name||'').toLowerCase().includes(search);}):reminders;
+if(search&&filtered.length===0){$('mainContent').innerHTML=`<div class="section"><div class="section-header"><h3>Tasks &amp; Reminders</h3>${newTaskBtn}</div><div class="empty-notice">No tasks matching "${search}".</div></div>`;return;}
 const OPEN_DATE='2099-12-31';
-const openTasks=reminders.filter(r=>r.reminder_date===OPEN_DATE);
-const datedR=reminders.filter(r=>r.reminder_date!==OPEN_DATE);
+const openTasks=filtered.filter(r=>r.reminder_date===OPEN_DATE);
+const datedR=filtered.filter(r=>r.reminder_date!==OPEN_DATE);
 const overdue=datedR.filter(r=>r.reminder_date<today);
 const upcoming=datedR.filter(r=>r.reminder_date>=today);
-let html=`<div class="section"><div class="section-header"><h3>Tasks &amp; Reminders</h3><div style="display:flex;align-items:center;gap:0.75rem;"><div style="font-size:0.8rem;color:#666;">${reminders.length} total${overdue.length>0?` — <span style="color:#dc2626;font-weight:600;">${overdue.length} overdue</span>`:''}${openTasks.length>0?` — ${openTasks.length} open`:''}</div>${newTaskBtn}</div></div>`;
+let html=`<div class="section"><div class="section-header"><h3>Tasks &amp; Reminders</h3><div style="display:flex;align-items:center;gap:0.75rem;"><div style="font-size:0.8rem;color:#666;">${search?`${filtered.length} of ${reminders.length} matching "${search}"`:reminders.length+' total'}${overdue.length>0?` — <span style="color:#dc2626;font-weight:600;">${overdue.length} overdue</span>`:''}${openTasks.length>0?` — ${openTasks.length} open`:''}</div>${newTaskBtn}</div></div>`;
 if(overdue.length>0){
 html+=`<div style="margin-bottom:1rem;"><div style="font-size:0.75rem;font-weight:700;color:#dc2626;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:0.5rem;padding-bottom:0.25rem;border-bottom:2px solid #fca5a5;">⚠️ Overdue (${overdue.length})</div><div class="contact-entries">`;
 overdue.forEach(r=>{

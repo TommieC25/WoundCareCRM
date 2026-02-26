@@ -109,7 +109,8 @@ renderActivityView();
 return;
 }
 if(view==='tasks'){
-$('searchInput').parentElement.parentElement.style.display='none';
+$('searchInput').placeholder='Search tasks...';
+$('searchInput').parentElement.parentElement.style.display='';
 $('addBtn').style.display='none';
 $('sortControls').style.display='none';
 $('tierFilterControls').style.display='none';
@@ -306,12 +307,16 @@ return locs.some(l=>[l.address,l.city,l.zip,l.phone,l.fax,l.practice_email,l.off
 function filterList() {
 const val = $('searchInput').value;
 $('searchClear').style.display = val ? 'flex' : 'none';
-renderList();
+if(currentView==='tasks') renderTasksView();
+else if(currentView==='activity') renderActivityView();
+else renderList();
 }
 function clearSearch() {
 $('searchInput').value = '';
 $('searchClear').style.display = 'none';
-renderList();
+if(currentView==='tasks') renderTasksView();
+else if(currentView==='activity') renderActivityView();
+else renderList();
 $('searchInput').focus();
 }
 function renderList() {
