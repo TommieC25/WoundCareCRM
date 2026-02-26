@@ -53,7 +53,7 @@ if(locRec)locMap[locKey]=locRec;
 const physMap=new Map();
 rows.forEach(r=>{
 if(!(r.first_name||'').trim()&&!(r.last_name||'').trim())return;
-const key=`${(r.first_name||'').trim().toLowerCase()}|${(r.last_name||'').trim().toLowerCase()}`;
+const key=`${(r.first_name||'').trim().toLowerCase().replace(/\s+[a-z]\.\s*$/,'')}|${(r.last_name||'').trim().toLowerCase()}`;
 if(!physMap.has(key))physMap.set(key,{phys:{first_name:(r.first_name||'').trim(),last_name:(r.last_name||'').trim(),email:r.email||null,priority:r.priority||null,academic_connection:r.academic_connection||r.um_connection||null,specialty:r.specialty||null,degree:r.degree||null,title:r.title||null,proj_vol:r.proj_vol||r.patient_volume||r.vol||null,ss_vol:r.ss_vol?parseInt(r.ss_vol,10)||null:null,general_notes:r.general_notes||null,is_target:r.is_target==='Y'||r.is_target==='y'||r.is_target==='true'||r.is_target==='1'?true:false},practiceIds:new Set(),primaryLocKey:null});
 const e=physMap.get(key);
 const practId=getPractId(r.practice_name);
@@ -67,8 +67,9 @@ if(!e.primaryLocKey&&practId&&addr&&addr!=='[Research needed]')e.primaryLocKey=`
 let count=0;const total=physMap.size;
 for(const[key,entry] of physMap){
 count++;if(count%5===0||count===total)status(`Assigning providers ${count} of ${total}...`);
-const{data:exArr}=await db.from('providers').select('*').ilike('first_name',entry.phys.first_name).ilike('last_name',entry.phys.last_name).limit(1);
-const ex=exArr&&exArr.length>0?exArr[0]:null;
+const fnNorm=entry.phys.first_name.toLowerCase().replace(/\s+[a-z]\.\s*$/,'').trim();
+const{data:exArr}=await db.from('providers').select('*').ilike('last_name',entry.phys.last_name).limit(20);
+const ex=(exArr||[]).find(p=>(p.first_name||'').toLowerCase().replace(/\s+[a-z]\.\s*$/,'').trim()===fnNorm)||null;
 const phys=ex||(await db.from('providers').insert(entry.phys).select().maybeSingle()).data;
 if(!phys)continue;
 // Assign to ALL locations of every practice this provider belongs to

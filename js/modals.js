@@ -164,7 +164,11 @@ try{
 updateSyncIndicators('syncing');
 const pid=currentPhysician.id;
 const{error:e1}=await db.from('provider_location_assignments').delete().eq('provider_id',pid);if(e1)throw e1;
+const{data:remainA}=await db.from('provider_location_assignments').select('id').eq('provider_id',pid);
+if(remainA&&remainA.length>0)throw new Error(`${remainA.length} location assignment(s) could not be removed — database may have a permissions policy blocking this. Open Supabase dashboard → Authentication → Policies → provider_location_assignments and confirm DELETE is allowed.`);
 const{error:e2}=await db.from('contact_logs').delete().eq('provider_id',pid);if(e2)throw e2;
+const{data:remainL}=await db.from('contact_logs').select('id').eq('provider_id',pid);
+if(remainL&&remainL.length>0)throw new Error(`${remainL.length} contact log(s) could not be removed — database may have a permissions policy blocking this. Open Supabase dashboard → Authentication → Policies → contact_logs and confirm DELETE is allowed.`);
 const{error:e3}=await db.from('providers').delete().eq('id',pid);if(e3)throw e3;
 physicians=physicians.filter(p=>p.id!==pid);currentPhysician=null;renderList();renderEmptyState();
 showToast('Deleted','success');updateSyncIndicators('synced');
