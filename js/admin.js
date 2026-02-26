@@ -54,7 +54,7 @@ const physMap=new Map();
 rows.forEach(r=>{
 if(!(r.first_name||'').trim()&&!(r.last_name||'').trim())return;
 const key=`${(r.first_name||'').trim().toLowerCase().replace(/\s+[a-z]\.\s*$/,'')}|${(r.last_name||'').trim().toLowerCase()}`;
-if(!physMap.has(key))physMap.set(key,{phys:{first_name:(r.first_name||'').trim(),last_name:(r.last_name||'').trim(),email:r.email||null,priority:r.priority||null,academic_connection:r.academic_connection||r.um_connection||null,specialty:r.specialty||null,degree:r.degree||null,title:r.title||null,proj_vol:r.proj_vol||r.patient_volume||r.vol||null,ss_vol:r.ss_vol?parseInt(r.ss_vol,10)||null:null,general_notes:r.general_notes||null,is_target:r.is_target==='Y'||r.is_target==='y'||r.is_target==='true'||r.is_target==='1'?true:false},practiceIds:new Set(),primaryLocKey:null});
+if(!physMap.has(key))physMap.set(key,{phys:{first_name:(r.first_name||'').trim(),last_name:(r.last_name||'').trim(),email:r.email||null,mobile_phone:r.mobile_phone||null,priority:r.priority||null,academic_connection:r.academic_connection||r.um_connection||null,specialty:r.specialty||null,degree:r.degree||null,title:r.title||null,proj_vol:r.proj_vol||r.patient_volume||r.vol||null,ss_vol:r.ss_vol?parseInt(r.ss_vol,10)||null:null,general_notes:r.general_notes||null,is_target:r.is_target==='Y'||r.is_target==='y'||r.is_target==='true'||r.is_target==='1'?true:false},practiceIds:new Set(),primaryLocKey:null});
 const e=physMap.get(key);
 const practId=getPractId(r.practice_name);
 if(practId)e.practiceIds.add(practId);
@@ -150,10 +150,10 @@ const{data:allAssign}=await db.from('provider_location_assignments').select('*, 
 const am={};(allAssign||[]).forEach(a=>{if(!am[a.provider_id])am[a.provider_id]=[];am[a.provider_id].push(a);});
 const{data:allLogs}=await db.from('contact_logs').select('*').order('contact_date',{ascending:false});
 const latestLog={};(allLogs||[]).forEach(l=>{if(!latestLog[l.provider_id])latestLog[l.provider_id]=l;});
-const h=['Last Name','First Name','Degree','Practice','Tier','Specialty','Email','Academic Connection','Projected Volume','SS Volume','Primary Address','Primary City','Primary ZIP','Primary Phone','Primary Fax','Office Hours','Best Days','Receptionist','Location Count','Last Contact','Status','General Notes'];
+const h=['Last Name','First Name','Degree','Practice','Tier','Specialty','Email','Mobile Phone','Academic Connection','Projected Volume','SS Volume','Primary Address','Primary City','Primary ZIP','Primary Phone','Primary Fax','Office Hours','Best Days','Receptionist','Location Count','Last Contact','Status','General Notes'];
 const rows=(allPhys||[]).map(p=>{const as=am[p.id]||[];const pl=(as.find(a=>a.is_primary)||as[0])?.practice_locations||{};
 const log=latestLog[p.id];const statusNote=log?(log.notes||'').replace(/^\[\d{1,2}:\d{2}\]\s*/,''):'';const statusPreview=statusNote.length>80?statusNote.substring(0,80)+'...':statusNote;const status=log?log.contact_date+': '+statusPreview:'';
-return[p.last_name,p.first_name,p.degree||'',pl.practices?.name||p.practice_name||'',p.priority||'',p.specialty||'',p.email||'',p.academic_connection||'',p.proj_vol||p.mohs_volume||'',p.ss_vol||'',pl.address||'',pl.city||'',pl.zip||'',fmtPhone(pl.phone),fmtPhone(pl.fax),pl.office_hours||'',pl.best_days||'',pl.receptionist_name||'',as.length,p.last_contact||'',status,p.general_notes||''];});
+return[p.last_name,p.first_name,p.degree||'',pl.practices?.name||p.practice_name||'',p.priority||'',p.specialty||'',p.email||'',fmtPhone(p.mobile_phone),p.academic_connection||'',p.proj_vol||p.mohs_volume||'',p.ss_vol||'',pl.address||'',pl.city||'',pl.zip||'',fmtPhone(pl.phone),fmtPhone(pl.fax),pl.office_hours||'',pl.best_days||'',pl.receptionist_name||'',as.length,p.last_contact||'',status,p.general_notes||''];});
 downloadCSV('providers_export_'+todayStamp()+'.csv',h,rows);
 }
 

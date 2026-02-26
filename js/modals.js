@@ -124,13 +124,13 @@ showToast(newVal?'Marked as Sales Target':'Removed from Sales Targets','success'
 }
 function editPhysicianInfo() {
 editMode=true;const p=currentPhysician;$('modalTitle').textContent='Edit Provider';
-setFields({firstName:p.first_name,lastName:p.last_name,physicianEmail:p.email||'',priority:normPriority(p.priority)||'',specialty:p.specialty||'',umConnection:p.academic_connection||p.um_connection||'',patientVolume:p.proj_vol||p.mohs_volume||'',physicianGeneralNotes:p.general_notes||'',degree:p.degree||'',staffTitle:p.title||''});$('isTarget').checked=!!p.is_target;
+setFields({firstName:p.first_name,lastName:p.last_name,physicianEmail:p.email||'',mobilePhone:p.mobile_phone||'',priority:normPriority(p.priority)||'',specialty:p.specialty||'',umConnection:p.academic_connection||p.um_connection||'',patientVolume:p.proj_vol||p.mohs_volume||'',physicianGeneralNotes:p.general_notes||'',degree:p.degree||'',staffTitle:p.title||''});$('isTarget').checked=!!p.is_target;
 $('practiceSelector').style.display='none';$('locationSelector').style.display='none';
 $('physicianSaveBtn').textContent='Save Provider';$('physicianSaveBtn').className='btn-primary';$('physicianModal').classList.add('active');
 }
 async function savePhysician(e) {
 e.preventDefault();
-const data = {first_name:$('firstName').value,last_name:$('lastName').value,email:$('physicianEmail').value||null,priority:$('priority').value||null,specialty:$('specialty').value||null,academic_connection:$('umConnection').value||null,proj_vol:$('patientVolume').value||null,mohs_volume:null,general_notes:$('physicianGeneralNotes').value||null};
+const data = {first_name:$('firstName').value,last_name:$('lastName').value,email:$('physicianEmail').value||null,mobile_phone:$('mobilePhone').value||null,priority:$('priority').value||null,specialty:$('specialty').value||null,academic_connection:$('umConnection').value||null,proj_vol:$('patientVolume').value||null,mohs_volume:null,general_notes:$('physicianGeneralNotes').value||null};
 const degreeVal=$('degree').value||null;const titleVal=$('staffTitle').value||null;
 data.degree=degreeVal;data.title=titleVal;data.is_target=!!$('isTarget').checked;
 await withSave('physicianSaveBtn','Save Provider',async()=>{
