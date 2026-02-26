@@ -73,6 +73,15 @@ Expects columns: first_name, last_name, email, priority, specialty, degree, titl
   - Tab label: "HCPs", search placeholder: "Search HCPs...", buttons: "+ New Provider", "Add Provider", "Save Provider", "Edit Provider"
   - Counts: "X provider(s)", "No providers found", "Providers & Staff" (section headers in profile)
 
+## iOS Supabase SQL Editor Rules
+**CRITICAL — violations have cost multiple failed attempts and wasted credits.**
+When writing SQL to be copy-pasted into the Supabase SQL editor on iOS (Safari):
+- **NEVER use single-letter table aliases** (especially `p` for providers — iOS treats `p.column` as an HTML `<p>` tag and wraps it in angle brackets, breaking the query)
+- **NEVER use `table.column` dot notation in a SELECT clause** — iOS converts `SELECT providers.id` to `SELECT <providers.id>` on paste
+- **ALWAYS use** `SELECT id FROM table` (no alias, no prefix) and `NOT IN (SELECT col FROM other_table)` instead of LEFT JOIN for filtering
+- **SAFE pattern**: All WHERE clause references are fine (`WHERE provider_id = x`). Only the SELECT column list triggers the iOS HTML mangling
+- When in doubt: write the simplest possible SQL with no aliases anywhere
+
 ## Common Gotchas
 - The `degree` and `title` columns were added later (PRs #15-16) — always include them in inserts
 - `practice_email` lives on `practice_locations` table, NOT on `practices`
