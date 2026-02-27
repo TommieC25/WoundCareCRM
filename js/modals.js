@@ -546,11 +546,13 @@ cb.checked = !cb.checked;
 }
 function closeAssignPhysicianModal(){closeModal('assignPhysicianModal');}
 async function quickAddPhysician() {
+const errEl=$('quickAddError');if(errEl){errEl.style.display='none';errEl.textContent='';}
+function showQuickErr(msg){if(errEl){errEl.textContent=msg;errEl.style.display='block';}else{showToast(msg,'error');}}
 const first = $('quickPhysFirst').value.trim();
 const last = $('quickPhysLast').value.trim();
-if (!first || !last) { showToast('First and last name required', 'error'); return; }
+if (!first || !last) { showQuickErr('First and last name are required.'); return; }
 const locId = $('assignPhysLocationSelect').value;
-if (!locId) { showToast('Select a location first', 'error'); return; }
+if (!locId) { showQuickErr('Please select a location at the top of this form.'); return; }
 try {
 updateSyncIndicators('syncing');
 const data = {first_name:first,last_name:last,degree:$('quickPhysDegree').value||null,specialty:$('quickPhysSpecialty').value||null,priority:$('quickPhysPriority').value||null};

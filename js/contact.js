@@ -194,6 +194,48 @@ await deleteNote(logId);
 } catch(e) { showToast('Error: ' + e.message, 'error'); }
 }
 
+// Edit any contact log entry from the practice profile (works for both provider-linked and practice-level notes)
+async function editPracticeNote(logId) {
+try{
+const{data:log,error}=await db.from('contact_logs').select('*').eq('id',logId).single();
+if(error||!log){showToast('Note not found','error');return;}
+editingContactId=logId;
+$('contactForm').reset();
+$('contactModalTitle').textContent='Edit Note';
+$('contactSaveBtn').textContent='Save Changes';
+$('contactSaveBtn').className='btn-primary';
+$('contactDate').value=log.contact_date||'';
+$('authorName').value=log.author||'Tom';
+const tm=(log.notes||'').match(/^\[(\d{1,2}:\d{2})\]\s*/);
+$('contactTime').value=tm?tm[1]:'';
+$('contactNotes').value=tm?log.notes.slice(tm[0].length):(log.notes||'');
+if($('locationSelectRow'))$('locationSelectRow').style.display='none';
+if($('reminderRow'))$('reminderRow').style.display='none';
+const pr=$('practicePhysSelectRow');if(pr)pr.style.display='none';
+$('contactForm').onsubmit=async function(ev){
+ev.preventDefault();
+const tv=$('contactTime').value,nv=$('contactNotes').value;
+const newNote=tv?`[${tv}] ${nv}`:nv;
+await withSave('contactSaveBtn','Save Changes',async()=>{
+const{error}=await db.from('contact_logs').update({notes:newNote,author:$('authorName').value,contact_date:$('contactDate').value}).eq('id',editingContactId);
+if(error)throw error;
+showToast('Note updated','success');
+closeContactModal();
+$('contactForm').onsubmit=function(ev){saveContact(ev);return false;};
+await loadAllData();
+if(currentPractice){renderPracticeProfile();await loadPracticeActivity(currentPractice.id);}
+});
+return false;
+};
+$('contactModal').classList.add('active');
+}catch(e){showToast('Error: '+e.message,'error');}
+}
+async function deletePracticeNote(logId) {
+await dbDel('contact_logs',logId,'Delete this note?',async()=>{
+if(currentPractice){renderPracticeProfile();await loadPracticeActivity(currentPractice.id);}
+});
+}
+
 function _buildTaskContext(physicianId, locationId) {
 const phys = physicianId ? physicians.find(p => p.id === physicianId) : null;
 const loc = locationId ? practiceLocations.find(l => l.id === locationId) : null;
@@ -214,18 +256,19 @@ $('addTaskModalTitle').textContent = 'New Task';
 const isGlobal = !physicianId;
 // Context block: show pre-filled context when provider known, hide when global
 const ctx = $('addTaskContext');
-if(ctx){ctx.innerHTML=_buildTaskContext(physicianId,locationId);ctx.style.display=(physicianId||locationId)?'block':'none';}
+if(ctx){ctx.innerHTML=_buildTaskContext(physicianId,null);ctx.style.display=physicianId?'block':'none';}
 // Provider search row: show only when opened globally
 const provRow=$('addTaskProviderRow');
 if(provRow){
   provRow.style.display=isGlobal?'block':'none';
   if(isGlobal){$('addTaskProviderSearch').value='';$('addTaskProviderResults').style.display='none';}
 }
-// Location row: show when pre-filled (single location) or let global mode manage it
+// Location row: always show — global gets empty select, provider mode gets all their locations
 const locRow=$('addTaskLocationRow');
 if(locRow){
-  if(isGlobal){locRow.style.display='block';$('addTaskLocationSelect').innerHTML='<option value="">No specific location</option>';}
-  else{locRow.style.display='none';}
+  locRow.style.display='block';
+  if(isGlobal){$('addTaskLocationSelect').innerHTML='<option value="">No specific location</option>';}
+  else{const locs=(physicianAssignments[physicianId]||[]).map(a=>{const loc=practiceLocations.find(l=>l.id===a.practice_location_id);if(!loc)return null;const prac=practices.find(pr=>pr.id===loc.practice_id);return{id:loc.id,label:`${prac?prac.name+' \u2014 ':''}${loc.label&&loc.label!==loc.city?loc.label:loc.city||'Office'}${loc.address?' ('+loc.address+')':''}`};}).filter(Boolean);const sel=$('addTaskLocationSelect');sel.innerHTML='<option value="">No specific location</option>'+locs.map(l=>`<option value="${l.id}"${l.id===locationId?' selected':''}>${l.label}</option>`).join('');$('addTaskLocationId').value=locationId||'';}
 }
 populateReminderDateButtons('task');
 $('addTaskModal').classList.add('active');
@@ -285,7 +328,7 @@ $('addTaskLocationId').value = rec.practice_location_id || '';
 const ctx=$('addTaskContext');
 if(ctx){ctx.innerHTML=_buildTaskContext(rec.provider_id,rec.practice_location_id);ctx.style.display=(rec.provider_id||rec.practice_location_id)?'block':'none';}
 if($('addTaskProviderRow'))$('addTaskProviderRow').style.display='none';
-if($('addTaskLocationRow'))$('addTaskLocationRow').style.display='none';
+const _editLocRow=$('addTaskLocationRow');if(_editLocRow){const _pid=rec.provider_id;if(_pid){const _locs=(physicianAssignments[_pid]||[]).map(a=>{const loc=practiceLocations.find(l=>l.id===a.practice_location_id);if(!loc)return null;const prac=practices.find(pr=>pr.id===loc.practice_id);return{id:loc.id,label:`${prac?prac.name+' \u2014 ':''}${loc.label&&loc.label!==loc.city?loc.label:loc.city||'Office'}${loc.address?' ('+loc.address+')':''}`};}).filter(Boolean);const _sel=$('addTaskLocationSelect');const _cur=rec.practice_location_id||'';_sel.innerHTML='<option value="">No specific location</option>'+_locs.map(l=>`<option value="${l.id}"${l.id===_cur?' selected':''}>${l.label}</option>`).join('');_editLocRow.style.display='block';}else{_editLocRow.style.display='none';}}
 $('addTaskModalTitle').textContent = 'Edit Task';
 populateReminderDateButtons('task');
 if (rec.reminder_date) selectReminderDate(rec.reminder_date, '', 'task');
