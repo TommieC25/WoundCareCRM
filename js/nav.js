@@ -7,7 +7,7 @@ db.channel(t+'-ch').on('postgres_changes',{event:'*',schema:'public',table:t},()
 db.channel('contact-logs-ch')
 .on('postgres_changes',{event:'*',schema:'public',table:'contact_logs'},(payload)=>{
 const pid=payload.new?.provider_id||payload.old?.provider_id;
-if(currentPhysician&&pid===currentPhysician.id) loadContactLogs(currentPhysician.id).then(()=>renderProfile());
+if(currentPhysician&&pid===currentPhysician.id&&currentView==='physicians') loadContactLogs(currentPhysician.id).then(()=>renderProfile());
 }).subscribe();
 }
 
@@ -109,7 +109,8 @@ renderActivityView();
 return;
 }
 if(view==='tasks'){
-$('searchInput').parentElement.parentElement.style.display='none';
+$('searchInput').placeholder='Search tasks...';
+$('searchInput').parentElement.parentElement.style.display='';
 $('addBtn').style.display='none';
 $('sortControls').style.display='none';
 $('tierFilterControls').style.display='none';
@@ -185,7 +186,7 @@ $('sidebar').classList.remove('open');
 $('sidebarOverlay').style.display = 'none';
 }
 function updateCount() {
-const search = $('searchInput').value.toLowerCase();
+const search = $('searchInput').value.trim().toLowerCase();
 if (currentView === 'physicians') {
 const filtered = getFilteredPhysicians(search);
 $('physicianCount').textContent =
@@ -285,7 +286,7 @@ let base = filterTier ? physicians.filter(p => normPriority(p.priority) === filt
 if (!search) return base;
 return base.filter(p => {
 const np = normPriority(p.priority);
-if ([p.first_name,p.last_name,p.specialty,p.email,p.general_notes,np?'P'+np:null,p.academic_connection||p.um_connection,p.proj_vol,p.mohs_volume,p.practice_name].some(v=>(v||'').toLowerCase().includes(search))) return true;
+if ([((p.first_name||'')+' '+(p.last_name||'')).trim(),fmtName(p),p.first_name,p.last_name,p.specialty,p.email,p.general_notes,np?'P'+np:null,p.academic_connection||p.um_connection,p.proj_vol,p.mohs_volume,p.practice_name].some(v=>String(v??'').toLowerCase().includes(search))) return true;
 const logs=contactLogs[p.id]||[];
 if(logs.some(l=>(l.notes||'').toLowerCase().includes(search)||(l.author||'').toLowerCase().includes(search))) return true;
 const assigns=physicianAssignments[p.id]||[];
@@ -306,17 +307,21 @@ return locs.some(l=>[l.address,l.city,l.zip,l.phone,l.fax,l.practice_email,l.off
 function filterList() {
 const val = $('searchInput').value;
 $('searchClear').style.display = val ? 'flex' : 'none';
-renderList();
+if(currentView==='tasks') renderTasksView();
+else if(currentView==='activity') renderActivityView();
+else renderList();
 }
 function clearSearch() {
 $('searchInput').value = '';
 $('searchClear').style.display = 'none';
-renderList();
+if(currentView==='tasks') renderTasksView();
+else if(currentView==='activity') renderActivityView();
+else renderList();
 $('searchInput').focus();
 }
 function renderList() {
 const list = $('physicianList');
-const search = $('searchInput').value.toLowerCase();
+const search = $('searchInput').value.trim().toLowerCase();
 if (currentView === 'physicians') {
 renderPhysicianList(list, search);
 } else {

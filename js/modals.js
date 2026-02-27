@@ -124,13 +124,13 @@ showToast(newVal?'Marked as Sales Target':'Removed from Sales Targets','success'
 }
 function editPhysicianInfo() {
 editMode=true;const p=currentPhysician;$('modalTitle').textContent='Edit Provider';
-setFields({firstName:p.first_name,lastName:p.last_name,physicianEmail:p.email||'',priority:normPriority(p.priority)||'',specialty:p.specialty||'',umConnection:p.academic_connection||p.um_connection||'',patientVolume:p.proj_vol||p.mohs_volume||'',physicianGeneralNotes:p.general_notes||'',degree:p.degree||'',staffTitle:p.title||''});$('isTarget').checked=!!p.is_target;
+setFields({firstName:p.first_name,lastName:p.last_name,physicianEmail:p.email||'',mobilePhone:p.mobile_phone||'',priority:normPriority(p.priority)||'',specialty:p.specialty||'',umConnection:p.academic_connection||p.um_connection||'',patientVolume:p.proj_vol||p.mohs_volume||'',physicianGeneralNotes:p.general_notes||'',degree:p.degree||'',staffTitle:p.title||''});$('isTarget').checked=!!p.is_target;
 $('practiceSelector').style.display='none';$('locationSelector').style.display='none';
 $('physicianSaveBtn').textContent='Save Provider';$('physicianSaveBtn').className='btn-primary';$('physicianModal').classList.add('active');
 }
 async function savePhysician(e) {
 e.preventDefault();
-const data = {first_name:$('firstName').value,last_name:$('lastName').value,email:$('physicianEmail').value||null,priority:$('priority').value||null,specialty:$('specialty').value||null,academic_connection:$('umConnection').value||null,proj_vol:$('patientVolume').value||null,mohs_volume:null,general_notes:$('physicianGeneralNotes').value||null};
+const data = {first_name:$('firstName').value,last_name:$('lastName').value,email:$('physicianEmail').value||null,mobile_phone:$('mobilePhone').value||null,priority:$('priority').value||null,specialty:$('specialty').value||null,academic_connection:$('umConnection').value||null,proj_vol:$('patientVolume').value||null,mohs_volume:null,general_notes:$('physicianGeneralNotes').value||null};
 const degreeVal=$('degree').value||null;const titleVal=$('staffTitle').value||null;
 data.degree=degreeVal;data.title=titleVal;data.is_target=!!$('isTarget').checked;
 await withSave('physicianSaveBtn','Save Provider',async()=>{
@@ -158,7 +158,16 @@ await loadAllData();renderList();setTimeout(()=>closePhysicianModal(),500);
 });
 }
 async function deletePhysician() {
-await dbDel('providers',currentPhysician.id,`Delete ${fmtName(currentPhysician)}?`,async()=>{physicians=physicians.filter(p=>p.id!==currentPhysician.id);currentPhysician=null;renderList();renderEmptyState();});
+if(!currentPhysician)return;
+if(!confirm(`Delete ${fmtName(currentPhysician)}?`))return;
+try{
+updateSyncIndicators('syncing');
+const pid=currentPhysician.id;
+const{error}=await db.rpc('delete_provider',{provider_id_param:pid});
+if(error)throw error;
+physicians=physicians.filter(ph=>ph.id!==pid);currentPhysician=null;renderList();renderEmptyState();
+showToast('Deleted','success');updateSyncIndicators('synced');
+}catch(e){console.error('Delete error:',e);showToast('Error: '+e.message,'error');updateSyncIndicators('error');}
 }
 
 // --- Practice modal ---
@@ -283,7 +292,20 @@ setTimeout(()=>closePracticeModal(),500);
 });
 }
 async function deletePractice() {
-await dbDel('practices',currentPractice.id,`Delete ${currentPractice.name}? This will also delete all its locations.`,async()=>{practices=practices.filter(p=>p.id!==currentPractice.id);currentPractice=null;await loadAllData();renderList();renderEmptyState();});
+if(!currentPractice)return;
+if(!confirm(`Delete ${currentPractice.name}? This will also delete all its locations.`))return;
+try{
+updateSyncIndicators('syncing');
+const pid=currentPractice.id;
+const locIds=practiceLocations.filter(l=>l.practice_id===pid).map(l=>l.id);
+if(locIds.length>0){
+const{error:e1}=await db.from('provider_location_assignments').delete().in('practice_location_id',locIds);if(e1)throw e1;
+const{error:e2}=await db.from('practice_locations').delete().eq('practice_id',pid);if(e2)throw e2;
+}
+const{error:e3}=await db.from('practices').delete().eq('id',pid);if(e3)throw e3;
+practices=practices.filter(p=>p.id!==pid);currentPractice=null;await loadAllData();renderList();renderEmptyState();
+showToast('Deleted','success');updateSyncIndicators('synced');
+}catch(e){console.error('Delete error:',e);showToast('Error: '+e.message,'error');updateSyncIndicators('error');}
 }
 function parseAddressBlock() {
 const raw = ($('addressBlock')?.value || '').trim();
@@ -369,7 +391,14 @@ await loadAllData();if(currentPractice)renderPracticeProfile();if(currentPhysici
 });
 }
 async function deleteLocation(locationId) {
-await dbDel('practice_locations',locationId,'Delete this location and all provider assignments?',async()=>{await loadAllData();if(currentPractice)renderPracticeProfile();});
+if(!confirm('Delete this location and all provider assignments?'))return;
+try{
+updateSyncIndicators('syncing');
+const{error:e1}=await db.from('provider_location_assignments').delete().eq('practice_location_id',locationId);if(e1)throw e1;
+const{error:e2}=await db.from('practice_locations').delete().eq('id',locationId);if(e2)throw e2;
+await loadAllData();if(currentPractice)renderPracticeProfile();
+showToast('Deleted','success');updateSyncIndicators('synced');
+}catch(e){console.error('Delete error:',e);showToast('Error: '+e.message,'error');updateSyncIndicators('error');}
 }
 
 // --- Assign location modal ---
@@ -468,6 +497,7 @@ await dbDel('provider_location_assignments',assignmentId,'Remove this location a
 
 // --- Assign provider modal (from practice view) ---
 function openAssignPhysicianModal() {
+if(!currentPractice)return;
 const locations = practiceLocations.filter(l => l.practice_id === currentPractice.id);
 const select = $('assignPhysLocationSelect');
 select.innerHTML = locations.map(loc => `<option value="${loc.id}">${loc.label || 'Office'} - ${loc.address || ''}, ${loc.city || ''}</option>`).join('');
@@ -495,6 +525,7 @@ $('assignPhysicianOptions').innerHTML = filtered.map(p => `
 `).join('') || '<div class="empty-notice">No providers found</div>';
 }
 function filterAssignPhysicianOptions() {
+if(!currentPractice)return;
 const currentChecked = new Set();
 document.querySelectorAll('#assignPhysicianOptions .selector-option').forEach(opt => {
 const cb = opt.querySelector('input[type="checkbox"]');
@@ -515,11 +546,13 @@ cb.checked = !cb.checked;
 }
 function closeAssignPhysicianModal(){closeModal('assignPhysicianModal');}
 async function quickAddPhysician() {
+const errEl=$('quickAddError');if(errEl){errEl.style.display='none';errEl.textContent='';}
+function showQuickErr(msg){if(errEl){errEl.textContent=msg;errEl.style.display='block';}else{showToast(msg,'error');}}
 const first = $('quickPhysFirst').value.trim();
 const last = $('quickPhysLast').value.trim();
-if (!first || !last) { showToast('First and last name required', 'error'); return; }
+if (!first || !last) { showQuickErr('First and last name are required.'); return; }
 const locId = $('assignPhysLocationSelect').value;
-if (!locId) { showToast('Select a location first', 'error'); return; }
+if (!locId) { showQuickErr('Please select a location at the top of this form.'); return; }
 try {
 updateSyncIndicators('syncing');
 const data = {first_name:first,last_name:last,degree:$('quickPhysDegree').value||null,specialty:$('quickPhysSpecialty').value||null,priority:$('quickPhysPriority').value||null};

@@ -3,6 +3,7 @@
 // --- CSV Import ---
 function importCSVPaste(){const t=(document.getElementById('csvPasteArea')?.value||'').trim();if(!t){showToast('Paste CSV text first','error');return;}importCSV({text:()=>Promise.resolve(t)});}
 async function importCSVText(text){await importCSV({text:()=>Promise.resolve(text)});}
+function normalizeAddr(s){return(s||'').trim().replace(/\bnan\b/gi,'').replace(/\s+/g,' ').trim().replace(/(Suite|Ste\.?|Apt\.?|Unit)\.?\s*#?\s*(\d+)/gi,'#$2').replace(/\b(Southwest|Northwest|Northeast|Southeast|North|South|East|West)\b/gi,m=>{const d={southwest:'SW',northwest:'NW',northeast:'NE',southeast:'SE',north:'N',south:'S',east:'E',west:'W'};return d[m.toLowerCase()]||m.toUpperCase();}).replace(/\b(SW|NW|NE|SE)\b/gi,m=>m.toUpperCase()).replace(/\s+/g,' ').trim();}
 async function importCSV(file) {
 if(!file)return;
 const status=s=>{const el=$('importStatus');if(el)el.textContent=s;const el2=$('importStatusMain');if(el2)el2.textContent=s;};
@@ -35,17 +36,18 @@ function getPractId(practName){const n=(practName||'').trim();return practiceMap
 // Phase 2: Find/create ALL locations first (independent of which provider is listed)
 status('Creating practice locations...');
 const locMap={};// key: `${practiceId}|${address}` -> location record
-const seenLocKeys=new Set();
+const seenLocKeys=new Set();const practLocsCache={};
 for(const r of rows){
 const practId=getPractId(r.practice_name);
-const addr=(r.address||'').trim().replace(/\bnan\b/gi,'').replace(/\s+/g,' ').trim().replace(/(Suite|Ste\.?|Apt\.?|Unit)\.?\s*#?\s*(\d+)/gi,'#$2').replace(/\b(Southwest|Northwest|Northeast|Southeast|North|South|East|West)\b/gi,m=>{const d={southwest:'SW',northwest:'NW',northeast:'NE',southeast:'SE',north:'N',south:'S',east:'E',west:'W'};return d[m.toLowerCase()]||m.toUpperCase();}).replace(/\b(SW|NW|NE|SE)\b/gi,m=>m.toUpperCase()).replace(/\s+/g,' ').trim();
+const addr=normalizeAddr(r.address);
 if(!practId||!addr||addr==='[Research needed]')continue;
 const locKey=`${practId}|${addr}`;
 if(seenLocKeys.has(locKey))continue;
 seenLocKeys.add(locKey);
 const city=(r.city||'').trim();
-const{data:exLoc}=await db.from('practice_locations').select('*').eq('practice_id',practId).eq('address',addr).maybeSingle();
-const locRec=exLoc||(await db.from('practice_locations').insert({practice_id:practId,label:city||'Office',address:addr,city,zip:(r.zip||'').trim(),phone:r.phone||null,fax:r.fax||null,office_hours:r.office_hours||null,office_staff:r.office_staff||null,receptionist_name:r.receptionist_name||r.receptionist||null,best_days:r.best_days||null,practice_email:r.practice_email||r.office_email||null}).select().maybeSingle()).data;
+if(!practLocsCache[practId]){const{data:pls}=await db.from('practice_locations').select('*').eq('practice_id',practId);practLocsCache[practId]=pls||[];}
+const exLoc=practLocsCache[practId].find(l=>normalizeAddr(l.address||'').toLowerCase()===addr.toLowerCase());
+let locRec=exLoc;if(!locRec){const{data:nl}=await db.from('practice_locations').insert({practice_id:practId,label:city||'Office',address:addr,city,zip:(r.zip||'').trim(),phone:r.phone||null,fax:r.fax||null,office_hours:r.office_hours||null,office_staff:r.office_staff||null,receptionist_name:r.receptionist_name||r.receptionist||null,best_days:r.best_days||null,practice_email:r.practice_email||r.office_email||null}).select().maybeSingle();if(nl){practLocsCache[practId].push(nl);locRec=nl;}}
 if(locRec)locMap[locKey]=locRec;
 }
 
@@ -53,13 +55,13 @@ if(locRec)locMap[locKey]=locRec;
 const physMap=new Map();
 rows.forEach(r=>{
 if(!(r.first_name||'').trim()&&!(r.last_name||'').trim())return;
-const key=`${(r.first_name||'').trim().toLowerCase()}|${(r.last_name||'').trim().toLowerCase()}`;
-if(!physMap.has(key))physMap.set(key,{phys:{first_name:(r.first_name||'').trim(),last_name:(r.last_name||'').trim(),email:r.email||null,priority:r.priority||null,academic_connection:r.academic_connection||r.um_connection||null,specialty:r.specialty||null,degree:r.degree||null,title:r.title||null,proj_vol:r.proj_vol||r.patient_volume||r.vol||null,ss_vol:r.ss_vol?parseInt(r.ss_vol,10)||null:null,general_notes:r.general_notes||null,is_target:r.is_target==='Y'||r.is_target==='y'||r.is_target==='true'||r.is_target==='1'?true:false},practiceIds:new Set(),primaryLocKey:null});
+const key=`${(r.first_name||'').trim().toLowerCase().replace(/\s+[a-z]\.\s*$/,'')}|${(r.last_name||'').trim().toLowerCase()}`;
+if(!physMap.has(key))physMap.set(key,{phys:{first_name:(r.first_name||'').trim(),last_name:(r.last_name||'').trim(),email:r.email||null,mobile_phone:r.mobile_phone||null,priority:r.priority||null,academic_connection:r.academic_connection||r.um_connection||null,specialty:r.specialty||null,degree:r.degree||null,title:r.title||null,proj_vol:r.proj_vol||r.patient_volume||r.vol||null,ss_vol:r.ss_vol?parseInt(r.ss_vol,10)||null:null,general_notes:r.general_notes||null,is_target:r.is_target==='Y'||r.is_target==='y'||r.is_target==='true'||r.is_target==='1'?true:false},practiceIds:new Set(),primaryLocKey:null});
 const e=physMap.get(key);
 const practId=getPractId(r.practice_name);
 if(practId)e.practiceIds.add(practId);
 // Track primary location (first address listed for this provider)
-const addr=(r.address||'').trim().replace(/\bnan\b/gi,'').replace(/\s+/g,' ').trim().replace(/(Suite|Ste\.?|Apt\.?|Unit)\.?\s*#?\s*(\d+)/gi,'#$2').replace(/\b(Southwest|Northwest|Northeast|Southeast|North|South|East|West)\b/gi,m=>{const d={southwest:'SW',northwest:'NW',northeast:'NE',southeast:'SE',north:'N',south:'S',east:'E',west:'W'};return d[m.toLowerCase()]||m.toUpperCase();}).replace(/\b(SW|NW|NE|SE)\b/gi,m=>m.toUpperCase()).replace(/\s+/g,' ').trim();
+const addr=normalizeAddr(r.address);
 if(!e.primaryLocKey&&practId&&addr&&addr!=='[Research needed]')e.primaryLocKey=`${practId}|${addr}`;
 });
 
@@ -67,8 +69,9 @@ if(!e.primaryLocKey&&practId&&addr&&addr!=='[Research needed]')e.primaryLocKey=`
 let count=0;const total=physMap.size;
 for(const[key,entry] of physMap){
 count++;if(count%5===0||count===total)status(`Assigning providers ${count} of ${total}...`);
-const{data:exArr}=await db.from('providers').select('*').ilike('first_name',entry.phys.first_name).ilike('last_name',entry.phys.last_name).limit(1);
-const ex=exArr&&exArr.length>0?exArr[0]:null;
+const fnNorm=entry.phys.first_name.toLowerCase().replace(/\s+[a-z]\.\s*$/,'').trim();
+const{data:exArr}=await db.from('providers').select('*').ilike('last_name',entry.phys.last_name).limit(20);
+const ex=(exArr||[]).find(p=>(p.first_name||'').toLowerCase().replace(/\s+[a-z]\.\s*$/,'').trim()===fnNorm)||null;
 const phys=ex||(await db.from('providers').insert(entry.phys).select().maybeSingle()).data;
 if(!phys)continue;
 // Assign to ALL locations of every practice this provider belongs to
@@ -84,6 +87,32 @@ status(`Done! Imported ${physMap.size} providers, ${practiceNames.length} practi
 showToast(`Imported ${physMap.size} providers`,'success');
 updateSyncIndicators('synced');
 }catch(e){console.error('Import error:',e);status('Error: '+e.message);showToast('Import failed: '+e.message,'error');updateSyncIndicators('error');}
+}
+
+async function syncGoogleSheet() {
+  const urlEl = $('sheetSyncUrl');
+  const url = (urlEl ? urlEl.value.trim() : '') || localStorage.getItem('sheetSyncUrl') || '';
+  const statusEl = $('syncSheetStatus');
+  if (!url) {
+    if (statusEl) statusEl.textContent = 'Paste your Apps Script web app URL above first.';
+    showToast('No web app URL set — see Admin Settings', 'error');
+    return;
+  }
+  if (statusEl) { statusEl.style.color = '#aaa'; statusEl.textContent = 'Syncing…'; }
+  try {
+    await fetch(url, { method: 'GET', mode: 'no-cors' });
+    if (statusEl) { statusEl.style.color = '#10b981'; statusEl.textContent = 'Sync triggered — sheet updates in ~30 sec'; }
+    showToast('Google Sheet sync triggered', 'success');
+  } catch (e) {
+    if (statusEl) { statusEl.style.color = '#dc2626'; statusEl.textContent = 'Request failed: ' + e.message; }
+    showToast('Sync request failed: ' + e.message, 'error');
+  }
+}
+
+function initSheetSyncUrl() {
+  const saved = localStorage.getItem('sheetSyncUrl') || '';
+  const el = $('sheetSyncUrl');
+  if (el && saved) el.value = saved;
 }
 
 async function clearDatabase() {
@@ -149,10 +178,10 @@ const{data:allAssign}=await db.from('provider_location_assignments').select('*, 
 const am={};(allAssign||[]).forEach(a=>{if(!am[a.provider_id])am[a.provider_id]=[];am[a.provider_id].push(a);});
 const{data:allLogs}=await db.from('contact_logs').select('*').order('contact_date',{ascending:false});
 const latestLog={};(allLogs||[]).forEach(l=>{if(!latestLog[l.provider_id])latestLog[l.provider_id]=l;});
-const h=['Last Name','First Name','Degree','Practice','Tier','Specialty','Email','Academic Connection','Projected Volume','SS Volume','Primary Address','Primary City','Primary ZIP','Primary Phone','Primary Fax','Office Hours','Best Days','Receptionist','Location Count','Last Contact','Status','General Notes'];
+const h=['Last Name','First Name','Degree','Practice','Tier','Specialty','Email','Mobile Phone','Academic Connection','Projected Volume','SS Volume','Primary Address','Primary City','Primary ZIP','Primary Phone','Primary Fax','Office Hours','Best Days','Receptionist','Location Count','Last Contact','Status','General Notes'];
 const rows=(allPhys||[]).map(p=>{const as=am[p.id]||[];const pl=(as.find(a=>a.is_primary)||as[0])?.practice_locations||{};
 const log=latestLog[p.id];const statusNote=log?(log.notes||'').replace(/^\[\d{1,2}:\d{2}\]\s*/,''):'';const statusPreview=statusNote.length>80?statusNote.substring(0,80)+'...':statusNote;const status=log?log.contact_date+': '+statusPreview:'';
-return[p.last_name,p.first_name,p.degree||'',pl.practices?.name||p.practice_name||'',p.priority||'',p.specialty||'',p.email||'',p.academic_connection||'',p.proj_vol||p.mohs_volume||'',p.ss_vol||'',pl.address||'',pl.city||'',pl.zip||'',fmtPhone(pl.phone),fmtPhone(pl.fax),pl.office_hours||'',pl.best_days||'',pl.receptionist_name||'',as.length,p.last_contact||'',status,p.general_notes||''];});
+return[p.last_name,p.first_name,p.degree||'',pl.practices?.name||p.practice_name||'',p.priority||'',p.specialty||'',p.email||'',fmtPhone(p.mobile_phone),p.academic_connection||'',p.proj_vol||p.mohs_volume||'',p.ss_vol||'',pl.address||'',pl.city||'',pl.zip||'',fmtPhone(pl.phone),fmtPhone(pl.fax),pl.office_hours||'',pl.best_days||'',pl.receptionist_name||'',as.length,p.last_contact||'',status,p.general_notes||''];});
 downloadCSV('providers_export_'+todayStamp()+'.csv',h,rows);
 }
 

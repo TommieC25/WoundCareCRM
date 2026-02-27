@@ -3,8 +3,8 @@ let _taskDetailLogs = {};
 function closeTaskDetailModal() { closeModal('taskDetailModal'); }
 
 // === CALENDAR EXPORT (.ics) ===
-function downloadTaskICS(r, phys, loc, practice) {
-  if (!r.reminder_date || r.reminder_date === '2099-12-31') { showToast('No due date — set a date before exporting to calendar', 'error'); return; }
+function downloadTaskICS(r, phys, loc, practice, timeVal) {
+  if (!r.reminder_date || r.reminder_date === '2099-12-31') { return; }
   const name = phys ? fmtName(phys) : (practice ? practice.name : (loc ? (loc.label || 'Office') : 'Task'));
   const tm = (r.notes||'').match(/^\[(\d{1,2}:\d{2}(?:\s*[APap][Mm])?)\]\s*/);
   let dn = tm ? r.notes.replace(tm[0], '') : (r.notes||'');
@@ -22,7 +22,8 @@ function downloadTaskICS(r, phys, loc, practice) {
   if (loc) { const parts = [practice ? practice.name : null, loc.address, loc.city, loc.zip].filter(Boolean); location = parts.join(', '); }
   const uid = 'woundcare-' + (r.id || Date.now()) + '@woundcarecrm';
   const stamp = new Date().toISOString().replace(/[-:.]/g,'').slice(0,15) + 'Z';
-  const ics = ['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//WoundCareCRM//EN','CALSCALE:GREGORIAN','METHOD:PUBLISH','BEGIN:VEVENT','UID:'+uid,'DTSTAMP:'+stamp,'DTSTART:'+ds+'T080000','DTEND:'+ds+'T090000','SUMMARY:Visit \u2014 '+name,location?'LOCATION:'+location:null,desc?'DESCRIPTION:'+desc:null,'BEGIN:VALARM','TRIGGER:-PT30M','ACTION:DISPLAY','DESCRIPTION:Upcoming: '+name,'END:VALARM','END:VEVENT','END:VCALENDAR'].filter(l=>l!==null).join('\r\n');
+  let dtStart,dtEnd;if(timeVal){const[hh,mm]=timeVal.split(':');const dEnd=new Date(r.reminder_date+'T'+timeVal+':00');dEnd.setHours(dEnd.getHours()+1);const endStr=r.reminder_date.replace(/-/g,'')+`T${String(dEnd.getHours()).padStart(2,'0')}${String(dEnd.getMinutes()).padStart(2,'0')}00`;dtStart='DTSTART:'+ds+'T'+hh+mm+'00';dtEnd='DTEND:'+endStr;}else{const dsNext=(()=>{const d=new Date(r.reminder_date+'T12:00:00');d.setDate(d.getDate()+1);return d.toISOString().slice(0,10).replace(/-/g,'');})();dtStart='DTSTART;VALUE=DATE:'+ds;dtEnd='DTEND;VALUE=DATE:'+dsNext;}
+  const ics = ['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//WoundCareCRM//EN','CALSCALE:GREGORIAN','METHOD:PUBLISH','BEGIN:VEVENT','UID:'+uid,'DTSTAMP:'+stamp,dtStart,dtEnd,'SUMMARY:Visit \u2014 '+name,location?'LOCATION:'+location:null,desc?'DESCRIPTION:'+desc:null,'BEGIN:VALARM','TRIGGER:-PT30M','ACTION:DISPLAY','DESCRIPTION:Upcoming: '+name,'END:VALARM','END:VEVENT','END:VCALENDAR'].filter(l=>l!==null).join('\r\n');
   const blob = new Blob([ics], {type:'text/calendar;charset=utf-8'});
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -30,7 +31,7 @@ function downloadTaskICS(r, phys, loc, practice) {
   document.body.appendChild(a); a.click(); document.body.removeChild(a);
   setTimeout(() => URL.revokeObjectURL(url), 1000);
 }
-function buildGoogleCalendarUrl(r, phys, loc, practice) {
+function buildGoogleCalendarUrl(r, phys, loc, practice, timeVal) {
   const name = phys ? fmtName(phys) : (practice ? practice.name : (loc ? (loc.label || 'Office') : 'Task'));
   const tm = (r.notes||'').match(/^\[(\d{1,2}:\d{2}(?:\s*[APap][Mm])?)\]\s*/);
   let dn = tm ? r.notes.replace(tm[0], '') : (r.notes||'');
@@ -46,7 +47,8 @@ function buildGoogleCalendarUrl(r, phys, loc, practice) {
   if (dn) parts.push(dn);
   let location = '';
   if (loc) { const lp = [practice ? practice.name : null, loc.address, loc.city, loc.zip].filter(Boolean); location = lp.join(', '); }
-  const params = new URLSearchParams({ action:'TEMPLATE', text:'Visit \u2014 '+name, dates:ds+'T080000/'+ds+'T090000', details:parts.join('\n'), location });
+  let calDates;if(timeVal){const[hh,mm]=timeVal.split(':');const dEnd=new Date(r.reminder_date+'T'+timeVal+':00');dEnd.setHours(dEnd.getHours()+1);const endStr=r.reminder_date.replace(/-/g,'')+`T${String(dEnd.getHours()).padStart(2,'0')}${String(dEnd.getMinutes()).padStart(2,'0')}00`;calDates=ds+'T'+hh+mm+'00/'+endStr;}else{const dsNext=(()=>{const d=new Date(r.reminder_date+'T12:00:00');d.setDate(d.getDate()+1);return d.toISOString().slice(0,10).replace(/-/g,'');})();calDates=ds+'/'+dsNext;}
+  const params = new URLSearchParams({ action:'TEMPLATE', text:'Visit \u2014 '+name, dates:calDates, details:parts.join('\n'), location });
   return 'https://calendar.google.com/calendar/render?' + params.toString();
 }
 function exportTaskToCalendar(logId) {
@@ -55,19 +57,21 @@ function exportTaskToCalendar(logId) {
   const phys = r.provider_id ? physicians.find(p=>p.id===r.provider_id) : null;
   const loc = r.practice_location_id ? practiceLocations.find(l=>l.id===r.practice_location_id) : null;
   const practice = loc ? practices.find(p=>p.id===loc.practice_id) : null;
-  downloadTaskICS(r, phys, loc, practice);
+  const timeVal = ($('taskCalTime')||{}).value || '';
+  downloadTaskICS(r, phys, loc, practice, timeVal);
 }
 function openGoogleCalendar(logId) {
   const r = (_taskDetailLogs||{})[logId] || (window._taskDetailLogs||{})[logId];
   if (!r) return;
-  if (!r.reminder_date || r.reminder_date === '2099-12-31') { showToast('No due date — set a date before adding to calendar', 'error'); return; }
+  if (!r.reminder_date || r.reminder_date === '2099-12-31') { return; }
   const phys = r.provider_id ? physicians.find(p=>p.id===r.provider_id) : null;
   const loc = r.practice_location_id ? practiceLocations.find(l=>l.id===r.practice_location_id) : null;
   const practice = loc ? practices.find(p=>p.id===loc.practice_id) : null;
-  window.open(buildGoogleCalendarUrl(r, phys, loc, practice), '_blank');
+  const timeVal = ($('taskCalTime')||{}).value || '';
+  window.open(buildGoogleCalendarUrl(r, phys, loc, practice, timeVal), '_blank');
 }
 function openTaskDetailModal(logId) {
-const r = _taskDetailLogs[logId];
+const r = _taskDetailLogs[logId] || (window._taskDetailLogs||{})[logId];
 if (!r) return;
 const phys = r.provider_id ? physicians.find(p => p.id === r.provider_id) : null;
 const loc = r.practice_location_id ? practiceLocations.find(l => l.id === r.practice_location_id) : null;
@@ -135,7 +139,7 @@ html += `<div style="display:flex;flex-direction:column;gap:0.5rem;">
 ${delFn?`<button onclick="${delFn}" style="flex:1;padding:0.7rem;background:#dc2626;color:white;border:none;border-radius:8px;font-weight:600;font-size:0.875rem;cursor:pointer;">🗑️ Delete</button>`:''}
 </div>
 ${profileFn?`<button onclick="${profileFn}" style="padding:0.7rem;background:rgba(10,77,60,0.08);color:#0a4d3c;border:2px solid #0a4d3c;border-radius:8px;font-weight:600;font-size:0.875rem;cursor:pointer;">👤 View Full Profile</button>`:''}
-${(!isOpen && r.reminder_date)?`<div style="display:flex;gap:0.5rem;"><button onclick="openGoogleCalendar('${r.id}')" style="flex:1;padding:0.7rem;background:rgba(59,130,246,0.08);color:#1d4ed8;border:2px solid #3b82f6;border-radius:8px;font-weight:600;font-size:0.875rem;cursor:pointer;-webkit-tap-highlight-color:transparent;">📅 Google Calendar</button><button onclick="exportTaskToCalendar('${r.id}')" style="padding:0.7rem 0.85rem;background:rgba(59,130,246,0.08);color:#1d4ed8;border:2px solid #3b82f6;border-radius:8px;font-weight:600;font-size:0.875rem;cursor:pointer;-webkit-tap-highlight-color:transparent;" title="Download .ics for Apple/Outlook">⬇ .ics</button></div>`:''}
+${(!isOpen && r.reminder_date)?`<div><div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.4rem;"><span style="font-size:0.82rem;color:#555;min-width:5.5rem;font-weight:500;">Visit time</span><input type="time" id="taskCalTime" style="flex:1;padding:0.4rem 0.6rem;border:1px solid #d1d5db;border-radius:6px;font-size:0.9rem;font-family:inherit;" aria-label="Calendar event time"><span style="font-size:0.72rem;color:#aaa;white-space:nowrap;">optional</span></div><div style="display:flex;gap:0.5rem;"><button onclick="openGoogleCalendar('${r.id}')" style="flex:1;padding:0.7rem;background:rgba(59,130,246,0.08);color:#1d4ed8;border:2px solid #3b82f6;border-radius:8px;font-weight:600;font-size:0.875rem;cursor:pointer;-webkit-tap-highlight-color:transparent;">📅 Google Calendar</button><button onclick="exportTaskToCalendar('${r.id}')" style="padding:0.7rem 0.85rem;background:rgba(59,130,246,0.08);color:#1d4ed8;border:2px solid #3b82f6;border-radius:8px;font-weight:600;font-size:0.875rem;cursor:pointer;-webkit-tap-highlight-color:transparent;" title="Add to Apple Calendar / Outlook">🍎 Apple Cal</button></div></div>`:''}
 </div>`;
 $('taskDetailTitle').textContent = phys ? fmtName(phys) : (practice?.name || loc?.label || 'Task');
 $('taskDetailBody').innerHTML = html;
@@ -144,7 +148,7 @@ $('taskDetailModal').classList.add('active');
 $('taskDetailModal').onclick = function(e){ if(e.target===this) closeTaskDetailModal(); };
 }
 async function rescheduleTask(logId, newDate) {
-const r = _taskDetailLogs[logId];
+const r = _taskDetailLogs[logId] || (window._taskDetailLogs||{})[logId];
 if (!r) return;
 try {
 const {error} = await db.from('contact_logs').update({reminder_date: newDate}).eq('id', logId);
@@ -162,9 +166,9 @@ try{
 const{data:allLogs,error}=await db.from('contact_logs').select('*').order('contact_date',{ascending:false}).order('created_at',{ascending:false}).limit(200);
 if(error)throw error;
 const physMap={};physicians.forEach(p=>physMap[p.id]=p);
-const search=$('searchInput').value.toLowerCase();
-const filtered=search?allLogs.filter(l=>{const p=physMap[l.provider_id]||{};
-return(l.notes||'').toLowerCase().includes(search)||(l.author||'').toLowerCase().includes(search)||(p.first_name||'').toLowerCase().includes(search)||(p.last_name||'').toLowerCase().includes(search);
+const search=$('searchInput').value.trim().toLowerCase();
+const filtered=search?allLogs.filter(l=>{const p=physMap[l.provider_id]||{};const fullName=((p.first_name||'')+' '+(p.last_name||'')).trim();
+return(l.notes||'').toLowerCase().includes(search)||(l.author||'').toLowerCase().includes(search)||fullName.toLowerCase().includes(search)||(p.first_name||'').toLowerCase().includes(search)||(p.last_name||'').toLowerCase().includes(search);
 }):allLogs;
 $('physicianList').innerHTML=filtered.length===0?'<li class="loading">No activity found</li>':
 filtered.map(l=>{const p=l.provider_id?physMap[l.provider_id]:null;
@@ -181,7 +185,7 @@ return`<li class="physician-item" onclick="${clickFn}">
 $('physicianCount').textContent=filtered.length+' of '+allLogs.length+' activities';
 $('mainContent').innerHTML=`<div class="section"><div class="section-header"><h3>Activity Log</h3><div style="font-size:0.8rem;color:#666;">${filtered.length} entries${search?' matching "'+search+'"':''}</div></div>
 ${filtered.length===0?'<div class="empty-notice">No activity found.</div>':
-'<div class="contact-entries">'+filtered.map(e=>{const phys=e.provider_id?physMap[e.provider_id]:null;const canEdit=!!e.provider_id;return renderLogEntry(e,{physName:phys?fmtName(phys):null,editable:canEdit,editFn:`editNoteFromActivity('${e.id}','${e.provider_id}')`,deleteFn:`deleteNoteFromActivity('${e.id}','${e.provider_id}')`,full:true,showTimestamp:true});}).join('')+'</div>'}
+'<div class="contact-entries">'+filtered.map(e=>{const phys=e.provider_id?physMap[e.provider_id]:null;const editFn=e.provider_id?`editNoteFromActivity('${e.id}','${e.provider_id}')`:`editPracticeNote('${e.id}')`;const delFn=e.provider_id?`deleteNoteFromActivity('${e.id}','${e.provider_id}')`:`deletePracticeNote('${e.id}')`;return renderLogEntry(e,{physName:phys?fmtName(phys):null,editable:true,editFn,deleteFn:delFn,full:true,showTimestamp:true});}).join('')+'</div>'}
 </div>`;
 }catch(e){console.error('Activity view error:',e);$('physicianList').innerHTML='<li class="loading">Error loading activity</li>';$('mainContent').innerHTML='<div class="empty-state"><h2>Activity</h2><p>Error loading. Try again.</p></div>';}
 }
@@ -200,12 +204,15 @@ if(!reminders||reminders.length===0){
 $('mainContent').innerHTML=`<div class="section"><div class="section-header"><h3>Tasks &amp; Reminders</h3>${newTaskBtn}</div><div class="empty-notice">No tasks yet. Use the button above to create one.</div></div>`;
 return;
 }
+const search=$('searchInput').value.trim().toLowerCase();
+const filtered=search?reminders.filter(r=>{const ph=physMap[r.provider_id]||{};const fullName=((ph.first_name||'')+' '+(ph.last_name||'')).trim();return(r.notes||'').toLowerCase().includes(search)||(r.author||'').toLowerCase().includes(search)||fullName.toLowerCase().includes(search)||(ph.first_name||'').toLowerCase().includes(search)||(ph.last_name||'').toLowerCase().includes(search);}):reminders;
+if(search&&filtered.length===0){$('mainContent').innerHTML=`<div class="section"><div class="section-header"><h3>Tasks &amp; Reminders</h3>${newTaskBtn}</div><div class="empty-notice">No tasks matching "${search}".</div></div>`;return;}
 const OPEN_DATE='2099-12-31';
-const openTasks=reminders.filter(r=>r.reminder_date===OPEN_DATE);
-const datedR=reminders.filter(r=>r.reminder_date!==OPEN_DATE);
+const openTasks=filtered.filter(r=>r.reminder_date===OPEN_DATE);
+const datedR=filtered.filter(r=>r.reminder_date!==OPEN_DATE);
 const overdue=datedR.filter(r=>r.reminder_date<today);
 const upcoming=datedR.filter(r=>r.reminder_date>=today);
-let html=`<div class="section"><div class="section-header"><h3>Tasks &amp; Reminders</h3><div style="display:flex;align-items:center;gap:0.75rem;"><div style="font-size:0.8rem;color:#666;">${reminders.length} total${overdue.length>0?` — <span style="color:#dc2626;font-weight:600;">${overdue.length} overdue</span>`:''}${openTasks.length>0?` — ${openTasks.length} open`:''}</div>${newTaskBtn}</div></div>`;
+let html=`<div class="section"><div class="section-header"><h3>Tasks &amp; Reminders</h3><div style="display:flex;align-items:center;gap:0.75rem;"><div style="font-size:0.8rem;color:#666;">${search?`${filtered.length} of ${reminders.length} matching "${search}"`:reminders.length+' total'}${overdue.length>0?` — <span style="color:#dc2626;font-weight:600;">${overdue.length} overdue</span>`:''}${openTasks.length>0?` — ${openTasks.length} open`:''}</div>${newTaskBtn}</div></div>`;
 if(overdue.length>0){
 html+=`<div style="margin-bottom:1rem;"><div style="font-size:0.75rem;font-weight:700;color:#dc2626;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:0.5rem;padding-bottom:0.25rem;border-bottom:2px solid #fca5a5;">⚠️ Overdue (${overdue.length})</div><div class="contact-entries">`;
 overdue.forEach(r=>{
