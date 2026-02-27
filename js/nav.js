@@ -286,7 +286,7 @@ let base = filterTier ? physicians.filter(p => normPriority(p.priority) === filt
 if (!search) return base;
 return base.filter(p => {
 const np = normPriority(p.priority);
-if ([p.first_name,p.last_name,p.specialty,p.email,p.general_notes,np?'P'+np:null,p.academic_connection||p.um_connection,p.proj_vol,p.mohs_volume,p.practice_name].some(v=>(v||'').toLowerCase().includes(search))) return true;
+if ([p.first_name,p.last_name,p.specialty,p.email,p.general_notes,np?'P'+np:null,p.academic_connection||p.um_connection,p.proj_vol,p.mohs_volume,p.practice_name].some(v=>String(v??'').toLowerCase().includes(search))) return true;
 const logs=contactLogs[p.id]||[];
 if(logs.some(l=>(l.notes||'').toLowerCase().includes(search)||(l.author||'').toLowerCase().includes(search))) return true;
 const assigns=physicianAssignments[p.id]||[];

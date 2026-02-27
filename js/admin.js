@@ -3,6 +3,7 @@
 // --- CSV Import ---
 function importCSVPaste(){const t=(document.getElementById('csvPasteArea')?.value||'').trim();if(!t){showToast('Paste CSV text first','error');return;}importCSV({text:()=>Promise.resolve(t)});}
 async function importCSVText(text){await importCSV({text:()=>Promise.resolve(text)});}
+function normalizeAddr(s){return(s||'').trim().replace(/\bnan\b/gi,'').replace(/\s+/g,' ').trim().replace(/(Suite|Ste\.?|Apt\.?|Unit)\.?\s*#?\s*(\d+)/gi,'#$2').replace(/\b(Southwest|Northwest|Northeast|Southeast|North|South|East|West)\b/gi,m=>{const d={southwest:'SW',northwest:'NW',northeast:'NE',southeast:'SE',north:'N',south:'S',east:'E',west:'W'};return d[m.toLowerCase()]||m.toUpperCase();}).replace(/\b(SW|NW|NE|SE)\b/gi,m=>m.toUpperCase()).replace(/\s+/g,' ').trim();}
 async function importCSV(file) {
 if(!file)return;
 const status=s=>{const el=$('importStatus');if(el)el.textContent=s;const el2=$('importStatusMain');if(el2)el2.textContent=s;};
@@ -35,17 +36,18 @@ function getPractId(practName){const n=(practName||'').trim();return practiceMap
 // Phase 2: Find/create ALL locations first (independent of which provider is listed)
 status('Creating practice locations...');
 const locMap={};// key: `${practiceId}|${address}` -> location record
-const seenLocKeys=new Set();
+const seenLocKeys=new Set();const practLocsCache={};
 for(const r of rows){
 const practId=getPractId(r.practice_name);
-const addr=(r.address||'').trim().replace(/\bnan\b/gi,'').replace(/\s+/g,' ').trim().replace(/(Suite|Ste\.?|Apt\.?|Unit)\.?\s*#?\s*(\d+)/gi,'#$2').replace(/\b(Southwest|Northwest|Northeast|Southeast|North|South|East|West)\b/gi,m=>{const d={southwest:'SW',northwest:'NW',northeast:'NE',southeast:'SE',north:'N',south:'S',east:'E',west:'W'};return d[m.toLowerCase()]||m.toUpperCase();}).replace(/\b(SW|NW|NE|SE)\b/gi,m=>m.toUpperCase()).replace(/\s+/g,' ').trim();
+const addr=normalizeAddr(r.address);
 if(!practId||!addr||addr==='[Research needed]')continue;
 const locKey=`${practId}|${addr}`;
 if(seenLocKeys.has(locKey))continue;
 seenLocKeys.add(locKey);
 const city=(r.city||'').trim();
-const{data:exLoc}=await db.from('practice_locations').select('*').eq('practice_id',practId).eq('address',addr).maybeSingle();
-const locRec=exLoc||(await db.from('practice_locations').insert({practice_id:practId,label:city||'Office',address:addr,city,zip:(r.zip||'').trim(),phone:r.phone||null,fax:r.fax||null,office_hours:r.office_hours||null,office_staff:r.office_staff||null,receptionist_name:r.receptionist_name||r.receptionist||null,best_days:r.best_days||null,practice_email:r.practice_email||r.office_email||null}).select().maybeSingle()).data;
+if(!practLocsCache[practId]){const{data:pls}=await db.from('practice_locations').select('*').eq('practice_id',practId);practLocsCache[practId]=pls||[];}
+const exLoc=practLocsCache[practId].find(l=>normalizeAddr(l.address||'').toLowerCase()===addr.toLowerCase());
+let locRec=exLoc;if(!locRec){const{data:nl}=await db.from('practice_locations').insert({practice_id:practId,label:city||'Office',address:addr,city,zip:(r.zip||'').trim(),phone:r.phone||null,fax:r.fax||null,office_hours:r.office_hours||null,office_staff:r.office_staff||null,receptionist_name:r.receptionist_name||r.receptionist||null,best_days:r.best_days||null,practice_email:r.practice_email||r.office_email||null}).select().maybeSingle();if(nl){practLocsCache[practId].push(nl);locRec=nl;}}
 if(locRec)locMap[locKey]=locRec;
 }
 
@@ -59,7 +61,7 @@ const e=physMap.get(key);
 const practId=getPractId(r.practice_name);
 if(practId)e.practiceIds.add(practId);
 // Track primary location (first address listed for this provider)
-const addr=(r.address||'').trim().replace(/\bnan\b/gi,'').replace(/\s+/g,' ').trim().replace(/(Suite|Ste\.?|Apt\.?|Unit)\.?\s*#?\s*(\d+)/gi,'#$2').replace(/\b(Southwest|Northwest|Northeast|Southeast|North|South|East|West)\b/gi,m=>{const d={southwest:'SW',northwest:'NW',northeast:'NE',southeast:'SE',north:'N',south:'S',east:'E',west:'W'};return d[m.toLowerCase()]||m.toUpperCase();}).replace(/\b(SW|NW|NE|SE)\b/gi,m=>m.toUpperCase()).replace(/\s+/g,' ').trim();
+const addr=normalizeAddr(r.address);
 if(!e.primaryLocKey&&practId&&addr&&addr!=='[Research needed]')e.primaryLocKey=`${practId}|${addr}`;
 });
 
