@@ -99,8 +99,13 @@ async function syncGoogleSheet() {
     return;
   }
   if (statusEl) { statusEl.style.color = '#aaa'; statusEl.textContent = 'Syncing…'; }
+  // Use hidden iframe instead of fetch — Safari blocks no-cors fetch to redirecting URLs (Apps Script)
   try {
-    await fetch(url, { method: 'GET', mode: 'no-cors' });
+    const iframe = document.createElement('iframe');
+    iframe.style.cssText = 'display:none;width:0;height:0;border:0;position:absolute;';
+    iframe.src = url;
+    document.body.appendChild(iframe);
+    setTimeout(() => { if (iframe.parentNode) iframe.parentNode.removeChild(iframe); }, 15000);
     if (statusEl) { statusEl.style.color = '#10b981'; statusEl.textContent = 'Sync triggered — sheet updates in ~30 sec'; }
     showToast('Google Sheet sync triggered', 'success');
   } catch (e) {
