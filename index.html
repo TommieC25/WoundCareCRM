@@ -56,6 +56,11 @@ Append New Records from CSV <input type="file" accept=".csv" onchange="importCSV
 <button style="background:#0ea5e9;color:white;border:none;padding:0.6rem 1rem;border-radius:6px;font-size:0.85rem;cursor:pointer;width:100%;font-weight:600;" onclick="openExportModal()">Export Data</button>
 <h4 style="margin-top:1rem;color:#f97316;">Analytics</h4>
 <button style="background:#f97316;color:white;border:none;padding:0.6rem 1rem;border-radius:6px;font-size:0.85rem;cursor:pointer;width:100%;font-weight:600;" onclick="setView('dashboard')">Territory Dashboard</button>
+<h4 style="margin-top:1rem;color:#10b981;">Google Sheet Sync</h4>
+<button style="background:#10b981;color:white;border:none;padding:0.6rem 1rem;border-radius:6px;font-size:0.85rem;cursor:pointer;width:100%;font-weight:600;margin-bottom:0.4rem;" onclick="syncGoogleSheet()">Sync to Google Sheet Now</button>
+<div id="syncSheetStatus" style="font-size:0.75rem;color:#aaa;min-height:1rem;margin-bottom:0.35rem;"></div>
+<div style="font-size:0.7rem;color:#888;margin-bottom:0.2rem;">Web app URL (paste once after deploying Apps Script):</div>
+<input id="sheetSyncUrl" type="url" placeholder="https://script.google.com/macros/s/…/exec" style="width:100%;padding:0.4rem 0.6rem;background:#2a2a3e;color:#ccc;border:1px solid #444;border-radius:6px;font-size:0.72rem;font-family:monospace;margin-bottom:0.25rem;box-sizing:border-box;" oninput="localStorage.setItem('sheetSyncUrl',this.value.trim())">
 <button class="btn-danger" onclick="clearDatabase()" style="margin-top:1rem;">Clear All Data</button>
 </div>
 </div>

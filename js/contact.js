@@ -381,4 +381,5 @@ setTimeout(()=>_t.remove(),15000);
 function toggleAdminPanel() {
 const panel = $('adminPanel');
 panel.classList.toggle('show');
+if (panel.classList.contains('show')) initSheetSyncUrl();
 }

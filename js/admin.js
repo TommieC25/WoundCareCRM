@@ -89,6 +89,32 @@ updateSyncIndicators('synced');
 }catch(e){console.error('Import error:',e);status('Error: '+e.message);showToast('Import failed: '+e.message,'error');updateSyncIndicators('error');}
 }
 
+async function syncGoogleSheet() {
+  const urlEl = $('sheetSyncUrl');
+  const url = (urlEl ? urlEl.value.trim() : '') || localStorage.getItem('sheetSyncUrl') || '';
+  const statusEl = $('syncSheetStatus');
+  if (!url) {
+    if (statusEl) statusEl.textContent = 'Paste your Apps Script web app URL above first.';
+    showToast('No web app URL set — see Admin Settings', 'error');
+    return;
+  }
+  if (statusEl) { statusEl.style.color = '#aaa'; statusEl.textContent = 'Syncing…'; }
+  try {
+    await fetch(url, { method: 'GET', mode: 'no-cors' });
+    if (statusEl) { statusEl.style.color = '#10b981'; statusEl.textContent = 'Sync triggered — sheet updates in ~30 sec'; }
+    showToast('Google Sheet sync triggered', 'success');
+  } catch (e) {
+    if (statusEl) { statusEl.style.color = '#dc2626'; statusEl.textContent = 'Request failed: ' + e.message; }
+    showToast('Sync request failed: ' + e.message, 'error');
+  }
+}
+
+function initSheetSyncUrl() {
+  const saved = localStorage.getItem('sheetSyncUrl') || '';
+  const el = $('sheetSyncUrl');
+  if (el && saved) el.value = saved;
+}
+
 async function clearDatabase() {
 const confirmMsg = 'Are you sure you want to DELETE ALL DATA?\n\nThis will remove:\n- All providers\n- All practices\n- All locations\n- All contact logs\n\nThis cannot be undone!';
 if (!confirm(confirmMsg)) return;

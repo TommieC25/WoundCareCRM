@@ -80,10 +80,10 @@ function installTriggers() {
     .create();
   ScriptApp.newTrigger('syncFieldRouting')
     .timeBased()
-    .everyHours(1)
+    .everyMinutes(15)
     .create();
-  Logger.log('Triggers installed: onOpen + hourly');
-  SpreadsheetApp.getUi().alert('Triggers installed successfully!\n\nThe sheet will now auto-refresh when opened and every hour.');
+  Logger.log('Triggers installed: onOpen + every 15 minutes');
+  SpreadsheetApp.getUi().alert('Triggers installed successfully!\n\nThe sheet will now auto-refresh when opened and every 15 minutes.\n\nTo enable the "Sync Now" button in the CRM, deploy this script as a Web App\n(Deploy → New deployment → Web app → Execute as Me → Anyone).');
 }
 
 function onOpen() {
@@ -92,6 +92,23 @@ function onOpen() {
     .addItem('Refresh Now', 'syncFieldRouting')
     .addItem('Reinstall Triggers', 'installTriggers')
     .addToUi();
+}
+
+// === WEB APP ENDPOINT ===
+// Deploy as Web App (Execute as: Me, Who has access: Anyone) to enable the
+// "Sync Now" button in the CRM.  The CRM calls this URL via a simple GET
+// request to trigger an immediate sync without needing to open the sheet.
+function doGet(e) {
+  try {
+    syncFieldRouting();
+    return ContentService
+      .createTextOutput(JSON.stringify({ ok: true, ts: new Date().toISOString() }))
+      .setMimeType(ContentService.MimeType.JSON);
+  } catch (err) {
+    return ContentService
+      .createTextOutput(JSON.stringify({ ok: false, error: err.toString() }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
 }
 
 // === MAIN SYNC FUNCTION ===
