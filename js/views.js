@@ -4,7 +4,7 @@ function closeTaskDetailModal() { closeModal('taskDetailModal'); }
 
 // === CALENDAR EXPORT (.ics) ===
 function downloadTaskICS(r, phys, loc, practice, timeVal) {
-  if (!r.reminder_date || r.reminder_date === '2099-12-31') { showToast('No due date — set a date before exporting to calendar', 'error'); return; }
+  if (!r.reminder_date || r.reminder_date === '2099-12-31') { return; }
   const name = phys ? fmtName(phys) : (practice ? practice.name : (loc ? (loc.label || 'Office') : 'Task'));
   const tm = (r.notes||'').match(/^\[(\d{1,2}:\d{2}(?:\s*[APap][Mm])?)\]\s*/);
   let dn = tm ? r.notes.replace(tm[0], '') : (r.notes||'');
@@ -63,7 +63,7 @@ function exportTaskToCalendar(logId) {
 function openGoogleCalendar(logId) {
   const r = (_taskDetailLogs||{})[logId] || (window._taskDetailLogs||{})[logId];
   if (!r) return;
-  if (!r.reminder_date || r.reminder_date === '2099-12-31') { showToast('No due date — set a date before adding to calendar', 'error'); return; }
+  if (!r.reminder_date || r.reminder_date === '2099-12-31') { return; }
   const phys = r.provider_id ? physicians.find(p=>p.id===r.provider_id) : null;
   const loc = r.practice_location_id ? practiceLocations.find(l=>l.id===r.practice_location_id) : null;
   const practice = loc ? practices.find(p=>p.id===loc.practice_id) : null;
