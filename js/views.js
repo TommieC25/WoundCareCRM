@@ -166,9 +166,9 @@ try{
 const{data:allLogs,error}=await db.from('contact_logs').select('*').order('contact_date',{ascending:false}).order('created_at',{ascending:false}).limit(200);
 if(error)throw error;
 const physMap={};physicians.forEach(p=>physMap[p.id]=p);
-const search=$('searchInput').value.toLowerCase();
-const filtered=search?allLogs.filter(l=>{const p=physMap[l.provider_id]||{};
-return(l.notes||'').toLowerCase().includes(search)||(l.author||'').toLowerCase().includes(search)||(p.first_name||'').toLowerCase().includes(search)||(p.last_name||'').toLowerCase().includes(search);
+const search=$('searchInput').value.trim().toLowerCase();
+const filtered=search?allLogs.filter(l=>{const p=physMap[l.provider_id]||{};const fullName=((p.first_name||'')+' '+(p.last_name||'')).trim();
+return(l.notes||'').toLowerCase().includes(search)||(l.author||'').toLowerCase().includes(search)||fullName.toLowerCase().includes(search)||(p.first_name||'').toLowerCase().includes(search)||(p.last_name||'').toLowerCase().includes(search);
 }):allLogs;
 $('physicianList').innerHTML=filtered.length===0?'<li class="loading">No activity found</li>':
 filtered.map(l=>{const p=l.provider_id?physMap[l.provider_id]:null;
@@ -204,8 +204,8 @@ if(!reminders||reminders.length===0){
 $('mainContent').innerHTML=`<div class="section"><div class="section-header"><h3>Tasks &amp; Reminders</h3>${newTaskBtn}</div><div class="empty-notice">No tasks yet. Use the button above to create one.</div></div>`;
 return;
 }
-const search=$('searchInput').value.toLowerCase();
-const filtered=search?reminders.filter(r=>{const ph=physMap[r.provider_id]||{};return(r.notes||'').toLowerCase().includes(search)||(r.author||'').toLowerCase().includes(search)||(ph.first_name||'').toLowerCase().includes(search)||(ph.last_name||'').toLowerCase().includes(search);}):reminders;
+const search=$('searchInput').value.trim().toLowerCase();
+const filtered=search?reminders.filter(r=>{const ph=physMap[r.provider_id]||{};const fullName=((ph.first_name||'')+' '+(ph.last_name||'')).trim();return(r.notes||'').toLowerCase().includes(search)||(r.author||'').toLowerCase().includes(search)||fullName.toLowerCase().includes(search)||(ph.first_name||'').toLowerCase().includes(search)||(ph.last_name||'').toLowerCase().includes(search);}):reminders;
 if(search&&filtered.length===0){$('mainContent').innerHTML=`<div class="section"><div class="section-header"><h3>Tasks &amp; Reminders</h3>${newTaskBtn}</div><div class="empty-notice">No tasks matching "${search}".</div></div>`;return;}
 const OPEN_DATE='2099-12-31';
 const openTasks=filtered.filter(r=>r.reminder_date===OPEN_DATE);
