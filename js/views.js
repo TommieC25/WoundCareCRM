@@ -185,7 +185,7 @@ return`<li class="physician-item" onclick="${clickFn}">
 $('physicianCount').textContent=filtered.length+' of '+allLogs.length+' activities';
 $('mainContent').innerHTML=`<div class="section"><div class="section-header"><h3>Activity Log</h3><div style="font-size:0.8rem;color:#666;">${filtered.length} entries${search?' matching "'+search+'"':''}</div></div>
 ${filtered.length===0?'<div class="empty-notice">No activity found.</div>':
-'<div class="contact-entries">'+filtered.map(e=>{const phys=e.provider_id?physMap[e.provider_id]:null;const canEdit=!!e.provider_id;return renderLogEntry(e,{physName:phys?fmtName(phys):null,editable:canEdit,editFn:`editNoteFromActivity('${e.id}','${e.provider_id}')`,deleteFn:`deleteNoteFromActivity('${e.id}','${e.provider_id}')`,full:true,showTimestamp:true});}).join('')+'</div>'}
+'<div class="contact-entries">'+filtered.map(e=>{const phys=e.provider_id?physMap[e.provider_id]:null;const editFn=e.provider_id?`editNoteFromActivity('${e.id}','${e.provider_id}')`:`editPracticeNote('${e.id}')`;const delFn=e.provider_id?`deleteNoteFromActivity('${e.id}','${e.provider_id}')`:`deletePracticeNote('${e.id}')`;return renderLogEntry(e,{physName:phys?fmtName(phys):null,editable:true,editFn,deleteFn:delFn,full:true,showTimestamp:true});}).join('')+'</div>'}
 </div>`;
 }catch(e){console.error('Activity view error:',e);$('physicianList').innerHTML='<li class="loading">Error loading activity</li>';$('mainContent').innerHTML='<div class="empty-state"><h2>Activity</h2><p>Error loading. Try again.</p></div>';}
 }
