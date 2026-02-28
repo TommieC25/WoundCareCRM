@@ -2,7 +2,7 @@
 
 // --- Realtime ---
 function setupRealtimeSubscription() {
-['physicians','practices','practice_locations','physician_location_assignments'].forEach(t =>
+['providers','practices','practice_locations','provider_location_assignments'].forEach(t =>
 db.channel(t+'-ch').on('postgres_changes',{event:'*',schema:'public',table:t},()=>loadAllData()).subscribe());
 db.channel('contact-logs-ch')
 .on('postgres_changes',{event:'*',schema:'public',table:'contact_logs'},(payload)=>{
@@ -233,6 +233,7 @@ function locPhone(p){var f=fmtPhone(p);return`<a href="tel:${(p||'').replace(/\D
 function locDetails(loc){return ld(loc.address,'📍',locAddr(loc))+ld(loc.phone,'📞',locPhone(loc.phone))+ld(loc.fax,'📠',fmtPhone(loc.fax))+ld(loc.practice_email,'✉️',loc.practice_email?`<a href="mailto:${loc.practice_email}">${loc.practice_email}</a>`:'')+ld(loc.office_hours,'🕐')+ld(loc.office_staff,'👥')+ld(loc.receptionist_name,'👤')+ld(loc.best_days,'📅')}
 function mi(label,val){return `<div class="meta-item"><div class="meta-label">${label}</div><div class="meta-value">${val}</div></div>`}
 function parseNoteTime(notes){const tm=(notes||'').match(/^\[(\d{1,2}:\d{2}(?:\s*[APap][Mm])?)\]\s*/);return tm?{time:' '+tm[1],text:notes.replace(tm[0],'')}:{time:'',text:notes||''};}
+function parseTaskRecord(notes){const tm=(notes||'').match(/^\[(\d{1,2}:\d{2}(?:\s*[APap][Mm])?)\]\s*/);let dn=tm?notes.replace(tm[0],''):(notes||'');const txm=dn.match(/\s*\|\s*\[Task:\s*(.*?)\]$/);const taskNote=txm?txm[1].trim():'';if(txm)dn=dn.slice(0,txm.index).trim();return{noteTime:tm?tm[1]:'',displayNotes:dn,taskNote};}
 function renderLogEntry(e,opts={}){const{time,text}=parseNoteTime(e.notes);const preview=opts.full?text:(text.length>120?text.substring(0,120)+'...':text);
 const fmtCD=(ds)=>{if(!ds)return'';const d=new Date(ds+'T12:00:00');return d.toLocaleDateString('en-US',{month:'short',day:'numeric'});};
 const headerLine1=`${fmtCD(e.contact_date)}${time?' · '+time.trim():''}${e.author?' — '+e.author:''}`;
@@ -402,7 +403,7 @@ ${mi('Providers',physicians.length)}${mi('Practices',practices.length)}${mi('Loc
 `;
 try {
 const today = localDate();
-const {data:reminders,error:remErr} = await db.from('contact_logs').select('*').not('reminder_date','is',null).order('reminder_date',{ascending:true});
+const {data:reminders,error:remErr} = await db.from('contact_logs').select('*').not('reminder_date','is',null).neq('reminder_date','2000-01-01').order('reminder_date',{ascending:true});
 if (reminders) { if (!window._taskDetailLogs) window._taskDetailLogs = {}; reminders.forEach(r => window._taskDetailLogs[r.id] = r); }
 const rc = $('remindersContent');
 if (remErr) { rc.innerHTML = '<div class="empty-notice">Could not load reminders</div>'; }
@@ -421,9 +422,7 @@ overdue.forEach(r => {
 const phys = r.provider_id ? physicians.find(p => p.id === r.provider_id) : null;
 const physName = phys ? fmtName(phys) : (r.practice_location_id ? getLocationLabel(r.practice_location_id) : 'Location Note');
 const emailLink = phys?.email ? ` — <a href="mailto:${phys.email}" onclick="event.stopPropagation()" style="color:#0a4d3c;font-size:0.75rem;">✉️ Email</a>` : '';
-const tm = (r.notes||'').match(/^\[(\d{1,2}:\d{2}(?:\s*[APap][Mm])?)\]\s*/);
-let displayNotes = tm ? r.notes.replace(tm[0], '') : (r.notes||'');
-const taskMatch=displayNotes.match(/\s*\|\s*\[Task:\s*(.*?)\]$/);const taskNote=taskMatch?taskMatch[1].trim():'';if(taskMatch)displayNotes=displayNotes.slice(0,taskMatch.index).trim();
+const {displayNotes,taskNote}=parseTaskRecord(r.notes);
 const preview = displayNotes.length > 100 ? displayNotes.substring(0,100) + '...' : displayNotes;
 html += `<div class="contact-entry" style="cursor:pointer;border-left-color:#dc2626;background:#fff5f5;margin-bottom:0.5rem;display:flex;gap:0.5rem;align-items:flex-start;" onclick="openTaskDetailModal('${r.id}')">
 <button onclick="event.stopPropagation();completeReminder('${r.id}')" title="Mark complete" style="background:none;border:2px solid #dc2626;color:#dc2626;border-radius:50%;width:22px;height:22px;min-width:22px;cursor:pointer;font-size:0.75rem;display:flex;align-items:center;justify-content:center;margin-top:0.15rem;flex-shrink:0;">✓</button>
@@ -449,9 +448,7 @@ dayReminders.forEach(r => {
 const phys = r.provider_id ? physicians.find(p => p.id === r.provider_id) : null;
 const physName = phys ? fmtName(phys) : (r.practice_location_id ? getLocationLabel(r.practice_location_id) : 'Location Note');
 const emailLink = phys?.email ? ` — <a href="mailto:${phys.email}" onclick="event.stopPropagation()" style="color:#0a4d3c;font-size:0.75rem;">✉️ Email</a>` : '';
-const tm = (r.notes||'').match(/^\[(\d{1,2}:\d{2}(?:\s*[APap][Mm])?)\]\s*/);
-let displayNotes = tm ? r.notes.replace(tm[0], '') : (r.notes||'');
-const taskMatch=displayNotes.match(/\s*\|\s*\[Task:\s*(.*?)\]$/);const taskNote=taskMatch?taskMatch[1].trim():'';if(taskMatch)displayNotes=displayNotes.slice(0,taskMatch.index).trim();
+const {displayNotes,taskNote}=parseTaskRecord(r.notes);
 const preview = displayNotes.length > 100 ? displayNotes.substring(0,100) + '...' : displayNotes;
 html += `<div class="contact-entry" style="cursor:pointer;border-left-color:#f59e0b;margin-bottom:0.5rem;display:flex;gap:0.5rem;align-items:flex-start;" onclick="openTaskDetailModal('${r.id}')">
 <button onclick="event.stopPropagation();completeReminder('${r.id}')" title="Mark complete" style="background:none;border:2px solid #f59e0b;color:#92400e;border-radius:50%;width:22px;height:22px;min-width:22px;cursor:pointer;font-size:0.75rem;display:flex;align-items:center;justify-content:center;margin-top:0.15rem;flex-shrink:0;">✓</button>
@@ -471,11 +468,7 @@ html += `<div style="margin-bottom:0.5rem;"><div style="font-size:0.75rem;font-w
 openReminders.forEach(r => {
 const phys = r.provider_id ? physicians.find(p => p.id === r.provider_id) : null;
 const physName = phys ? fmtName(phys) : (r.practice_location_id ? getLocationLabel(r.practice_location_id) : 'Location Note');
-const tm = (r.notes||'').match(/^\[(\d{1,2}:\d{2}(?:\s*[APap][Mm])?)\]\s*/);
-let displayNotes = tm ? r.notes.replace(tm[0], '') : (r.notes||'');
-const taskMatch = displayNotes.match(/\s*\|\s*\[Task:\s*(.*?)\]$/);
-const taskNote = taskMatch ? taskMatch[1].trim() : '';
-if (taskMatch) displayNotes = displayNotes.slice(0, taskMatch.index).trim();
+const {displayNotes,taskNote}=parseTaskRecord(r.notes);
 const preview = displayNotes.length > 80 ? displayNotes.substring(0,80) + '...' : displayNotes;
 html += `<div class="contact-entry" style="cursor:pointer;border-left-color:#6b7280;margin-bottom:0.5rem;display:flex;gap:0.5rem;align-items:flex-start;" onclick="openTaskDetailModal('${r.id}')">
 <button onclick="event.stopPropagation();completeReminder('${r.id}')" title="Mark complete" style="background:none;border:2px solid #6b7280;color:#6b7280;border-radius:50%;width:22px;height:22px;min-width:22px;cursor:pointer;font-size:0.75rem;display:flex;align-items:center;justify-content:center;margin-top:0.15rem;flex-shrink:0;">✓</button>

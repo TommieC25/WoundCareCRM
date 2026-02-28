@@ -6,11 +6,7 @@ function closeTaskDetailModal() { closeModal('taskDetailModal'); }
 function downloadTaskICS(r, phys, loc, practice, timeVal) {
   if (!r.reminder_date || r.reminder_date === '2099-12-31') { return; }
   const name = phys ? fmtName(phys) : (practice ? practice.name : (loc ? (loc.label || 'Office') : 'Task'));
-  const tm = (r.notes||'').match(/^\[(\d{1,2}:\d{2}(?:\s*[APap][Mm])?)\]\s*/);
-  let dn = tm ? r.notes.replace(tm[0], '') : (r.notes||'');
-  const txm = dn.match(/\s*\|\s*\[Task:\s*(.*?)\]$/);
-  const taskNote = txm ? txm[1].trim() : '';
-  if (txm) dn = dn.slice(0, txm.index).trim();
+  const {displayNotes:dn,taskNote} = parseTaskRecord(r.notes);
   const ds = r.reminder_date.replace(/-/g, '');
   let desc = '';
   if (taskNote) desc += 'Task: ' + taskNote + '\\n';
@@ -33,11 +29,7 @@ function downloadTaskICS(r, phys, loc, practice, timeVal) {
 }
 function buildGoogleCalendarUrl(r, phys, loc, practice, timeVal) {
   const name = phys ? fmtName(phys) : (practice ? practice.name : (loc ? (loc.label || 'Office') : 'Task'));
-  const tm = (r.notes||'').match(/^\[(\d{1,2}:\d{2}(?:\s*[APap][Mm])?)\]\s*/);
-  let dn = tm ? r.notes.replace(tm[0], '') : (r.notes||'');
-  const txm = dn.match(/\s*\|\s*\[Task:\s*(.*?)\]$/);
-  const taskNote = txm ? txm[1].trim() : '';
-  if (txm) dn = dn.slice(0, txm.index).trim();
+  const {displayNotes:dn,taskNote} = parseTaskRecord(r.notes);
   const ds = r.reminder_date.replace(/-/g, '');
   const parts = [];
   if (taskNote) parts.push('Task: ' + taskNote);
@@ -76,12 +68,7 @@ if (!r) return;
 const phys = r.provider_id ? physicians.find(p => p.id === r.provider_id) : null;
 const loc = r.practice_location_id ? practiceLocations.find(l => l.id === r.practice_location_id) : null;
 const practice = loc ? practices.find(p => p.id === loc.practice_id) : null;
-const tm = (r.notes||'').match(/^\[(\d{1,2}:\d{2}(?:\s*[APap][Mm])?)\]\s*/);
-let displayNotes = tm ? r.notes.replace(tm[0], '') : (r.notes||'');
-const taskMatch = displayNotes.match(/\s*\|\s*\[Task:\s*(.*?)\]$/);
-const taskNote = taskMatch ? taskMatch[1].trim() : '';
-if (taskMatch) displayNotes = displayNotes.slice(0, taskMatch.index).trim();
-const noteTime = tm ? tm[1] : '';
+const {noteTime,displayNotes,taskNote}=parseTaskRecord(r.notes);
 const today = localDate();
 const isOverdue = r.reminder_date && r.reminder_date !== '2099-12-31' && r.reminder_date < today;
 const isOpen = r.reminder_date === '2099-12-31';
@@ -220,9 +207,7 @@ html+=`<div style="margin-bottom:1rem;"><div style="font-size:0.75rem;font-weigh
 overdue.forEach(r=>{
 const phys=r.provider_id?physMap[r.provider_id]:null;const physName=phys?fmtName(phys):(r.practice_location_id?getLocationLabel(r.practice_location_id):'Location Note');
 const emailLink=phys?.email?` <a href="mailto:${phys.email}" style="color:#0a4d3c;font-size:0.75rem;">✉️ Email</a>`:'';
-const tm=(r.notes||'').match(/^\[(\d{1,2}:\d{2}(?:\s*[APap][Mm])?)\]\s*/);
-let displayNotes=tm?r.notes.replace(tm[0],''):(r.notes||'');
-const taskMatch=displayNotes.match(/\s*\|\s*\[Task:\s*(.*?)\]$/);const taskNote=taskMatch?taskMatch[1].trim():'';if(taskMatch)displayNotes=displayNotes.slice(0,taskMatch.index).trim();
+const {displayNotes,taskNote}=parseTaskRecord(r.notes);
 const preview=displayNotes.length>120?displayNotes.substring(0,120)+'...':displayNotes;
 const editFn=r.provider_id?`editNoteFromActivity('${r.id}','${r.provider_id}')`:''
 const delFn=r.provider_id?`deleteNoteFromActivity('${r.id}','${r.provider_id}').then(()=>renderTasksView())`:''
@@ -239,9 +224,7 @@ html+=`<div style="margin-bottom:0.75rem;"><div style="font-size:0.75rem;font-we
 dayR.forEach(r=>{
 const phys=r.provider_id?physMap[r.provider_id]:null;const physName=phys?fmtName(phys):(r.practice_location_id?getLocationLabel(r.practice_location_id):'Location Note');
 const emailLink=phys?.email?` <a href="mailto:${phys.email}" onclick="event.stopPropagation()" style="color:#0a4d3c;font-size:0.75rem;">✉️ Email</a>`:'';
-const tm=(r.notes||'').match(/^\[(\d{1,2}:\d{2}(?:\s*[APap][Mm])?)\]\s*/);
-let displayNotes=tm?r.notes.replace(tm[0],''):(r.notes||'');
-const taskMatch=displayNotes.match(/\s*\|\s*\[Task:\s*(.*?)\]$/);const taskNote=taskMatch?taskMatch[1].trim():'';if(taskMatch)displayNotes=displayNotes.slice(0,taskMatch.index).trim();
+const {displayNotes,taskNote}=parseTaskRecord(r.notes);
 const preview=displayNotes.length>120?displayNotes.substring(0,120)+'...':displayNotes;
 const editFn=r.provider_id?`editNoteFromActivity('${r.id}','${r.provider_id}')`:''
 const delFn=r.provider_id?`deleteNoteFromActivity('${r.id}','${r.provider_id}').then(()=>renderTasksView())`:''
@@ -255,9 +238,7 @@ html+=`<div style="margin-bottom:0.75rem;"><div style="font-size:0.75rem;font-we
 openTasks.forEach(r=>{
 const phys=r.provider_id?physMap[r.provider_id]:null;const physName=phys?fmtName(phys):(r.practice_location_id?getLocationLabel(r.practice_location_id):'Location Note');
 const emailLink=phys?.email?` <a href="mailto:${phys.email}" onclick="event.stopPropagation()" style="color:#0a4d3c;font-size:0.75rem;">✉️ Email</a>`:'';
-const tm=(r.notes||'').match(/^\[(\d{1,2}:\d{2}(?:\s*[APap][Mm])?)\]\s*/);
-let displayNotes=tm?r.notes.replace(tm[0],''):(r.notes||'');
-const taskMatch=displayNotes.match(/\s*\|\s*\[Task:\s*(.*?)\]$/);const taskNote=taskMatch?taskMatch[1].trim():'';if(taskMatch)displayNotes=displayNotes.slice(0,taskMatch.index).trim();
+const {displayNotes,taskNote}=parseTaskRecord(r.notes);
 const preview=displayNotes.length>120?displayNotes.substring(0,120)+'...':displayNotes;
 const editFn=r.provider_id?`editNoteFromActivity('${r.id}','${r.provider_id}')`:''
 const delFn=r.provider_id?`deleteNoteFromActivity('${r.id}','${r.provider_id}').then(()=>renderTasksView())`:''
@@ -270,9 +251,7 @@ const showCount=20;const shown=completedTasks.slice(0,showCount);
 html+=`<div style="margin-bottom:0.75rem;"><div style="font-size:0.75rem;font-weight:700;color:#10b981;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:0.5rem;padding-bottom:0.25rem;border-bottom:2px solid #a7f3d0;">✓ Recently Completed (${completedTasks.length}${completedTasks.length>showCount?' — showing '+showCount:''})</div><div class="contact-entries">`;
 shown.forEach(r=>{
 const phys=r.provider_id?physMap[r.provider_id]:null;const physName=phys?fmtName(phys):(r.practice_location_id?getLocationLabel(r.practice_location_id):'Note');
-const tm=(r.notes||'').match(/^\[(\d{1,2}:\d{2}(?:\s*[APap][Mm])?)\]\s*/);
-let displayNotes=tm?r.notes.replace(tm[0],''):(r.notes||'');
-const taskMatch=displayNotes.match(/\s*\|\s*\[Task:\s*(.*?)\]$/);if(taskMatch)displayNotes=displayNotes.slice(0,taskMatch.index).trim();
+const {displayNotes}=parseTaskRecord(r.notes);
 const preview=displayNotes.length>100?displayNotes.substring(0,100)+'...':displayNotes;
 const delFn=r.provider_id?`deleteNoteFromActivity('${r.id}','${r.provider_id}').then(()=>renderTasksView())`:''
 html+=`<div class="contact-entry" style="border-left-color:#10b981;background:#f0fdf4;opacity:0.85;display:flex;gap:0.5rem;align-items:flex-start;"><div style="width:24px;height:24px;min-width:24px;border-radius:50%;background:#10b981;color:white;display:flex;align-items:center;justify-content:center;font-size:0.8rem;flex-shrink:0;margin-top:0.15rem;">✓</div><div style="flex:1;"><div style="font-weight:600;color:#065f46;">${physName}</div><div style="font-size:0.85rem;color:#333;margin-top:0.1rem;">${preview}</div><div style="font-size:0.7rem;color:#999;margin-top:0.2rem;">Logged ${r.contact_date}${r.author?' by '+r.author:''}</div>${delFn?`<button class="icon-btn" onclick="${delFn}" style="font-size:0.8rem;color:#dc2626;margin-top:0.25rem;">🗑️ Delete</button>`:''}</div></div>`;

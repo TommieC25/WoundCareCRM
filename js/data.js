@@ -2,35 +2,20 @@
 async function loadAllData() {
 try {
 updateSyncIndicators('syncing');
-const { data: physData, error: physError } = await db
-.from('providers')
-.select('*')
-.order('last_name', { ascending: true });
-if (physError) throw physError;
-physicians = physData || [];
-const { data: practData, error: practError } = await db
-.from('practices')
-.select('*')
-.order('name', { ascending: true });
-if (!practError) {
-practices = practData || [];
-}
-const { data: locData, error: locError } = await db
-.from('practice_locations')
-.select('*, practices(name)')
-.order('city', { ascending: true });
-if (!locError) {
-practiceLocations = locData || [];
-}
-const { data: assignData, error: assignError } = await db
-.from('provider_location_assignments')
-.select('*, practice_locations(*, practices(name))');
-if (!assignError) {
+const [physRes, practRes, locRes, assignRes] = await Promise.all([
+  db.from('providers').select('*').order('last_name', { ascending: true }),
+  db.from('practices').select('*').order('name', { ascending: true }),
+  db.from('practice_locations').select('*, practices(name)').order('city', { ascending: true }),
+  db.from('provider_location_assignments').select('*, practice_locations(*, practices(name))'),
+]);
+if (physRes.error) throw physRes.error;
+physicians = physRes.data || [];
+if (!practRes.error) practices = practRes.data || [];
+if (!locRes.error) practiceLocations = locRes.data || [];
+if (!assignRes.error) {
 physicianAssignments = {};
-(assignData || []).forEach(a => {
-if (!physicianAssignments[a.provider_id]) {
-physicianAssignments[a.provider_id] = [];
-}
+(assignRes.data || []).forEach(a => {
+if (!physicianAssignments[a.provider_id]) physicianAssignments[a.provider_id] = [];
 physicianAssignments[a.provider_id].push(a);
 });
 }
