@@ -85,7 +85,7 @@ const noteTime = tm ? tm[1] : '';
 const today = localDate();
 const isOverdue = r.reminder_date && r.reminder_date !== '2099-12-31' && r.reminder_date < today;
 const isOpen = r.reminder_date === '2099-12-31';
-const isStaff = phys?.specialty === 'Administrative Staff';
+const isStaff = phys?.specialty === 'Staff';
 const np = phys ? normPriority(phys.priority) : null;
 const tierColors = {'1':'#ef4444','2':'#f97316','3':'#3b82f6','4':'#8b5cf6','5':'#64748b'};
 const fmtD = ds => { if(!ds)return''; const d=new Date(ds+'T12:00:00'); return d.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'}); };
