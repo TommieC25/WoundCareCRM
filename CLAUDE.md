@@ -137,6 +137,14 @@ PR_NUM=$(echo $PR | grep -o '"number":[0-9]*' | grep -o '[0-9]*')
 curl -s -X PUT -H "Authorization: Bearer $PAT" -H "Content-Type: application/json" \
   https://api.github.com/repos/TommieC25/WoundCareCRM/pulls/$PR_NUM/merge \
   -d '{"merge_method":"squash"}'
+
+# Step 5: Delete the branch after merge — ALWAYS do this (Tom's SOP)
+# The local git proxy does NOT support branch deletion (403 on push --delete)
+# Use the GitHub API instead:
+curl -s -X DELETE -H "Authorization: Bearer $PAT" \
+  "https://api.github.com/repos/TommieC25/WoundCareCRM/git/refs/heads/claude/<branch>"
+# If API is blocked: tell Tom to delete the branch on GitHub Branches page (trash icon)
+# NEVER leave merged branches sitting — they accumulate and confuse the repo
 ```
 
 ### PAT Missing Fallback (new container session)
