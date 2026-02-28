@@ -159,7 +159,7 @@ await dbDel('contact_logs',logId,'Delete this note?',async()=>{if(!currentPhysic
 async function completeReminder(logId) {
 try {
 updateSyncIndicators('syncing');
-const {error} = await db.from('contact_logs').update({reminder_date: null}).eq('id', logId);
+const {error} = await db.from('contact_logs').update({reminder_date: '2000-01-01'}).eq('id', logId);
 if (error) throw error;
 showToast('Reminder marked complete ✓', 'success');
 updateSyncIndicators('synced');
@@ -268,7 +268,7 @@ const locRow=$('addTaskLocationRow');
 if(locRow){
   locRow.style.display='block';
   if(isGlobal){$('addTaskLocationSelect').innerHTML='<option value="">No specific location</option>';}
-  else{const locs=(physicianAssignments[physicianId]||[]).map(a=>{const loc=practiceLocations.find(l=>l.id===a.practice_location_id);if(!loc)return null;const prac=practices.find(pr=>pr.id===loc.practice_id);return{id:loc.id,label:`${prac?prac.name+' \u2014 ':''}${loc.label&&loc.label!==loc.city?loc.label:loc.city||'Office'}${loc.address?' ('+loc.address+')':''}`};}).filter(Boolean);const sel=$('addTaskLocationSelect');sel.innerHTML='<option value="">No specific location</option>'+locs.map(l=>`<option value="${l.id}"${l.id===locationId?' selected':''}>${l.label}</option>`).join('');$('addTaskLocationId').value=locationId||'';}
+  else{const assigned=(physicianAssignments[physicianId]||[]).map(a=>{const loc=practiceLocations.find(l=>l.id===a.practice_location_id);if(!loc)return null;const prac=practices.find(pr=>pr.id===loc.practice_id);return{id:loc.id,label:`${prac?prac.name+' \u2014 ':''}${loc.label&&loc.label!==loc.city?loc.label:loc.city||'Office'}${loc.address?' ('+loc.address+')':''}`};}).filter(Boolean);const locs=assigned.length>0?assigned:practiceLocations.filter(l=>l.zip||l.address).map(l=>{const prac=practices.find(pr=>pr.id===l.practice_id);return{id:l.id,label:`${prac?prac.name+' \u2014 ':''}${l.label&&l.label!==l.city?l.label:l.city||'Office'}${l.address?' ('+l.address+')':''}`};});const sel=$('addTaskLocationSelect');sel.innerHTML='<option value="">No specific location</option>'+locs.map(l=>`<option value="${l.id}"${l.id===locationId?' selected':''}>${l.label}</option>`).join('');$('addTaskLocationId').value=locationId||'';}
 }
 populateReminderDateButtons('task');
 $('addTaskModal').classList.add('active');

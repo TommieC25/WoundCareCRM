@@ -195,10 +195,12 @@ async function renderTasksView(){
 $('physicianCount').textContent='Tasks & Reminders';
 const today = localDate();
 try {
-const{data:reminders,error}=await db.from('contact_logs').select('*').not('reminder_date','is',null).order('reminder_date',{ascending:true});
+const{data:allReminders,error}=await db.from('contact_logs').select('*').not('reminder_date','is',null).order('reminder_date',{ascending:true});
+const reminders=(allReminders||[]).filter(r=>r.reminder_date!=='2000-01-01');
+const completedTasks=(allReminders||[]).filter(r=>r.reminder_date==='2000-01-01').sort((a,b)=>b.contact_date.localeCompare(a.contact_date));
 if(error)throw error;
 const physMap={};physicians.forEach(p=>physMap[p.id]=p);
-_taskDetailLogs={};reminders.forEach(r=>_taskDetailLogs[r.id]=r);
+_taskDetailLogs={};[...reminders,...completedTasks].forEach(r=>_taskDetailLogs[r.id]=r);
 const newTaskBtn=`<button onclick="openAddTaskModal(null,null)" style="padding:0.4rem 0.9rem;background:#0a4d3c;color:white;border:none;border-radius:6px;font-size:0.85rem;font-weight:600;cursor:pointer;">+ New Task</button>`;
 if(!reminders||reminders.length===0){
 $('mainContent').innerHTML=`<div class="section"><div class="section-header"><h3>Tasks &amp; Reminders</h3>${newTaskBtn}</div><div class="empty-notice">No tasks yet. Use the button above to create one.</div></div>`;
@@ -260,6 +262,20 @@ const preview=displayNotes.length>120?displayNotes.substring(0,120)+'...':displa
 const editFn=r.provider_id?`editNoteFromActivity('${r.id}','${r.provider_id}')`:''
 const delFn=r.provider_id?`deleteNoteFromActivity('${r.id}','${r.provider_id}').then(()=>renderTasksView())`:''
 html+=`<div class="contact-entry" style="border-left-color:#6b7280;display:flex;gap:0.5rem;align-items:flex-start;cursor:pointer;" onclick="openTaskDetailModal('${r.id}')"><button onclick="event.stopPropagation();completeReminder('${r.id}').then(()=>renderTasksView())" title="Mark complete" style="background:none;border:2px solid #6b7280;color:#6b7280;border-radius:50%;width:24px;height:24px;min-width:24px;cursor:pointer;font-size:0.8rem;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:0.15rem;">✓</button><div style="flex:1;"><div style="font-weight:600;color:#0a4d3c;">${physName}${emailLink}</div>${taskNote?`<div style="font-size:0.85rem;font-weight:600;color:#92400e;background:#fef3c7;padding:0.2rem 0.5rem;border-radius:4px;margin-top:0.25rem;">📋 ${taskNote}</div>`:''}<div style="font-size:0.85rem;color:#333;margin-top:0.2rem;">${preview}</div><div style="font-size:0.7rem;color:#999;margin-top:0.2rem;">Note from ${r.contact_date}${r.author?' by '+r.author:''}</div>${editFn||delFn?`<div style="display:flex;gap:0.5rem;margin-top:0.4rem;">${editFn?`<button class="icon-btn" onclick="event.stopPropagation();${editFn}" title="Edit note & reminder date" style="font-size:0.85rem;">✏️ Edit</button>`:''}${delFn?`<button class="icon-btn" onclick="event.stopPropagation();${delFn}" title="Delete" style="font-size:0.85rem;color:#dc2626;">🗑️ Delete</button>`:''}</div>`:''}</div></div>`;
+});
+html+='</div></div>';
+}
+if(completedTasks.length>0){
+const showCount=20;const shown=completedTasks.slice(0,showCount);
+html+=`<div style="margin-bottom:0.75rem;"><div style="font-size:0.75rem;font-weight:700;color:#10b981;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:0.5rem;padding-bottom:0.25rem;border-bottom:2px solid #a7f3d0;">✓ Recently Completed (${completedTasks.length}${completedTasks.length>showCount?' — showing '+showCount:''})</div><div class="contact-entries">`;
+shown.forEach(r=>{
+const phys=r.provider_id?physMap[r.provider_id]:null;const physName=phys?fmtName(phys):(r.practice_location_id?getLocationLabel(r.practice_location_id):'Note');
+const tm=(r.notes||'').match(/^\[(\d{1,2}:\d{2}(?:\s*[APap][Mm])?)\]\s*/);
+let displayNotes=tm?r.notes.replace(tm[0],''):(r.notes||'');
+const taskMatch=displayNotes.match(/\s*\|\s*\[Task:\s*(.*?)\]$/);if(taskMatch)displayNotes=displayNotes.slice(0,taskMatch.index).trim();
+const preview=displayNotes.length>100?displayNotes.substring(0,100)+'...':displayNotes;
+const delFn=r.provider_id?`deleteNoteFromActivity('${r.id}','${r.provider_id}').then(()=>renderTasksView())`:''
+html+=`<div class="contact-entry" style="border-left-color:#10b981;background:#f0fdf4;opacity:0.85;display:flex;gap:0.5rem;align-items:flex-start;"><div style="width:24px;height:24px;min-width:24px;border-radius:50%;background:#10b981;color:white;display:flex;align-items:center;justify-content:center;font-size:0.8rem;flex-shrink:0;margin-top:0.15rem;">✓</div><div style="flex:1;"><div style="font-weight:600;color:#065f46;">${physName}</div><div style="font-size:0.85rem;color:#333;margin-top:0.1rem;">${preview}</div><div style="font-size:0.7rem;color:#999;margin-top:0.2rem;">Logged ${r.contact_date}${r.author?' by '+r.author:''}</div>${delFn?`<button class="icon-btn" onclick="${delFn}" style="font-size:0.8rem;color:#dc2626;margin-top:0.25rem;">🗑️ Delete</button>`:''}</div></div>`;
 });
 html+='</div></div>';
 }
