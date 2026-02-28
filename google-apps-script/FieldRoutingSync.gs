@@ -190,14 +190,6 @@ function syncFieldRouting() {
     }
   }
 
-  // 2. Practice locations with NO assigned providers
-  for (var li = 0; li < locations.length; li++) {
-    var loc = locations[li];
-    if (assignedLocIds[loc.id]) continue;
-    var practice = practiceMap[loc.practice_id] || null;
-    rows.push(buildRow_(null, loc, practice, null, 'loc-only'));
-  }
-
   // FILTER: exclude rows with no zip code (unroutable for field use)
   rows = rows.filter(function(row) {
     var zip = String(row[14] || '').trim(); // index 14 = Zip
