@@ -17,8 +17,6 @@ const d = new Date();
 d.setDate(d.getDate() + days);
 return localDate(d);
 }
-function calcBusinessDate(days) { return calcCalendarDate(days); }
-function updateReminderPreview() { populateReminderDateButtons(); } // legacy alias
 // prefix defaults to 'reminder'; task modal uses 'task' — IDs: {prefix}DateButtons, {prefix}SelectedDate, {prefix}DatePreview
 function populateReminderDateButtons(prefix) {
 prefix = prefix || 'reminder';
@@ -70,28 +68,9 @@ document.querySelectorAll(`.reminder-date-btn[data-prefix="${prefix}"]`).forEach
   btn.style.borderColor = sel ? '#d97706' : '#fcd34d';
 });
 }
-function getUpcomingBusinessDays(count) {
-const result = [];
-const d = new Date();
-const today = localDate(d);
-let cursor = new Date(d);
-if (cursor.getDay() !== 0 && cursor.getDay() !== 6) {
-result.push({date: today, label: d.toLocaleDateString('en-US', {weekday:'short', month:'short', day:'numeric'})});
-}
-while (result.length < count) {
-cursor.setDate(cursor.getDate() + 1);
-if (cursor.getDay() === 0 || cursor.getDay() === 6) continue;
-const iso = localDate(cursor);
-const label = cursor.toLocaleDateString('en-US', {weekday:'short', month:'short', day:'numeric'});
-result.push({date: iso, label});
-}
-return result;
-}
-
 // --- View routing ---
 function setView(view) {
 currentView = view;
-saveViewState();
 $('tabPhysicians').classList.toggle('active', view === 'physicians');
 $('tabPractices').classList.toggle('active', view === 'practices');
 $('tabActivity').classList.toggle('active', view === 'activity');
@@ -254,12 +233,6 @@ const assign = a.find(x => x.is_primary) || a[0];
 if (!assign) return {};
 return assign.practice_locations || practiceLocations.find(l => l.id === assign.practice_location_id) || {};
 }
-function formatTimestamp(isoString) {
-if (!isoString) return '';
-const date = new Date(isoString);
-const options = { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' };
-return date.toLocaleDateString('en-US', options);
-}
 function getLocationLabel(locationId) {
 const loc = practiceLocations.find(l => l.id === locationId);
 if (!loc) return '';
@@ -403,7 +376,10 @@ ${mi('Providers',physicians.length)}${mi('Practices',practices.length)}${mi('Loc
 `;
 try {
 const today = localDate();
-const {data:reminders,error:remErr} = await db.from('contact_logs').select('*').not('reminder_date','is',null).neq('reminder_date','2000-01-01').order('reminder_date',{ascending:true});
+const [{data:reminders,error:remErr},{data:recentLogs,error:actErr}] = await Promise.all([
+  db.from('contact_logs').select('*').not('reminder_date','is',null).neq('reminder_date','2000-01-01').order('reminder_date',{ascending:true}),
+  db.from('contact_logs').select('*').order('created_at',{ascending:false}).limit(15),
+]);
 if (reminders) { if (!window._taskDetailLogs) window._taskDetailLogs = {}; reminders.forEach(r => window._taskDetailLogs[r.id] = r); }
 const rc = $('remindersContent');
 if (remErr) { rc.innerHTML = '<div class="empty-notice">Could not load reminders</div>'; }
@@ -487,8 +463,7 @@ const rc = $('remindersContent');
 if (rc) rc.innerHTML = '<div class="empty-notice">Could not load reminders</div>';
 }
 try {
-const {data:recentLogs,error} = await db.from('contact_logs').select('*').order('created_at',{ascending:false}).limit(15);
-if (error) throw error;
+if (actErr) throw actErr;
 const container = $('recentActivityContent');
 if (!recentLogs || recentLogs.length === 0) {
 container.innerHTML = '<div class="empty-notice">No contact notes yet. Start logging your visits and calls!</div>';
@@ -541,27 +516,3 @@ closeSidebar();
 }
 }
 
-// --- State persistence (restore last view after minimize/reopen) ---
-function saveViewState() {
-try {
-const s = { view: currentView, ts: Date.now() };
-if (currentPhysician) s.physicianId = currentPhysician.id;
-else if (currentLocationId) s.locationId = currentLocationId;
-else if (currentPractice) s.practiceId = currentPractice.id;
-localStorage.setItem('crmViewState', JSON.stringify(s));
-} catch(e) {}
-}
-async function restoreViewState() {
-try {
-const raw = localStorage.getItem('crmViewState');
-if (!raw) return;
-const s = JSON.parse(raw);
-const MAX_AGE = 4 * 60 * 60 * 1000; // 4 hours
-if (Date.now() - s.ts > MAX_AGE) { localStorage.removeItem('crmViewState'); return; }
-if (s.physicianId) { await viewPhysician(s.physicianId); }
-else if (s.locationId) { viewLocation(s.locationId); }
-else if (s.practiceId) { await viewPractice(s.practiceId); }
-else if (s.view && s.view !== 'physicians') { setView(s.view); }
-} catch(e) {}
-}
-document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') saveViewState(); });
