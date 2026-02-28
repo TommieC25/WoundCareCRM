@@ -66,6 +66,9 @@ ${assign.is_primary ? '<span class="location-badge">Primary</span>' : ''}
 ${practiceName ? `<span class="practice-badge" title="View practice">🏢 ${practiceName}</span>` : ''}
 </div>
 <div class="location-actions">
+${assign.is_primary
+  ? '<span style="font-size:0.7rem;color:#f97316;font-weight:700;padding:0.2rem 0.4rem;">★ Primary</span>'
+  : `<button class="icon-btn" onclick="setPrimaryLocation('${assign.id}')" title="Set as primary" style="font-size:0.75rem;color:#999;">☆ Set Primary</button>`}
 <button class="icon-btn" onclick="editLocationDetails('${loc.id}')" title="Edit">✏️</button>
 <button class="icon-btn" onclick="removeAssignment('${assign.id}')" title="Remove">🗑️</button>
 </div>
@@ -156,7 +159,10 @@ locations.map(loc => `
 <div class="section">
 <div class="section-header">
 <h3>Activity Log</h3>
+<div style="display:flex;gap:0.5rem;">
+<button class="edit-btn" onclick="openAddTaskForPractice()">+ Task</button>
 <button class="edit-btn" onclick="openPracticeContactModal()">+ Log Call</button>
+</div>
 </div>
 <div id="practiceActivityContent"><div class="loading">Loading activity...</div></div>
 </div>

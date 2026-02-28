@@ -307,35 +307,48 @@ practices=practices.filter(p=>p.id!==pid);currentPractice=null;await loadAllData
 showToast('Deleted','success');updateSyncIndicators('synced');
 }catch(e){console.error('Delete error:',e);showToast('Error: '+e.message,'error');updateSyncIndicators('error');}
 }
-function parseAddressBlock() {
-const raw = ($('addressBlock')?.value || '').trim();
+function parseAddressBlock(mode) {
+// mode = 'location' (default) fills locationAddress/City/Zip/Phone
+// mode = 'quick' fills quickPracticeAddr/City/Zip/Phone
+const srcId = (mode === 'quick') ? 'quickAddressBlock' : 'addressBlock';
+const raw = ($(''+srcId)?.value || '').trim();
 if (!raw) { showToast('Paste an address first', 'info'); return; }
 const lines = raw.split('\n').map(l => l.trim()).filter(Boolean);
-let addr = '', city = '', zip = '', phone = '', state = '';
-const zipMatch = raw.match(/\b(\d{5})(?:-\d{4})?\b/);
-if (zipMatch) zip = zipMatch[1];
+let addr = '', city = '', zip = '', phone = '';
+// Phone
 const phoneMatch = raw.match(/(\(?\d{3}\)?[\s.\-]\d{3}[\s.\-]\d{4})/);
 if (phoneMatch) phone = phoneMatch[1];
-const stateMatch = raw.match(/\b([A-Z]{2})\s+\d{5}/);
-if (stateMatch) state = stateMatch[1];
-const oneliner = raw.replace(/\n/g,' ');
-const cityStateZip = oneliner.match(/,\s*([^,]+),\s*[A-Z]{2}\s+\d{5}/);
-if (cityStateZip) city = cityStateZip[1].trim();
-if (lines.length >= 2) {
-addr = lines[0];
-if (!city && lines[1]) {
-const m = lines[1].match(/^([^,]+)/);
-if (m) city = m[1].trim();
+// City/State/Zip: search lines bottom-up for a line like "City[,] ST 12345"
+// Handles both "Miami, FL 33176" and "Pembroke Pines FL 33028" (no comma before state)
+let cityLineIdx = -1;
+for (let i = lines.length - 1; i >= 0; i--) {
+  const m = lines[i].match(/^([A-Za-z][^,]*?),?\s+([A-Z]{2})\s+(\d{5})(?:-\d{4})?$/);
+  if (m) { city = m[1].trim(); zip = m[3]; cityLineIdx = i; break; }
 }
+// Fallback for single-line: "123 Main St, Miami, FL 33176"
+if (!city) {
+  const m = raw.replace(/\n/g,' ').match(/,\s*([A-Za-z][A-Za-z\s\-'\.]*?),?\s+([A-Z]{2})\s+(\d{5})/);
+  if (m) { city = m[1].trim(); zip = m[3]; }
+}
+// Zip fallback: look for state abbreviation then 5 digits
+if (!zip) { const m = raw.match(/\b[A-Z]{2}\s+(\d{5})\b/); if (m) zip = m[1]; }
+// Address: first line starting with a digit, excluding the city/state/zip line
+for (let i = 0; i < lines.length; i++) {
+  if (i === cityLineIdx) continue;
+  if (/^\d/.test(lines[i])) { addr = lines[i]; break; }
+}
+if (!addr && cityLineIdx > 0) addr = lines[0];
+if (mode === 'quick') {
+  if ($('quickPracticeAddr') && addr) $('quickPracticeAddr').value = addr;
+  if ($('quickPracticeCity') && city) $('quickPracticeCity').value = city;
+  if ($('quickPracticeZip') && zip) $('quickPracticeZip').value = zip;
+  if ($('quickPracticePhone') && phone && !$('quickPracticePhone').value) $('quickPracticePhone').value = phone;
 } else {
-const commaIdx = oneliner.indexOf(',');
-if (commaIdx > 0) addr = oneliner.substring(0, commaIdx).trim();
-else addr = raw;
+  if ($('locationAddress') && addr) $('locationAddress').value = addr;
+  if ($('locationCity') && city) $('locationCity').value = city;
+  if ($('locationZip') && zip) $('locationZip').value = zip;
+  if ($('locationPhone') && phone && !$('locationPhone').value) $('locationPhone').value = phone;
 }
-if ($('locationAddress') && addr) $('locationAddress').value = addr;
-if ($('locationCity') && city) $('locationCity').value = city;
-if ($('locationZip') && zip) $('locationZip').value = zip;
-if ($('locationPhone') && phone && !$('locationPhone').value) $('locationPhone').value = phone;
 showToast('Address fields filled — review and adjust as needed', 'success');
 }
 
@@ -474,12 +487,12 @@ try {
 updateSyncIndicators('syncing');
 const {data:newPract,error:pe} = await db.from('practices').insert({name}).select().single();
 if (pe) throw pe;
-const locData = {practice_id:newPract.id,label:'Main Office',address:$('quickPracticeAddr').value||null,city:$('quickPracticeCity').value||null,zip:$('quickPracticeZip').value||null,phone:$('quickPracticePhone').value||null};
+const locData = {practice_id:newPract.id,label:'Main Office',address:$('quickPracticeAddr').value||null,city:$('quickPracticeCity').value||null,zip:$('quickPracticeZip').value||null,phone:$('quickPracticePhone').value||null,practice_email:$('quickPracticeEmail').value||null};
 const {data:newLoc,error:le} = await db.from('practice_locations').insert(locData).select().single();
 if (le) throw le;
 const {error:ae} = await db.from('provider_location_assignments').insert({provider_id:currentPhysician.id,practice_location_id:newLoc.id,is_primary:false});
 if (ae) throw ae;
-['quickPracticeName','quickPracticeAddr','quickPracticeCity','quickPracticeZip','quickPracticePhone'].forEach(id=>{const el=$(id);if(el)el.value='';});
+['quickPracticeName','quickPracticeAddr','quickPracticeCity','quickPracticeZip','quickPracticePhone','quickPracticeEmail','quickAddressBlock'].forEach(id=>{const el=$(id);if(el)el.value='';});
 await loadAllData();
 renderProfile();
 closeAssignLocationModal();
@@ -493,6 +506,22 @@ updateSyncIndicators('error');
 }
 async function removeAssignment(assignmentId) {
 await dbDel('provider_location_assignments',assignmentId,'Remove this location assignment?',async()=>{await loadAllData();renderProfile();});
+}
+async function setPrimaryLocation(assignmentId) {
+if (!currentPhysician) return;
+try {
+  updateSyncIndicators('syncing');
+  // Clear primary on all assignments for this provider
+  const {error:e1} = await db.from('provider_location_assignments').update({is_primary:false}).eq('provider_id',currentPhysician.id);
+  if (e1) throw e1;
+  // Set primary on the chosen one
+  const {error:e2} = await db.from('provider_location_assignments').update({is_primary:true}).eq('id',assignmentId);
+  if (e2) throw e2;
+  await loadAllData();
+  renderProfile();
+  showToast('Primary location updated', 'success');
+  updateSyncIndicators('synced');
+} catch(e) { showToast('Error: '+e.message, 'error'); updateSyncIndicators('error'); }
 }
 
 // --- Assign provider modal (from practice view) ---

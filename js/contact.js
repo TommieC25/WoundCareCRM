@@ -159,7 +159,7 @@ await dbDel('contact_logs',logId,'Delete this note?',async()=>{if(!currentPhysic
 async function completeReminder(logId) {
 try {
 updateSyncIndicators('syncing');
-const {error} = await db.from('contact_logs').update({reminder_date: null}).eq('id', logId);
+const {error} = await db.from('contact_logs').update({reminder_date: '2000-01-01'}).eq('id', logId);
 if (error) throw error;
 showToast('Reminder marked complete ✓', 'success');
 updateSyncIndicators('synced');
@@ -253,26 +253,84 @@ $('addTaskNote').value = '';
 $('addTaskPhysicianId').value = physicianId || '';
 $('addTaskLocationId').value = locationId || '';
 $('addTaskModalTitle').textContent = 'New Task';
-const isGlobal = !physicianId;
-// Context block: show pre-filled context when provider known, hide when global
+// mode: 'provider' | 'practice' | 'global'
+const mode = physicianId ? 'provider' : locationId ? 'practice' : 'global';
+// Context block
 const ctx = $('addTaskContext');
-if(ctx){ctx.innerHTML=_buildTaskContext(physicianId,null);ctx.style.display=physicianId?'block':'none';}
-// Provider search row: show only when opened globally
+if(ctx){ctx.innerHTML=_buildTaskContext(physicianId,locationId);ctx.style.display=mode!=='global'?'block':'none';}
+// Provider search row
 const provRow=$('addTaskProviderRow');
 if(provRow){
-  provRow.style.display=isGlobal?'block':'none';
-  if(isGlobal){$('addTaskProviderSearch').value='';$('addTaskProviderResults').style.display='none';}
+  provRow.style.display=mode==='global'?'block':'none';
+  if(mode==='global'){$('addTaskProviderSearch').value='';$('addTaskProviderResults').style.display='none';}
 }
-// Location row: always show — global gets empty select, provider mode gets all their locations
+// Practice search row
+const pracRow=$('addTaskPracticeRow');
+if(pracRow){
+  pracRow.style.display=mode==='global'?'block':'none';
+  if(mode==='global'){$('addTaskPracticeSearch').value='';$('addTaskPracticeResults').style.display='none';}
+}
+// Location row
 const locRow=$('addTaskLocationRow');
 if(locRow){
   locRow.style.display='block';
-  if(isGlobal){$('addTaskLocationSelect').innerHTML='<option value="">No specific location</option>';}
-  else{const locs=(physicianAssignments[physicianId]||[]).map(a=>{const loc=practiceLocations.find(l=>l.id===a.practice_location_id);if(!loc)return null;const prac=practices.find(pr=>pr.id===loc.practice_id);return{id:loc.id,label:`${prac?prac.name+' \u2014 ':''}${loc.label&&loc.label!==loc.city?loc.label:loc.city||'Office'}${loc.address?' ('+loc.address+')':''}`};}).filter(Boolean);const sel=$('addTaskLocationSelect');sel.innerHTML='<option value="">No specific location</option>'+locs.map(l=>`<option value="${l.id}"${l.id===locationId?' selected':''}>${l.label}</option>`).join('');$('addTaskLocationId').value=locationId||'';}
+  if(mode==='global'){
+    $('addTaskLocationSelect').innerHTML='<option value="">No specific location</option>';
+  } else if(mode==='provider'){
+    const assigned=(physicianAssignments[physicianId]||[]).map(a=>{const loc=practiceLocations.find(l=>l.id===a.practice_location_id);if(!loc)return null;const prac=practices.find(pr=>pr.id===loc.practice_id);return{id:loc.id,label:`${prac?prac.name+' \u2014 ':''}${loc.label&&loc.label!==loc.city?loc.label:loc.city||'Office'}${loc.address?' ('+loc.address+')':''}`};}).filter(Boolean);
+    const locs=assigned.length>0?assigned:practiceLocations.filter(l=>l.zip||l.address).map(l=>{const prac=practices.find(pr=>pr.id===l.practice_id);return{id:l.id,label:`${prac?prac.name+' \u2014 ':''}${l.label&&l.label!==l.city?l.label:l.city||'Office'}${l.address?' ('+l.address+')':''}`};});
+    const sel=$('addTaskLocationSelect');sel.innerHTML='<option value="">No specific location</option>'+locs.map(l=>`<option value="${l.id}"${l.id===locationId?' selected':''}>${l.label}</option>`).join('');
+    $('addTaskLocationId').value=locationId||'';
+  } else {
+    // practice mode: show all locations for this practice
+    const loc=practiceLocations.find(l=>l.id===locationId);
+    const practiceId=loc?loc.practice_id:null;
+    const pracLocs=practiceId?practiceLocations.filter(l=>l.practice_id===practiceId):(loc?[loc]:[]);
+    const sel=$('addTaskLocationSelect');
+    sel.innerHTML='<option value="">No specific location</option>'+pracLocs.map(l=>`<option value="${l.id}"${l.id===locationId?' selected':''}>${l.label&&l.label!==l.city?l.label:l.city||'Office'}${l.address?' ('+l.address+')':''}</option>`).join('');
+    $('addTaskLocationId').value=locationId||'';
+  }
 }
 populateReminderDateButtons('task');
 $('addTaskModal').classList.add('active');
 setTimeout(() => $('addTaskNote').focus(), 100);
+}
+function filterAddTaskPractices() {
+const q=($('addTaskPracticeSearch').value||'').toLowerCase().trim();
+const results=$('addTaskPracticeResults');
+if(!q){results.style.display='none';return;}
+const matches=practices.filter(p=>(p.name||'').toLowerCase().includes(q)).slice(0,8);
+if(!matches.length){results.innerHTML='<div style="padding:0.5rem 0.75rem;font-size:0.85rem;color:#999;">No practices found</div>';results.style.display='block';return;}
+results.innerHTML=matches.map(p=>{
+  const locs=practiceLocations.filter(l=>l.practice_id===p.id);
+  const city=[...new Set(locs.map(l=>l.city).filter(Boolean))].slice(0,2).join(', ');
+  return `<div onclick="selectAddTaskPractice('${p.id}')" style="padding:0.5rem 0.75rem;cursor:pointer;border-bottom:1px solid #f0f0f0;font-size:0.875rem;" onmouseover="this.style.background='#f0f9f4'" onmouseout="this.style.background=''"><span style="font-weight:600;">${p.name}</span>${city?`<span style="color:#888;font-size:0.8rem;"> · ${city}</span>`:''}${locs.length?`<span style="color:#aaa;font-size:0.75rem;"> (${locs.length} loc)</span>`:''}</div>`;
+}).join('');
+results.style.display='block';
+}
+function selectAddTaskPractice(practiceId) {
+const prac=practices.find(p=>p.id===practiceId);
+if(!prac)return;
+// Clear provider fields
+$('addTaskPhysicianId').value='';
+$('addTaskProviderSearch').value='';
+$('addTaskPracticeSearch').value=prac.name;
+$('addTaskPracticeResults').style.display='none';
+// Populate location with this practice's locations
+const locs=practiceLocations.filter(l=>l.practice_id===practiceId);
+const sel=$('addTaskLocationSelect');
+sel.innerHTML='<option value="">No specific location</option>'+locs.map(l=>`<option value="${l.id}">${l.label&&l.label!==l.city?l.label:l.city||'Office'}${l.address?' ('+l.address+')':''}</option>`).join('');
+if(locs.length===1){sel.value=locs[0].id;$('addTaskLocationId').value=locs[0].id;}
+$('addTaskLocationRow').style.display='block';
+// Update context using first location
+const firstLoc=locs[0];
+const ctx=$('addTaskContext');
+if(ctx){ctx.innerHTML=_buildTaskContext(null,firstLoc?firstLoc.id:null);ctx.style.display='block';}
+}
+function openAddTaskForPractice() {
+if(!currentPractice)return;
+const locs=practiceLocations.filter(l=>l.practice_id===currentPractice.id);
+openAddTaskModal(null,locs.length>0?locs[0].id:null);
 }
 
 function filterAddTaskProviders() {

@@ -54,7 +54,7 @@ Expects columns: first_name, last_name, email, priority, specialty, degree, titl
 
 **Paste-CSV option**: Admin panel has a textarea for pasting CSV text directly (iPad-friendly). Functions: `importCSVPaste()`, `importCSVText(str)` in admin.js — both duck-type into `importCSV()`.
 
-**Supabase network note**: The Claude Code server environment has outbound HTTPS blocked to external hosts (`403 host_not_allowed`). Server-side import scripts cannot reach Supabase. All imports must run through the browser. GitHub API works because it uses a different path (git remote with embedded PAT).
+**Supabase network note**: The Claude Code server environment has outbound HTTPS blocked to external hosts (`403 host_not_allowed`). Server-side import scripts cannot reach Supabase. All imports must run through the browser. Git push works via local proxy (127.0.0.1:61248). GitHub REST API (`api.github.com`) is **session-dependent** — sometimes allowed, sometimes not. Always check before assuming PR creation will work.
 
 ## Export Formats
 - **Providers CSV** (UI label; formerly "Physicians CSV"): All providers with practice info, degree, last contact, Status (latest activity)
@@ -113,7 +113,7 @@ When writing SQL to be copy-pasted into the Supabase SQL editor on iOS (Safari):
 ### Git Environment — FULLY WORKING (updated 2026-02-24, confirmed working through PR #66)
 1. **Push access**: ONLY `claude/*` branches work via git. The remote is pre-configured as `http://local_proxy@127.0.0.1:61985/git/TommieC25/WoundCareCRM` — git push works with no extra setup.
 2. **`gh` CLI**: NOT installed (command not found). Do not attempt any `gh` commands.
-3. **GitHub REST API**: Works via `curl` to `https://api.github.com` with PAT token. Use this for PR creation and merge.
+3. **GitHub REST API**: **Session-dependent** — `https://api.github.com` is only reachable if `api.github.com` is in the session's egress allowlist. Check with `curl -s https://api.github.com/zen` before trying. If blocked (`403 host_not_allowed`), push succeeds but PR creation/merge must be done manually by Tom on GitHub. Do NOT waste time probing — just push the branch and ask Tom to merge if the API is blocked.
 4. **GitHub PAT**: Fine-grained token scoped to WoundCareCRM repo. Stored in `~/.github_pat` = `/root/.github_pat` (not in git). **CHECK FIRST**: `PAT=$(cat /root/.github_pat 2>/dev/null)`. If empty/missing, PAT is gone (new container) — see fallback below.
 5. **Remote URL for git push**: Already set correctly via local proxy — do NOT try to reset it with a PAT. `git push -u origin <branch>` works as-is.
 6. **Remote URL for GitHub API**: Direct `https://api.github.com` calls work only if the PAT file exists.
