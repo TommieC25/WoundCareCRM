@@ -330,8 +330,8 @@ if (!city) {
   const m = raw.replace(/\n/g,' ').match(/,\s*([A-Za-z][A-Za-z\s\-'\.]*?),?\s+([A-Z]{2})\s+(\d{5})/);
   if (m) { city = m[1].trim(); zip = m[3]; }
 }
-// Zip fallback: look for state abbreviation then 5 digits
-if (!zip) { const m = raw.match(/\b[A-Z]{2}\s+(\d{5})\b/); if (m) zip = m[1]; }
+// Zip fallback: look for FL state abbreviation then 5 digits (not directionals like NE/NW/SE/SW)
+if (!zip) { const m = raw.match(/\bFL\s+(\d{5})\b/); if (m) zip = m[1]; }
 // Address: first line starting with a digit, excluding the city/state/zip line
 for (let i = 0; i < lines.length; i++) {
   if (i === cityLineIdx) continue;
