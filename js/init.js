@@ -34,8 +34,6 @@ let cachedLatestActivity = {};
 document.addEventListener('DOMContentLoaded', async () => {
 setToday();
 await loadAllData();
-await runVolumeMigration();
-await runASMigration();
 setupRealtimeSubscription();
 setView('tasks'); // always start at task list on page load/refresh
 // Prevent background scroll when modals are open (iPad fix)

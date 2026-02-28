@@ -388,9 +388,7 @@ entries.push({provider_id:null,contact_date:dateVal,author:authorVal,notes:baseN
 }
 const {error} = await db.from('contact_logs').insert(entries);
 if (error) throw error;
-for (const pid of physIds) {
-await db.from('providers').update({last_contact:dateVal}).eq('id',pid);
-}
+await Promise.all(physIds.map(pid => db.from('providers').update({last_contact:dateVal}).eq('id',pid)));
 const label = physIds.length > 0 ? `Call logged for ${physIds.length} physician${physIds.length!==1?'s':''}` : 'Location note logged';
 showToast(label, 'success');
 await loadAllData();
@@ -457,9 +455,7 @@ entries = [{ provider_id: null, contact_date: dateVal, author: authorVal, notes:
 }
 const { error } = await db.from('contact_logs').insert(entries);
 if (error) throw error;
-for (const pid of physIds) {
-await db.from('providers').update({ last_contact: dateVal }).eq('id', pid);
-}
+await Promise.all(physIds.map(pid => db.from('providers').update({ last_contact: dateVal }).eq('id', pid)));
 const label = physIds.length > 0 ? `Note logged for ${physIds.length} physician${physIds.length !== 1 ? 's' : ''}` : 'Location note logged';
 showToast(label, 'success');
 await loadAllData();
