@@ -159,7 +159,10 @@ locations.map(loc => `
 <div class="section">
 <div class="section-header">
 <h3>Activity Log</h3>
+<div style="display:flex;gap:0.5rem;">
+<button class="edit-btn" onclick="openAddTaskForPractice()">+ Task</button>
 <button class="edit-btn" onclick="openPracticeContactModal()">+ Log Call</button>
+</div>
 </div>
 <div id="practiceActivityContent"><div class="loading">Loading activity...</div></div>
 </div>
