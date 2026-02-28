@@ -153,9 +153,29 @@ If `cat /root/.github_pat` returns nothing, the PAT was lost when the container 
 2. Tell Tom: "Code is pushed to `claude/<branch>`. PAT is missing from this container — please run: `echo 'ghp_YOURTOKEN' > /root/.github_pat` and I'll complete the PR/merge."
 3. Tom provides the token → run steps 3-4 above immediately.
 
+### Queued Tasks for Next Session (logged 2026-02-28)
+
+#### 1. Fix corrupted `specialty` field values in DB
+Many providers have garbage data in `specialty` — county names ("Broward", "Palm Beach"), free-text strings, old picklist values, etc. These show up in the Field Routing sheet's Specialty column.
+- **Valid specialties are EXACTLY**: `Dermatology`, `Podiatry`, `Wound Care`, `Other`
+- `Dermatology` implicitly covers Mohs surgeons (no separate Mohs entry)
+- Need a DB audit/migration: map all existing non-standard values → one of the 4 valid values (or `Other`)
+- **Also fix in the CRM picklist**: the Specialty dropdown in the New Provider / Edit Provider form must show ONLY these 4 options — no freetext, no other values
+
+#### 2. Fix corrupted Facility names (provider names appearing in Facility column)
+Some providers in the Field Routing sheet show their own name (e.g. "Aaron Blom") in the Facility column instead of the practice name. This means their `practice_locations` record has no linked `practice_id` or the `practices` record has a bad/missing name.
+- Audit providers where Facility = their own name
+- Fix the practice linkage in Supabase (correct the `practices.name` or re-link `practice_id`)
+- Vohra Wound Physicians group at 3601 SW 160th Ave (no suite) is the primary offender
+
+#### 3. Re-paste & sync Apps Script after fixing data
+After fixing specialty values and practice linkages, re-paste the current `google-apps-script/FieldRoutingSync.gs` into the Google Sheet (Extensions → Apps Script) and run Refresh Now to confirm clean output.
+
+---
+
 ### Session Handoff Checklist
 When picking up from a compacted/previous conversation:
-1. Read `CLAUDE.md` (this file) first
+1. Read `CLAUDE.md` (this file) first — **check Queued Tasks section above**
 2. Run `git log --oneline -10` and `git branch -a` to understand current state
 3. Check `git diff --stat origin/main...HEAD` to see what's pending
 4. Do the actual work requested — don't re-explore known constraints
