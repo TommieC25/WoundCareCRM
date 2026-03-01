@@ -6,7 +6,7 @@ function openContactModal() {
 editingContactId = null;
 $('contactForm').reset();
 $('contactModalTitle').textContent = 'Add Contact Note';
-$('authorName').value = 'Tom';
+$('authorName').value = '';
 $('contactSaveBtn').textContent = 'Save Note';
 $('contactSaveBtn').className = 'btn-primary';
 setToday();
@@ -87,6 +87,7 @@ if(!currentPhysician){showToast('Error: no provider selected','error');return;}
 const dateVal=$('contactDate').value,authorVal=$('authorName').value;
 const nv=($('contactNotes').value||'').trim();
 if(!dateVal){showToast('Please enter a date','error');return;}
+if(!authorVal){showToast('Please select your name','error');return;}
 if(!nv){showToast('Please enter note text','error');return;}
 const tv=$('contactTime').value;
 const locVal=$('contactLocation').value||null;
@@ -205,7 +206,7 @@ $('contactModalTitle').textContent='Edit Note';
 $('contactSaveBtn').textContent='Save Changes';
 $('contactSaveBtn').className='btn-primary';
 $('contactDate').value=log.contact_date||'';
-$('authorName').value=log.author||'Tom';
+$('authorName').value=log.author||'';
 const tm=(log.notes||'').match(/^\[(\d{1,2}:\d{2})\]\s*/);
 $('contactTime').value=tm?tm[1]:'';
 $('contactNotes').value=tm?log.notes.slice(tm[0].length):(log.notes||'');
@@ -250,6 +251,7 @@ return ctx;
 function openAddTaskModal(physicianId, locationId) {
 if($('addTaskEditId'))$('addTaskEditId').value = '';
 $('addTaskNote').value = '';
+if($('addTaskAuthor'))$('addTaskAuthor').value = '';
 $('addTaskPhysicianId').value = physicianId || '';
 $('addTaskLocationId').value = locationId || '';
 $('addTaskModalTitle').textContent = 'New Task';
@@ -388,6 +390,7 @@ if(ctx){ctx.innerHTML=_buildTaskContext(rec.provider_id,rec.practice_location_id
 if($('addTaskProviderRow'))$('addTaskProviderRow').style.display='none';
 const _editLocRow=$('addTaskLocationRow');if(_editLocRow){const _pid=rec.provider_id;if(_pid){const _locs=(physicianAssignments[_pid]||[]).map(a=>{const loc=practiceLocations.find(l=>l.id===a.practice_location_id);if(!loc)return null;const prac=practices.find(pr=>pr.id===loc.practice_id);return{id:loc.id,label:`${prac?prac.name+' \u2014 ':''}${loc.label&&loc.label!==loc.city?loc.label:loc.city||'Office'}${loc.address?' ('+loc.address+')':''}`};}).filter(Boolean);const _sel=$('addTaskLocationSelect');const _cur=rec.practice_location_id||'';_sel.innerHTML='<option value="">No specific location</option>'+_locs.map(l=>`<option value="${l.id}"${l.id===_cur?' selected':''}>${l.label}</option>`).join('');_editLocRow.style.display='block';}else{_editLocRow.style.display='none';}}
 $('addTaskModalTitle').textContent = 'Edit Task';
+if ($('addTaskAuthor')) $('addTaskAuthor').value = rec.author || '';
 populateReminderDateButtons('task');
 if (rec.reminder_date) selectReminderDate(rec.reminder_date, '', 'task');
 $('addTaskModal').classList.add('active');
@@ -401,6 +404,8 @@ const note = ($('addTaskNote').value || '').trim();
 if (!note) { showToast('Please enter a task note', 'error'); return; }
 const date = $('taskSelectedDate').value;
 if (!date) { showToast('Please select a due date', 'error'); return; }
+const authorVal = ($('addTaskAuthor')?.value || '').trim();
+if (!authorVal) { showToast('Please select your name', 'error'); return; }
 const editId = ($('addTaskEditId')?.value) || null;
 const physicianId = $('addTaskPhysicianId').value || null;
 // When in global mode the location comes from the visible select; otherwise use the hidden field
@@ -412,9 +417,9 @@ const today = localDate();
 try {
 let error, _newRec = null;
 if (editId) {
-({error} = await db.from('contact_logs').update({ notes: note, reminder_date: date }).eq('id', editId));
+({error} = await db.from('contact_logs').update({ notes: note, reminder_date: date, author: authorVal }).eq('id', editId));
 } else {
-({data:_newRec,error} = await db.from('contact_logs').insert({ provider_id: physicianId, contact_date: today, author: 'Tom', notes: note, practice_location_id: locationId, reminder_date: date }).select().single());
+({data:_newRec,error} = await db.from('contact_logs').insert({ provider_id: physicianId, contact_date: today, author: authorVal, notes: note, practice_location_id: locationId, reminder_date: date }).select().single());
 }
 if (error) throw error;
 showToast(editId ? 'Task updated' : 'Task saved', 'success');

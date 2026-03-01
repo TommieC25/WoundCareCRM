@@ -2,6 +2,14 @@
 let _taskDetailLogs = {};
 function closeTaskDetailModal() { closeModal('taskDetailModal'); }
 
+// Opens the task edit modal directly from a task card (bypasses activity editor)
+function editTaskFromList(logId) {
+const r = _taskDetailLogs[logId] || (window._taskDetailLogs||{})[logId];
+if (!r) return;
+window._openedTaskRec = r;
+openEditTaskModal();
+}
+
 // === CALENDAR EXPORT (.ics) ===
 function downloadTaskICS(r, phys, loc, practice, timeVal) {
   if (!r.reminder_date || r.reminder_date === '2099-12-31') { return; }
@@ -209,7 +217,7 @@ const phys=r.provider_id?physMap[r.provider_id]:null;const physName=phys?fmtName
 const emailLink=phys?.email?` <a href="mailto:${phys.email}" style="color:#0a4d3c;font-size:0.75rem;">✉️ Email</a>`:'';
 const {displayNotes,taskNote}=parseTaskRecord(r.notes);
 const preview=displayNotes.length>120?displayNotes.substring(0,120)+'...':displayNotes;
-const editFn=r.provider_id?`editNoteFromActivity('${r.id}','${r.provider_id}')`:''
+const editFn=`editTaskFromList('${r.id}')`
 const delFn=r.provider_id?`deleteNoteFromActivity('${r.id}','${r.provider_id}').then(()=>renderTasksView())`:''
 html+=`<div class="contact-entry" style="border-left-color:#dc2626;background:#fff5f5;display:flex;gap:0.5rem;align-items:flex-start;cursor:pointer;" onclick="openTaskDetailModal('${r.id}')"><button onclick="event.stopPropagation();completeReminder('${r.id}').then(()=>renderTasksView())" title="Mark complete" style="background:none;border:2px solid #dc2626;color:#dc2626;border-radius:50%;width:24px;height:24px;min-width:24px;cursor:pointer;font-size:0.8rem;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:0.15rem;">✓</button><div style="flex:1;"><div style="font-weight:600;color:#dc2626;">${physName}${emailLink}</div><div style="font-size:0.75rem;color:#dc2626;font-weight:600;">Due ${r.reminder_date} — OVERDUE</div>${taskNote?`<div style="font-size:0.85rem;font-weight:600;color:#92400e;background:#fef3c7;padding:0.2rem 0.5rem;border-radius:4px;margin-top:0.25rem;">📋 ${taskNote}</div>`:''}<div style="font-size:0.85rem;color:#333;margin-top:0.2rem;">${preview}</div><div style="font-size:0.7rem;color:#999;margin-top:0.2rem;">Note from ${r.contact_date}${r.author?' by '+r.author:''}</div>${editFn||delFn?`<div style="display:flex;gap:0.5rem;margin-top:0.4rem;">${editFn?`<button class="icon-btn" onclick="event.stopPropagation();${editFn}" title="Edit note & reminder date" style="font-size:0.85rem;">✏️ Edit</button>`:''}${delFn?`<button class="icon-btn" onclick="event.stopPropagation();${delFn}" title="Delete" style="font-size:0.85rem;color:#dc2626;">🗑️ Delete</button>`:''}</div>`:''}</div></div>`;
 });
@@ -226,7 +234,7 @@ const phys=r.provider_id?physMap[r.provider_id]:null;const physName=phys?fmtName
 const emailLink=phys?.email?` <a href="mailto:${phys.email}" onclick="event.stopPropagation()" style="color:#0a4d3c;font-size:0.75rem;">✉️ Email</a>`:'';
 const {displayNotes,taskNote}=parseTaskRecord(r.notes);
 const preview=displayNotes.length>120?displayNotes.substring(0,120)+'...':displayNotes;
-const editFn=r.provider_id?`editNoteFromActivity('${r.id}','${r.provider_id}')`:''
+const editFn=`editTaskFromList('${r.id}')`
 const delFn=r.provider_id?`deleteNoteFromActivity('${r.id}','${r.provider_id}').then(()=>renderTasksView())`:''
 html+=`<div class="contact-entry" style="border-left-color:#f59e0b;display:flex;gap:0.5rem;align-items:flex-start;cursor:pointer;" onclick="openTaskDetailModal('${r.id}')"><button onclick="event.stopPropagation();completeReminder('${r.id}').then(()=>renderTasksView())" title="Mark complete" style="background:none;border:2px solid #f59e0b;color:#92400e;border-radius:50%;width:24px;height:24px;min-width:24px;cursor:pointer;font-size:0.8rem;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:0.15rem;">✓</button><div style="flex:1;"><div style="font-weight:600;color:#0a4d3c;">${physName}${emailLink}</div>${taskNote?`<div style="font-size:0.85rem;font-weight:600;color:#92400e;background:#fef3c7;padding:0.2rem 0.5rem;border-radius:4px;margin-top:0.25rem;">📋 ${taskNote}</div>`:''}<div style="font-size:0.85rem;color:#333;margin-top:0.2rem;">${preview}</div><div style="font-size:0.7rem;color:#999;margin-top:0.2rem;">Note from ${r.contact_date}${r.author?' by '+r.author:''}</div>${editFn||delFn?`<div style="display:flex;gap:0.5rem;margin-top:0.4rem;">${editFn?`<button class="icon-btn" onclick="event.stopPropagation();${editFn}" title="Edit note & reminder date" style="font-size:0.85rem;">✏️ Edit</button>`:''}${delFn?`<button class="icon-btn" onclick="event.stopPropagation();${delFn}" title="Delete" style="font-size:0.85rem;color:#dc2626;">🗑️ Delete</button>`:''}</div>`:''}</div></div>`;
 });
@@ -240,7 +248,7 @@ const phys=r.provider_id?physMap[r.provider_id]:null;const physName=phys?fmtName
 const emailLink=phys?.email?` <a href="mailto:${phys.email}" onclick="event.stopPropagation()" style="color:#0a4d3c;font-size:0.75rem;">✉️ Email</a>`:'';
 const {displayNotes,taskNote}=parseTaskRecord(r.notes);
 const preview=displayNotes.length>120?displayNotes.substring(0,120)+'...':displayNotes;
-const editFn=r.provider_id?`editNoteFromActivity('${r.id}','${r.provider_id}')`:''
+const editFn=`editTaskFromList('${r.id}')`
 const delFn=r.provider_id?`deleteNoteFromActivity('${r.id}','${r.provider_id}').then(()=>renderTasksView())`:''
 html+=`<div class="contact-entry" style="border-left-color:#6b7280;display:flex;gap:0.5rem;align-items:flex-start;cursor:pointer;" onclick="openTaskDetailModal('${r.id}')"><button onclick="event.stopPropagation();completeReminder('${r.id}').then(()=>renderTasksView())" title="Mark complete" style="background:none;border:2px solid #6b7280;color:#6b7280;border-radius:50%;width:24px;height:24px;min-width:24px;cursor:pointer;font-size:0.8rem;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:0.15rem;">✓</button><div style="flex:1;"><div style="font-weight:600;color:#0a4d3c;">${physName}${emailLink}</div>${taskNote?`<div style="font-size:0.85rem;font-weight:600;color:#92400e;background:#fef3c7;padding:0.2rem 0.5rem;border-radius:4px;margin-top:0.25rem;">📋 ${taskNote}</div>`:''}<div style="font-size:0.85rem;color:#333;margin-top:0.2rem;">${preview}</div><div style="font-size:0.7rem;color:#999;margin-top:0.2rem;">Note from ${r.contact_date}${r.author?' by '+r.author:''}</div>${editFn||delFn?`<div style="display:flex;gap:0.5rem;margin-top:0.4rem;">${editFn?`<button class="icon-btn" onclick="event.stopPropagation();${editFn}" title="Edit note & reminder date" style="font-size:0.85rem;">✏️ Edit</button>`:''}${delFn?`<button class="icon-btn" onclick="event.stopPropagation();${delFn}" title="Delete" style="font-size:0.85rem;color:#dc2626;">🗑️ Delete</button>`:''}</div>`:''}</div></div>`;
 });
