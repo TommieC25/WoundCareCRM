@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DB Cleanup — WoundCare CRM</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f5f5f5;color:#222;padding:1rem;}
+h1{font-size:1.4rem;font-weight:700;color:#7f1d1d;margin-bottom:0.25rem;}
+.subtitle{font-size:0.85rem;color:#666;margin-bottom:1.25rem;}
+.card{background:#fff;border-radius:10px;padding:1.25rem;margin-bottom:1rem;box-shadow:0 1px 4px rgba(0,0,0,0.08);}
+label{font-size:0.85rem;font-weight:600;display:block;margin-bottom:0.4rem;color:#444;}
+input[type=datetime-local],input[type=date]{font-size:0.95rem;padding:0.4rem 0.6rem;border:1px solid #ccc;border-radius:6px;width:100%;max-width:280px;}
+button{border:none;border-radius:6px;padding:0.45rem 1rem;font-size:0.85rem;font-weight:600;cursor:pointer;font-family:inherit;}
+.btn-load{background:#1d4ed8;color:#fff;}
+.btn-load:hover{background:#1e3a8a;}
+.btn-nuke{background:#dc2626;color:#fff;font-size:1rem;padding:0.6rem 1.5rem;}
+.btn-nuke:hover{background:#b91c1c;}
+.btn-nuke:disabled{background:#9ca3af;cursor:not-allowed;}
+.btn-sm{background:#e5e7eb;color:#374151;font-size:0.75rem;padding:0.25rem 0.6rem;}
+.btn-sm:hover{background:#d1d5db;}
+.btn-del{background:#dc2626;color:#fff;font-size:0.75rem;padding:0.25rem 0.6rem;}
+.btn-del:disabled{background:#ccc;cursor:not-allowed;}
+.summary-bar{background:#fee2e2;border:1px solid #fca5a5;border-radius:8px;padding:0.75rem 1rem;margin-bottom:1rem;font-weight:600;font-size:0.95rem;color:#7f1d1d;display:none;}
+.summary-bar.show{display:block;}
+.row-card{border:1px solid #fca5a5;border-radius:8px;padding:0.6rem 0.9rem;margin-bottom:0.4rem;display:flex;gap:0.75rem;align-items:flex-start;background:#fff5f5;}
+.row-card.checked{border-color:#dc2626;background:#fee2e2;}
+.chk{margin-top:0.15rem;flex-shrink:0;width:16px;height:16px;cursor:pointer;}
+.row-info{flex:1;}
+.row-name{font-weight:600;font-size:0.85rem;}
+.row-detail{font-size:0.75rem;color:#666;margin-top:0.15rem;}
+.row-time{font-size:0.7rem;color:#9ca3af;margin-top:0.1rem;}
+.row-actions{flex-shrink:0;}
+.empty{color:#999;font-size:0.85rem;padding:0.5rem 0;}
+.loading{color:#1d4ed8;font-size:0.85rem;font-style:italic;}
+.toast{position:fixed;bottom:1rem;left:50%;transform:translateX(-50%);background:#222;color:#fff;padding:0.6rem 1.25rem;border-radius:8px;font-size:0.85rem;z-index:9999;display:none;}
+.toast.show{display:block;}
+.toast.success{background:#166534;}
+.toast.error{background:#991b1b;}
+.actions-bar{display:flex;gap:0.75rem;align-items:center;flex-wrap:wrap;margin-bottom:1rem;}
+#selCount{font-size:0.85rem;color:#666;}
+.hint{font-size:0.78rem;color:#666;margin-top:0.5rem;}
+.section-label{font-size:0.78rem;font-weight:700;color:#7f1d1d;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:0.5rem;}
+</style>
+</head>
+<body>
+<h1>🧹 DB Cleanup — Bulk Delete Locations</h1>
+<p class="subtitle">Find and delete practice locations (and their provider assignments) added after a given time. Does NOT delete providers or practices themselves.</p>
+
+<div class="card">
+  <label for="sinceInput">Show locations created after:</label>
+  <input type="datetime-local" id="sinceInput">
+  <p class="hint">Set to just before you ran the bad import. Defaults to start of today.</p>
+  <br>
+  <button class="btn-load" onclick="loadLocations()">Load Locations</button>
+</div>
+
+<div class="summary-bar" id="summaryBar"></div>
+
+<div class="actions-bar" id="actionsBar" style="display:none;">
+  <button class="btn-nuke" id="nukeBtn" onclick="deleteSelected()">🗑 Delete All Selected</button>
+  <button class="btn-sm" onclick="selectAll(true)">Select All</button>
+  <button class="btn-sm" onclick="selectAll(false)">Deselect All</button>
+  <span id="selCount">0 selected</span>
+</div>
+
+<div id="locationList"></div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const SUPABASE_URL = 'https://xhdjywibdjzbczfjmctp.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhoZGp5d2liZGp6YmN6ZmptY3RwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk3NzE4MTYsImV4cCI6MjA4NTM0NzgxNn0.vHAfeYTVbu2Isu5AoFONvzrtJ2sS3YwF00QRe3LNrbU';
+const { createClient } = window.supabase;
+const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// Default: start of today local time
+const now = new Date();
+now.setHours(0, 0, 0, 0);
+document.getElementById('sinceInput').value = now.toISOString().slice(0,16);
+
+let loadedLocs = [];
+
+function showToast(msg, type='info') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show ' + type;
+  setTimeout(() => t.className = 'toast', 3500);
+}
+
+function updateSelCount() {
+  const checked = document.querySelectorAll('.chk:checked').length;
+  document.getElementById('selCount').textContent = checked + ' selected';
+}
+
+function selectAll(state) {
+  document.querySelectorAll('.chk').forEach(c => {
+    c.checked = state;
+    c.closest('.row-card').classList.toggle('checked', state);
+  });
+  updateSelCount();
+}
+
+async function loadLocations() {
+  const sinceVal = document.getElementById('sinceInput').value;
+  if (!sinceVal) { showToast('Pick a date/time first', 'error'); return; }
+  const sinceISO = new Date(sinceVal).toISOString();
+
+  document.getElementById('locationList').innerHTML = '<p class="loading">Loading...</p>';
+  document.getElementById('actionsBar').style.display = 'none';
+  document.getElementById('summaryBar').className = 'summary-bar';
+
+  try {
+    // Load locations created after the given time
+    const { data: locs, error } = await db
+      .from('practice_locations')
+      .select('id, practice_id, label, address, city, zip, created_at')
+      .gte('created_at', sinceISO)
+      .order('created_at', { ascending: false });
+
+    if (error) throw error;
+
+    if (!locs || locs.length === 0) {
+      document.getElementById('locationList').innerHTML = '<p class="empty">No locations found created after that time.</p>';
+      return;
+    }
+
+    // Load practices and assignments for context
+    const practiceIds = [...new Set(locs.map(l => l.practice_id).filter(Boolean))];
+    const locIds = locs.map(l => l.id);
+
+    const [{ data: practices }, { data: assignments }] = await Promise.all([
+      practiceIds.length
+        ? db.from('practices').select('id,name').in('id', practiceIds)
+        : Promise.resolve({ data: [] }),
+      db.from('provider_location_assignments')
+        .select('practice_location_id, provider_id')
+        .in('practice_location_id', locIds)
+    ]);
+
+    const practiceMap = {};
+    (practices || []).forEach(p => practiceMap[p.id] = p.name);
+    const assignCountMap = {};
+    (assignments || []).forEach(a => {
+      assignCountMap[a.practice_location_id] = (assignCountMap[a.practice_location_id] || 0) + 1;
+    });
+
+    loadedLocs = locs;
+
+    const summaryBar = document.getElementById('summaryBar');
+    summaryBar.className = 'summary-bar show';
+    summaryBar.textContent = `Found ${locs.length} location(s) created after ${sinceVal}. Review below and delete what should be removed.`;
+
+    document.getElementById('locationList').innerHTML = locs.map(loc => {
+      const pracName = practiceMap[loc.practice_id] || '(no practice)';
+      const addr = [loc.address, loc.city, loc.zip].filter(Boolean).join(', ');
+      const provCount = assignCountMap[loc.id] || 0;
+      const createdAt = new Date(loc.created_at).toLocaleString();
+      return `<div class="row-card checked" id="card-${loc.id}">
+        <input type="checkbox" class="chk" data-id="${loc.id}" checked onchange="updateSelCount();this.closest('.row-card').classList.toggle('checked',this.checked)">
+        <div class="row-info">
+          <div class="row-name">${pracName}</div>
+          <div class="row-detail">${addr || 'No address'} &nbsp;·&nbsp; ${provCount} provider assignment(s)</div>
+          <div class="row-time">Created: ${createdAt}</div>
+        </div>
+        <div class="row-actions">
+          <button class="btn-del" onclick="deleteSingle('${loc.id}', this)">Delete</button>
+        </div>
+      </div>`;
+    }).join('');
+
+    document.getElementById('actionsBar').style.display = 'flex';
+    updateSelCount();
+
+  } catch(e) {
+    showToast('Error: ' + e.message, 'error');
+    document.getElementById('locationList').innerHTML = '<p class="empty" style="color:#dc2626;">Error loading: ' + e.message + '</p>';
+    console.error(e);
+  }
+}
+
+async function deleteSingle(locId, btn) {
+  btn.disabled = true; btn.textContent = '...';
+  try {
+    await db.from('provider_location_assignments').delete().eq('practice_location_id', locId);
+    await db.from('practice_locations').delete().eq('id', locId);
+    document.getElementById('card-' + locId)?.remove();
+    updateSelCount();
+    showToast('Deleted location', 'success');
+  } catch(e) {
+    showToast('Error: ' + e.message, 'error');
+    btn.disabled = false; btn.textContent = 'Delete';
+  }
+}
+
+async function deleteSelected() {
+  const checked = [...document.querySelectorAll('.chk:checked')];
+  if (checked.length === 0) { showToast('Nothing selected', 'error'); return; }
+
+  const msg = `Delete ${checked.length} location(s) and their provider assignments?\n\nProviders and practices are NOT deleted — only the location records and assignments.`;
+  if (!confirm(msg)) return;
+
+  const btn = document.getElementById('nukeBtn');
+  btn.disabled = true; btn.textContent = 'Deleting...';
+
+  let deleted = 0, failed = 0;
+  for (const chk of checked) {
+    const locId = chk.dataset.id;
+    try {
+      await db.from('provider_location_assignments').delete().eq('practice_location_id', locId);
+      await db.from('practice_locations').delete().eq('id', locId);
+      document.getElementById('card-' + locId)?.remove();
+      deleted++;
+    } catch(e) {
+      console.error('Failed to delete', locId, e);
+      failed++;
+    }
+  }
+
+  btn.disabled = false; btn.textContent = '🗑 Delete All Selected';
+  updateSelCount();
+
+  if (failed === 0) {
+    showToast(`Deleted ${deleted} location(s)`, 'success');
+    document.getElementById('summaryBar').textContent = `Done — ${deleted} location(s) deleted.`;
+  } else {
+    showToast(`Deleted ${deleted}, failed ${failed}`, 'error');
+  }
+}
+</script>
+</body>
+</html>
