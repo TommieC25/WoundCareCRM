@@ -62,6 +62,23 @@ Expects columns: first_name, last_name, email, priority, specialty, degree, titl
 - **Practices CSV**: All locations with details
 - **Field Routing CSV**: Matches Google Sheet "Routing(Field Use)" tab — includes Status column with latest activity per provider
 
+## CRITICAL BUSINESS RULES — READ BEFORE TOUCHING PROVIDER DATA
+
+**DERMATOLOGY = MOHS SURGEONS ONLY. No exceptions, ever.**
+- This CRM exists to sell OMEZA wound care products to providers who treat chronic wounds
+- The ONLY dermatologists who belong in this database are those who **perform Mohs surgery** — Mohs is a wound-creating procedure that requires wound care follow-up
+- General dermatologists (eczema, acne, cosmetic, etc.) are NOT targets and must NEVER be imported or added
+- If a provider has specialty = 'Dermatology' in this DB, they should be a Mohs surgeon. If unsure, flag for Tom to verify rather than importing
+- **Indicators of a Mohs surgeon**: NPI taxonomy includes "Mohs", title says "Mohs Surgeon", notes mention Mohs, practice name includes "Mohs" or "Dermatologic Surgery"
+- When scraping or bulk-importing from dermatology practice websites, do NOT import every provider on the site — only those explicitly identified as Mohs surgeons
+
+**Target specialties for this CRM:**
+- `Podiatry` — all podiatrists (DPM) are targets; they treat diabetic foot wounds
+- `Wound Care` — all wound care specialists are targets
+- `Dermatology` — **Mohs surgeons ONLY**
+- `Other` — case-by-case (vascular surgery, plastic surgery, etc. who treat wounds)
+- `Administrative Staff` — office staff added for contact purposes only, not targets
+
 ## Naming Conventions
 - "Academic Connection" (UI label) = `academic_connection` column (formerly `um_connection`, still falls back to it)
 - "Projected Volume" (UI) = `proj_vol` column (falls back to `mohs_volume`; formerly `patient_volume`)
