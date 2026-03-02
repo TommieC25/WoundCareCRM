@@ -315,9 +315,9 @@ return ['','' ,asVal,targetVal,rank,firstName,lastName,firstLast,degree,status,p
 function guessCounty(city) {
 if (!city) return '';
 const c = city.toLowerCase();
-const mdCities = ['miami','hialeah','homestead','key biscayne','coral gables','south miami','palmetto bay','doral','north miami','aventura','miami beach','miami gardens','miami lakes','opa-locka','sunny isles','key largo'];
-const brCities = ['fort lauderdale','hollywood','pembroke pines','coral springs','deerfield beach','plantation','davie','weston','tamarac','lauderdale lakes','coconut creek','pompano beach','cooper city'];
-const pbCities = ['west palm beach','boca raton','boynton beach','delray beach','palm beach gardens','jupiter','lake worth','wellington','royal palm beach','belle glade','palm city','atlantis','north palm beach'];
+const mdCities = ['miami','hialeah','homestead','key biscayne','coral gables','south miami','palmetto bay','doral','north miami','aventura','miami beach','miami gardens','miami lakes','opa-locka','sunny isles','key largo','pinecrest','bay harbor islands','bal harbour','surfside','miami shores','cutler bay','kendall','el portal','biscayne park','sweetwater','west miami','florida city','leisure city','perrine','naranja','virginia gardens','medley'];
+const brCities = ['fort lauderdale','hollywood','pembroke pines','coral springs','deerfield beach','plantation','davie','weston','tamarac','lauderdale lakes','coconut creek','pompano beach','cooper city','hallandale beach','margate','miramar','sunrise','oakland park','wilton manors','lauderhill','north lauderdale','parkland','lighthouse point','dania beach','hillsboro beach','sea ranch lakes','lazy lake'];
+const pbCities = ['west palm beach','boca raton','boynton beach','delray beach','palm beach gardens','jupiter','lake worth','wellington','royal palm beach','belle glade','palm city','atlantis','north palm beach','greenacres','riviera beach','lake worth beach','juno beach','highland beach','tequesta','loxahatchee','palm beach shores','south bay','pahokee'];
 if (mdCities.some(mc => c.includes(mc))) return 'Miami-Dade';
 if (brCities.some(bc => c.includes(bc))) return 'Broward';
 if (pbCities.some(pc => c.includes(pc))) return 'Palm Beach';
