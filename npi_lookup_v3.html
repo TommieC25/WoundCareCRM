@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NPI Registry Bulk Lookup — WoundCare CRM</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+         background: #f5f5f5; color: #333; padding: 16px; }
+  h1 { font-size: 1.4rem; margin-bottom: 4px; }
+  .sub { color: #666; font-size: 0.85rem; margin-bottom: 20px; }
+  .card { background: white; border-radius: 10px; padding: 20px;
+          box-shadow: 0 2px 8px rgba(0,0,0,0.08); margin-bottom: 16px; }
+  h2 { font-size: 1rem; margin-bottom: 12px; color: #444; }
+  label { font-size: 0.85rem; font-weight: 600; display: block; margin-bottom: 4px; }
+  input[type=file] { font-size: 0.9rem; }
+  button { background: #2563eb; color: white; border: none; border-radius: 8px;
+           padding: 10px 20px; font-size: 0.95rem; cursor: pointer; margin-right: 8px; }
+  button:hover { background: #1d4ed8; }
+  button:disabled { background: #9ca3af; cursor: not-allowed; }
+  button.danger { background: #dc2626; }
+  button.green { background: #16a34a; }
+  .progress-bar-wrap { background: #e5e7eb; border-radius: 999px; height: 10px;
+                        margin: 10px 0; overflow: hidden; }
+  .progress-bar { background: #2563eb; height: 100%; transition: width 0.3s; width: 0%; }
+  #log { font-size: 0.75rem; font-family: monospace; background: #111; color: #d1fae5;
+         padding: 12px; border-radius: 8px; height: 200px; overflow-y: auto;
+         white-space: pre-wrap; word-break: break-all; }
+  .stats { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 12px; }
+  .stat { background: #f3f4f6; border-radius: 8px; padding: 10px 16px; flex: 1;
+          min-width: 100px; text-align: center; }
+  .stat .num { font-size: 1.8rem; font-weight: 700; }
+  .stat .lbl { font-size: 0.75rem; color: #666; margin-top: 2px; }
+  .stat.verified .num { color: #16a34a; }
+  .stat.multi .num { color: #d97706; }
+  .stat.notfound .num { color: #dc2626; }
+  .stat.placeholder .num { color: #6b7280; }
+  .download-area { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
+  .sql-out { font-size: 0.75rem; font-family: monospace; background: #f8fafc;
+             border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px;
+             max-height: 400px; overflow-y: auto; white-space: pre-wrap;
+             word-break: break-all; margin-top: 12px; }
+  .hidden { display: none; }
+  .note { font-size: 0.8rem; color: #6b7280; margin-top: 8px; }
+  textarea { width: 100%; font-size: 0.8rem; font-family: monospace;
+             border: 1px solid #d1d5db; border-radius: 6px; padding: 8px;
+             height: 120px; resize: vertical; margin-bottom: 8px; }
+</style>
+</head>
+<body>
+
+<h1>NPI Registry Bulk Lookup</h1>
+<p class="sub">WoundCare CRM · Provider Verification · 2026</p>
+
+<div class="card">
+  <h2>1. Load Provider List</h2>
+  <label>Upload providers_npi_input.csv</label>
+  <input type="file" id="csvFile" accept=".csv" style="margin-bottom:10px;display:block;">
+  <p class="note">Columns required: claude_id, first_name, last_name, degree, specialty, crm_notes</p>
+  <div style="margin-top:12px;">
+    <label>Or paste CSV text directly:</label>
+    <textarea id="csvPaste" placeholder="claude_id,first_name,last_name,degree,specialty,crm_notes&#10;..."></textarea>
+    <button onclick="loadPaste()">Load Pasted CSV</button>
+  </div>
+  <div id="loadedInfo" class="note hidden" style="color:#16a34a;font-weight:600;margin-top:8px;"></div>
+</div>
+
+<div class="card">
+  <h2>2. Run NPI Lookups</h2>
+  <button id="runBtn" onclick="runLookup()" disabled>▶ Start Lookup</button>
+  <button id="stopBtn" onclick="stopLookup()" disabled class="danger">■ Stop</button>
+  <span id="statusText" style="font-size:0.85rem;margin-left:8px;color:#666;"></span>
+  <div class="progress-bar-wrap"><div class="progress-bar" id="progressBar"></div></div>
+  <div id="log">Ready. Load a CSV to begin.\n</div>
+  <div class="stats">
+    <div class="stat verified"><div class="num" id="statVerified">0</div><div class="lbl">VERIFIED</div></div>
+    <div class="stat multi"><div class="num" id="statMulti">0</div><div class="lbl">MULTI</div></div>
+    <div class="stat notfound"><div class="num" id="statNotFound">0</div><div class="lbl">NOT FOUND</div></div>
+    <div class="stat placeholder"><div class="num" id="statPlaceholder">0</div><div class="lbl">PLACEHOLDER</div></div>
+  </div>
+</div>
+
+<div class="card hidden" id="resultsCard">
+  <h2>3. Download Results</h2>
+  <div class="download-area">
+    <button class="green" onclick="downloadCSV()">⬇ npi_results.csv</button>
+    <button class="green" onclick="downloadSQL()">⬇ npi_updates.sql</button>
+  </div>
+  <p class="note">SQL uses WHERE first_name='X' AND last_name='Y' — verify against real UUIDs in Supabase before executing.</p>
+  <h2 style="margin-top:16px;">SQL Preview</h2>
+  <div id="sqlPreview" class="sql-out"></div>
+</div>
+
+<script>
+// ============================================================
+// Configuration
+// ============================================================
+const NPI_API = 'https://npiregistry.cms.hhs.gov/api/';
+const SLEEP_MS = 350;
+const MATCH_THRESHOLD = 0.75;
+
+const PLACEHOLDER_IDS = new Set(['21ea5d53']);
+const PLACEHOLDER_NAMES = [['daly, fried', ''], ['fried, or', '']]; // unusual first names
+
+const REM_JACKSON = { id: 'ce7b992c', first: 'rem', last: 'jackson' };
+const SHERI_HECHT = { id: '9de246de', first: 'sheri', last: 'hecht' };
+
+const DUPE_PAIRS = [
+  { first: 'jaime',    last: 'carbonell', ids: ['175797ad','a52a9a17'] },
+  { first: 'jonathan', last: 'cutler',    ids: ['1e7af873','61d574a0'] },
+  { first: 'ashley',   last: 'bowles',    ids: ['8a4e7b8b','3e396663'] },
+  { first: 'adam',     last: 'plotkin',   ids: ['6ebb1c56','7b728e1c'] },
+  { first: 'richard',  last: 'rodriguez', ids: ['c06ef474','cc376d8b'] },
+];
+
+const DUPE_BY_ID = {};
+const DUPE_BY_NAME = {};
+for (const p of DUPE_PAIRS) {
+  for (const id of p.ids) DUPE_BY_ID[id] = p;
+  DUPE_BY_NAME[`${p.first}|${p.last}`] = p;
+}
+
+// ============================================================
+// State
+// ============================================================
+let providers = [];
+let results = [];
+let sqlStatements = [];
+let running = false;
+let stopFlag = false;
+const dupeCache = {};
+const stats = { VERIFIED: 0, MULTIPLE_MATCHES: 0, NOT_FOUND: 0, PLACEHOLDER: 0 };
+
+// ============================================================
+// CSV parsing
+// ============================================================
+function parseCSV(text) {
+  const lines = text.trim().split('\n');
+  const headers = parseCSVLine(lines[0]);
+  const rows = [];
+  for (let i = 1; i < lines.length; i++) {
+    if (!lines[i].trim()) continue;
+    const vals = parseCSVLine(lines[i]);
+    const obj = {};
+    headers.forEach((h, idx) => obj[h.trim()] = (vals[idx] || '').trim());
+    rows.push(obj);
+  }
+  return rows;
+}
+
+function parseCSVLine(line) {
+  const result = [];
+  let inQ = false, cur = '';
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i];
+    if (c === '"' && !inQ) { inQ = true; continue; }
+    if (c === '"' && inQ) {
+      if (line[i+1] === '"') { cur += '"'; i++; }
+      else inQ = false;
+      continue;
+    }
+    if (c === ',' && !inQ) { result.push(cur); cur = ''; continue; }
+    cur += c;
+  }
+  result.push(cur);
+  return result;
+}
+
+function loadFile() {
+  const f = document.getElementById('csvFile').files[0];
+  if (!f) return;
+  const reader = new FileReader();
+  reader.onload = e => loadCSVText(e.target.result);
+  reader.readAsText(f);
+}
+
+function loadPaste() {
+  const text = document.getElementById('csvPaste').value;
+  if (!text.trim()) { alert('Paste CSV text first.'); return; }
+  loadCSVText(text);
+}
+
+function loadCSVText(text) {
+  providers = parseCSV(text);
+  if (!providers.length || !providers[0].first_name) {
+    alert('CSV format error — need columns: claude_id, first_name, last_name, degree, specialty, crm_notes');
+    return;
+  }
+  document.getElementById('loadedInfo').textContent = `✓ Loaded ${providers.length} providers`;
+  document.getElementById('loadedInfo').classList.remove('hidden');
+  document.getElementById('runBtn').disabled = false;
+  logLine(`Loaded ${providers.length} providers.`);
+}
+
+document.getElementById('csvFile').addEventListener('change', loadFile);
+
+// ============================================================
+// Logging + UI
+// ============================================================
+const logEl = document.getElementById('log');
+function logLine(msg) {
+  logEl.textContent += msg + '\n';
+  logEl.scrollTop = logEl.scrollHeight;
+}
+
+function updateStats() {
+  document.getElementById('statVerified').textContent = stats.VERIFIED;
+  document.getElementById('statMulti').textContent = stats.MULTIPLE_MATCHES;
+  document.getElementById('statNotFound').textContent = stats.NOT_FOUND;
+  document.getElementById('statPlaceholder').textContent = stats.PLACEHOLDER;
+}
+
+// ============================================================
+// NPI API
+// ============================================================
+function sleep(ms) { return new Promise(r => setTimeout(r, ms)); }
+
+async function queryNPI({ first_name, last_name, limit = 5 }) {
+  const params = new URLSearchParams({ version: '2.1', limit, state: 'FL' });
+  if (first_name) params.set('first_name', first_name);
+  if (last_name)  params.set('last_name',  last_name);
+  const resp = await fetch(`${NPI_API}?${params}`);
+  if (!resp.ok) throw new Error(`NPI API ${resp.status}`);
+  const data = await resp.json();
+  return data.results || [];
+}
+
+function seqRatio(a, b) {
+  a = (a || '').toLowerCase(); b = (b || '').toLowerCase();
+  if (!a || !b) return 0;
+  if (a === b) return 1;
+  const la = a.length, lb = b.length;
+  const m = new Array(la + 1).fill(null).map(() => new Array(lb + 1).fill(0));
+  let best = 0;
+  for (let i = 1; i <= la; i++) {
+    for (let j = 1; j <= lb; j++) {
+      if (a[i-1] === b[j-1]) { m[i][j] = m[i-1][j-1] + 1; best = Math.max(best, m[i][j]); }
+    }
+  }
+  return (2 * best) / (la + lb);
+}
+
+function isNameMatch(result, firstName, lastName) {
+  const basic = result.basic || {};
+  const nFirst = basic.first_name || '';
+  const nLast  = basic.last_name  || '';
+  const lastScore  = seqRatio(nLast, lastName);
+  const firstScore = seqRatio(nFirst, firstName);
+  return lastScore > MATCH_THRESHOLD || (lastScore > 0.6 && firstScore > 0.6);
+}
+
+function extractInfo(result) {
+  const basic = result.basic || {};
+  const npi   = result.number || '';
+  let degree  = (basic.credential || '').trim().replace(/^,+|,+$/g, '');
+
+  const taxonomies = result.taxonomies || [];
+  const specNPI = taxonomies.length ? mapSpecialty(taxonomies[0].desc || '') : 'Other';
+
+  let address = '', city = '', state = '', zip = '', phone = '', practiceName = '';
+  for (const addr of (result.addresses || [])) {
+    if (addr.address_purpose === 'LOCATION') {
+      address = addr.address_1 || '';
+      city    = addr.city      || '';
+      state   = addr.state     || '';
+      zip     = (addr.postal_code || '').substring(0, 5);
+      phone   = (addr.telephone_number || '').replace(/\D/g, '');
+      break;
+    }
+  }
+  practiceName = basic.organization_name || '';
+  return { npi, degree_npi: degree, specialty_npi: specNPI, practice_name: practiceName,
+           address, city, state, zip, phone };
+}
+
+function mapSpecialty(desc) {
+  const d = (desc || '').toLowerCase();
+  if (d.includes('dermatolog')) return 'Dermatology';
+  if (d.includes('podiatric') || d.includes('podiatry') || d.includes('foot')) return 'Podiatry';
+  if (d.includes('wound care') || d.includes('wound management')) return 'Wound Care';
+  return 'Other';
+}
+
+// ============================================================
+// Multi-strategy search
+// ============================================================
+async function searchProvider(firstName, lastName) {
+  const strategies = [];
+
+  async function trySearch(fn, ln) {
+    await sleep(SLEEP_MS);
+    const all = await queryNPI({ first_name: fn, last_name: ln });
+    const matched = all.filter(r => isNameMatch(r, fn || firstName, ln || lastName));
+    return matched;
+  }
+
+  // 1. Full name
+  let m = await trySearch(firstName, lastName);
+  if (m.length) return { matched: m, notes: '' };
+
+  // 2. Last name only, filter by first
+  const m2all = await trySearch(null, lastName);
+  const m2 = m2all.filter(r => isNameMatch(r, firstName, lastName));
+  if (m2.length) return { matched: m2, notes: '' };
+
+  // 3. First initial + last
+  if (firstName) {
+    const m3 = await trySearch(firstName[0], lastName);
+    if (m3.length) return { matched: m3, notes: '' };
+  }
+
+  // 4. Strip middle initial (e.g. "Jacqueline M." -> "Jacqueline")
+  const stripped = firstName.replace(/\s+[A-Z]\.$/, '').trim();
+  if (stripped !== firstName && stripped) {
+    const m4 = await trySearch(stripped, lastName);
+    if (m4.length) return { matched: m4, notes: '' };
+  }
+
+  // 5. Compound last names
+  const parts = lastName.split(/\s+/);
+  if (parts.length > 1) {
+    for (const part of parts) {
+      if (part.length > 2) {
+        const m5 = await trySearch(firstName, part);
+        if (m5.length) return { matched: m5, notes: `Matched on last name part '${part}' of '${lastName}'` };
+      }
+    }
+  }
+
+  return { matched: [], notes: 'NOT_FOUND after all strategies' };
+}
+
+// ============================================================
+// SQL generation
+// ============================================================
+function buildSQL(row) {
+  const { first_name, last_name, npi, degree_npi, specialty_npi,
+          address, city, state, zip, phone, degree_crm, specialty_crm } = row;
+  const addrStr = [address, `${city} ${state} ${zip}`.trim()].filter(Boolean).join(', ');
+  const noteAddition = ` NPI: ${npi}. Address: ${addrStr}. Phone: ${phone}. NPI verified 2026-02.`;
+
+  const setParts = [];
+
+  if ((!degree_crm || degree_crm === '?') && degree_npi) {
+    setParts.push(`  degree = '${degree_npi.replace(/'/g, "''")}'`);
+  }
+  if (specialty_npi && specialty_npi !== specialty_crm) {
+    setParts.push(`  specialty = '${specialty_npi.replace(/'/g, "''")}'`);
+  }
+
+  const safeNote = noteAddition.replace(/'/g, "''");
+  const notesExpr =
+    `TRIM(REGEXP_REPLACE(\n` +
+    `  CONCAT(\n` +
+    `    COALESCE(NULLIF(REGEXP_REPLACE(general_notes,\n` +
+    `      '⚠️ NEEDS VERIFICATION[^.]*\\.\\s*', '', 'g'), ''), ''),\n` +
+    `    '${safeNote}'),\n` +
+    `  '^\\s*\\|\\s*', '', 'g'))`;
+  setParts.push(`  general_notes = ${notesExpr}`);
+
+  const sf = first_name.replace(/'/g, "''");
+  const sl = last_name.replace(/'/g, "''");
+
+  return (
+    `-- ${first_name} ${last_name} (NPI: ${npi})\n` +
+    `UPDATE providers SET\n` +
+    setParts.join(',\n') + '\n' +
+    `WHERE first_name = '${sf}' AND last_name = '${sl}';\n`
+  );
+}
+
+// ============================================================
+// Main run loop
+// ============================================================
+async function runLookup() {
+  if (!providers.length) { alert('Load a CSV first.'); return; }
+  running = true; stopFlag = false;
+  results = []; sqlStatements = [];
+  stats.VERIFIED = 0; stats.MULTIPLE_MATCHES = 0;
+  stats.NOT_FOUND = 0; stats.PLACEHOLDER = 0;
+  Object.keys(dupeCache).forEach(k => delete dupeCache[k]);
+
+  document.getElementById('runBtn').disabled = true;
+  document.getElementById('stopBtn').disabled = false;
+  document.getElementById('resultsCard').classList.add('hidden');
+  logEl.textContent = '';
+
+  for (let i = 0; i < providers.length; i++) {
+    if (stopFlag) { logLine('⏹ Stopped by user.'); break; }
+
+    const row = providers[i];
+    const claude_id   = (row.claude_id || '').trim();
+    const first_name  = (row.first_name || '').trim();
+    const last_name   = (row.last_name  || '').trim();
+    const degree_crm  = (row.degree     || '').trim();
+    const specialty_crm = (row.specialty || '').trim();
+    const crm_notes   = (row.crm_notes  || '').trim();
+
+    const pct = Math.round((i / providers.length) * 100);
+    document.getElementById('progressBar').style.width = pct + '%';
+    document.getElementById('statusText').textContent = `${i+1}/${providers.length}: ${first_name} ${last_name}`;
+
+    const out = {
+      claude_id, first_name, last_name,
+      degree_crm, degree_npi: '', specialty_crm, specialty_npi: '',
+      npi: '', practice_name: '', address: '', city: '', state: '', zip: '', phone: '',
+      status: '', notes: ''
+    };
+
+    // PLACEHOLDER check
+    const isPlaceholder = PLACEHOLDER_IDS.has(claude_id.substring(0, 8)) ||
+      PLACEHOLDER_NAMES.some(([pf]) => first_name.toLowerCase().includes(pf));
+    if (isPlaceholder) {
+      out.status = 'PLACEHOLDER';
+      out.notes  = 'Skipped — placeholder entry';
+      stats.PLACEHOLDER++;
+      logLine(`[PLACEHOLDER] ${first_name} ${last_name}`);
+      results.push(out); updateStats(); continue;
+    }
+
+    // Duplicate pair check
+    const dupeKey = `${first_name.toLowerCase()}|${last_name.toLowerCase()}`;
+    const idKey   = claude_id.substring(0, 8);
+    const dupePair = DUPE_BY_NAME[dupeKey] || DUPE_BY_ID[idKey];
+    if (dupePair) {
+      const cacheKey = `${dupePair.first}|${dupePair.last}`;
+      if (dupeCache[cacheKey]) {
+        const cached = dupeCache[cacheKey];
+        Object.assign(out, cached);
+        out.claude_id = claude_id;
+        out.notes = (out.notes || '') + ' [duplicate — shared lookup]';
+        stats[out.status]++;
+        logLine(`[DUPE-CACHED] ${first_name} ${last_name} → ${out.status}`);
+        results.push(out);
+        if (out.status === 'VERIFIED') sqlStatements.push(buildSQL({ ...out, degree_crm, specialty_crm }));
+        updateStats(); continue;
+      }
+      // Will do lookup and cache below
+    }
+
+    // Special case flags
+    const isRemJackson  = idKey === REM_JACKSON.id || (first_name.toLowerCase() === 'rem' && last_name.toLowerCase() === 'jackson');
+    const isSheriHecht  = idKey === SHERI_HECHT.id || (first_name.toLowerCase() === 'sheri' && last_name.toLowerCase() === 'hecht');
+
+    // Do lookup
+    let matched = [], searchNotes = '';
+    try {
+      const res = await searchProvider(first_name, last_name);
+      matched = res.matched; searchNotes = res.notes;
+    } catch (e) {
+      logLine(`  [ERROR] ${e.message}`);
+      out.status = 'NOT_FOUND'; out.notes = `API error: ${e.message}`;
+      stats.NOT_FOUND++;
+      results.push(out); updateStats(); continue;
+    }
+
+    if (matched.length === 0) {
+      out.status = 'NOT_FOUND';
+      out.notes  = isRemJackson   ? 'Possible non-clinical contact' :
+                   isSheriHecht   ? 'NPI previously found as Authorized Official only, not provider' :
+                   searchNotes;
+    } else if (matched.length === 1) {
+      out.status = 'VERIFIED';
+      Object.assign(out, extractInfo(matched[0]));
+      out.notes = searchNotes;
+      if (isSheriHecht) out.notes += ' NPI found — verify clinical role (previously Authorized Official only)';
+    } else {
+      out.status = 'MULTIPLE_MATCHES';
+      Object.assign(out, extractInfo(matched[0]));
+      out.notes = `${matched.length} FL results found; cannot auto-select. ${searchNotes}`;
+    }
+
+    stats[out.status]++;
+    logLine(`[${out.status}] ${first_name} ${last_name}${out.npi ? ' → NPI: '+out.npi : ''}`);
+
+    // Cache for dupe pairs
+    if (dupePair) {
+      const cacheKey = `${dupePair.first}|${dupePair.last}`;
+      dupeCache[cacheKey] = {
+        degree_npi: out.degree_npi, specialty_npi: out.specialty_npi,
+        npi: out.npi, practice_name: out.practice_name,
+        address: out.address, city: out.city, state: out.state,
+        zip: out.zip, phone: out.phone, status: out.status, notes: out.notes
+      };
+    }
+
+    results.push(out);
+    if (out.status === 'VERIFIED') {
+      sqlStatements.push(buildSQL({ ...out, degree_crm, specialty_crm }));
+    }
+    updateStats();
+  }
+
+  document.getElementById('progressBar').style.width = '100%';
+  document.getElementById('stopBtn').disabled = true;
+  document.getElementById('runBtn').disabled = false;
+  running = false;
+
+  const total = stats.VERIFIED + stats.MULTIPLE_MATCHES + stats.NOT_FOUND + stats.PLACEHOLDER;
+  logLine(`\n✓ Done. ${total} processed: ${stats.VERIFIED} VERIFIED, ${stats.MULTIPLE_MATCHES} MULTI, ${stats.NOT_FOUND} NOT_FOUND, ${stats.PLACEHOLDER} PLACEHOLDER`);
+
+  showResults();
+}
+
+function stopLookup() {
+  stopFlag = true;
+  document.getElementById('statusText').textContent = 'Stopping…';
+}
+
+// ============================================================
+// Results display and download
+// ============================================================
+function showResults() {
+  document.getElementById('resultsCard').classList.remove('hidden');
+  const preview = sqlStatements.slice(0, 5).join('\n') +
+    (sqlStatements.length > 5 ? `\n\n... and ${sqlStatements.length - 5} more statements.` : '');
+  document.getElementById('sqlPreview').textContent = preview || '(no VERIFIED matches)';
+}
+
+function toCSV(rows) {
+  const cols = ['claude_id','first_name','last_name','degree_crm','degree_npi',
+                'specialty_crm','specialty_npi','npi','practice_name',
+                'address','city','state','zip','phone','status','notes'];
+  const esc = v => `"${(v||'').replace(/"/g,'""')}"`;
+  return [cols.join(','),
+    ...rows.map(r => cols.map(c => esc(r[c])).join(','))
+  ].join('\n');
+}
+
+function downloadCSV() {
+  if (!results.length) { alert('No results yet.'); return; }
+  const blob = new Blob([toCSV(results)], { type: 'text/csv' });
+  dl(blob, 'npi_results.csv');
+}
+
+function downloadSQL() {
+  if (!sqlStatements.length) { alert('No VERIFIED matches to export.'); return; }
+  const header = `-- NPI Registry Verified Updates — WoundCare CRM\n-- Generated ${new Date().toISOString().slice(0,10)}\n-- NOTE: WHERE clause uses first/last name. Verify UUIDs before executing.\n\n`;
+  const blob = new Blob([header + sqlStatements.join('\n\n')], { type: 'text/plain' });
+  dl(blob, 'npi_updates.sql');
+}
+
+function dl(blob, name) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = name;
+  a.click();
+}
+</script>
+</body>
+</html>

@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>NPI Registry Bulk Lookup — WoundCare CRM</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f5; color: #333; padding: 16px; }
+  h1 { font-size: 1.4rem; margin-bottom: 4px; }
+  .sub { color: #666; font-size: 0.85rem; margin-bottom: 20px; }
+  .card { background: white; border-radius: 10px; padding: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); margin-bottom: 16px; }
+  h2 { font-size: 1rem; margin-bottom: 12px; color: #444; }
+  button { background: #2563eb; color: white; border: none; border-radius: 8px; padding: 10px 20px; font-size: 0.95rem; cursor: pointer; margin-right: 8px; }
+  button:hover { background: #1d4ed8; }
+  button:disabled { background: #9ca3af; cursor: not-allowed; }
+  button.danger { background: #dc2626; }
+  button.green { background: #16a34a; }
+  .progress-bar-wrap { background: #e5e7eb; border-radius: 999px; height: 10px; margin: 10px 0; overflow: hidden; }
+  .progress-bar { background: #2563eb; height: 100%; transition: width 0.3s; width: 0%; }
+  #log { font-size: 0.75rem; font-family: monospace; background: #111; color: #d1fae5; padding: 12px; border-radius: 8px; height: 220px; overflow-y: auto; white-space: pre-wrap; word-break: break-all; }
+  .stats { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 12px; }
+  .stat { background: #f3f4f6; border-radius: 8px; padding: 10px 16px; flex: 1; min-width: 100px; text-align: center; }
+  .stat .num { font-size: 1.8rem; font-weight: 700; }
+  .stat .lbl { font-size: 0.75rem; color: #666; margin-top: 2px; }
+  .stat.v .num { color: #16a34a; }
+  .stat.m .num { color: #d97706; }
+  .stat.n .num { color: #dc2626; }
+  .stat.p .num { color: #6b7280; }
+  .download-area { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
+  .sql-out { font-size: 0.75rem; font-family: monospace; background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 8px; padding: 12px; max-height: 300px; overflow-y: auto; white-space: pre-wrap; word-break: break-all; margin-top: 12px; }
+  .hidden { display: none; }
+  .note { font-size: 0.8rem; color: #6b7280; margin-top: 8px; }
+</style>
+</head>
+<body>
+<h1>NPI Registry Bulk Lookup</h1>
+<p class="sub">WoundCare CRM · Provider Verification · 2026</p>
+<div class="card">
+  <h2>1. Load Provider CSV</h2>
+  <input type="file" id="csvFile" accept=".csv" style="display:block;margin-bottom:10px;">
+  <div id="loadedInfo" class="note hidden" style="color:#16a34a;font-weight:600;"></div>
+</div>
+<div class="card">
+  <h2>2. Run NPI Lookups</h2>
+  <button id="runBtn" onclick="runLookup()" disabled>▶ Start Lookup</button>
+  <button id="stopBtn" onclick="stopLookup()" disabled class="danger">■ Stop</button>
+  <span id="statusText" style="font-size:0.85rem;margin-left:8px;color:#666;"></span>
+  <div class="progress-bar-wrap"><div class="progress-bar" id="progressBar"></div></div>
+  <div id="log">Ready. Load CSV to begin.</div>
+  <div class="stats">
+    <div class="stat v"><div class="num" id="sV">0</div><div class="lbl">VERIFIED</div></div>
+    <div class="stat m"><div class="num" id="sM">0</div><div class="lbl">MULTI</div></div>
+    <div class="stat n"><div class="num" id="sN">0</div><div class="lbl">NOT FOUND</div></div>
+    <div class="stat p"><div class="num" id="sP">0</div><div class="lbl">SKIP</div></div>
+  </div>
+</div>
+<div class="card hidden" id="resultsCard">
+  <h2>3. Download Results</h2>
+  <div class="download-area">
+    <button class="green" onclick="downloadCSV()">⬇ npi_results.csv</button>
+    <button class="green" onclick="downloadSQL()">⬇ npi_updates.sql</button>
+  </div>
+  <p class="note">Paste npi_updates.sql into Claude Chat for Supabase execution.</p>
+  <div id="sqlPreview" class="sql-out"></div>
+</div>
+<script>
+const SLEEP=400,PLACEHOLDER_ID='21ea5d53';
+const DUPES={'jaime|carbonell':['175797ad','a52a9a17'],'jonathan|cutler':['1e7af873','61d574a0'],'ashley|bowles':['8a4e7b8b','3e396663'],'adam|plotkin':['6ebb1c56','7b728e1c'],'richard|rodriguez':['c06ef474','cc376d8b']};
+const DUPE_ID={};
+for(const[k,ids]of Object.entries(DUPES))ids.forEach(id=>DUPE_ID[id.substring(0,8)]=k);
+let providers=[],results=[],sqls=[],stopFlag=false;
+const stats={V:0,M:0,N:0,P:0},dupeCache={};
+function parseCSV(text){const lines=text.trim().split('\n'),hdrs=csvLine(lines[0]);return lines.slice(1).filter(l=>l.trim()).map(l=>{const v=csvLine(l),o={};hdrs.forEach((h,i)=>o[h.trim()]=(v[i]||'').trim());return o;});}
+function csvLine(line){const r=[];let inQ=false,cur='';for(let i=0;i<line.length;i++){const c=line[i];if(c==='"'&&!inQ){inQ=true;continue;}if(c==='"'&&inQ){if(line[i+1]==='"'){cur+='"';i++;}else inQ=false;continue;}if(c===','&&!inQ){r.push(cur);cur='';continue;}cur+=c;}r.push(cur);return r;}
+document.getElementById('csvFile').addEventListener('change',function(){const f=this.files[0];if(!f)return;const reader=new FileReader();reader.onload=e=>{providers=parseCSV(e.target.result);document.getElementById('loadedInfo').textContent=`✓ Loaded ${providers.length} providers`;document.getElementById('loadedInfo').classList.remove('hidden');document.getElementById('runBtn').disabled=false;log(`Loaded ${providers.length} providers.`);};reader.readAsText(f);});
+const logEl=document.getElementById('log');
+function log(m){logEl.textContent+='\n'+m;logEl.scrollTop=logEl.scrollHeight;}
+function updStats(){document.getElementById('sV').textContent=stats.V;document.getElementById('sM').textContent=stats.M;document.getElementById('sN').textContent=stats.N;document.getElementById('sP').textContent=stats.P;}
+function sleep(ms){return new Promise(r=>setTimeout(r,ms));}
+async function npiSearch(firstName,lastName){let url='https://npiregistry.cms.hhs.gov/api/?version=2.1&state=FL&limit=5';if(firstName)url+='&first_name='+encodeURIComponent(firstName);if(lastName)url+='&last_name='+encodeURIComponent(lastName);const r=await fetch(url);if(!r.ok)throw new Error('HTTP '+r.status);const d=await r.json();return d.results||[];}
+function ratio(a,b){a=(a||'').toLowerCase();b=(b||'').toLowerCase();if(!a||!b)return 0;if(a===b)return 1;const la=a.length,lb=b.length,m=Array.from({length:la+1},()=>new Array(lb+1).fill(0));let best=0;for(let i=1;i<=la;i++)for(let j=1;j<=lb;j++)if(a[i-1]===b[j-1]){m[i][j]=m[i-1][j-1]+1;if(m[i][j]>best)best=m[i][j];}return(2*best)/(la+lb);}
+function isMatch(r,fn,ln){const b=r.basic||{};return ratio(b.last_name||'',ln)>0.75||(ratio(b.last_name||'',ln)>0.6&&ratio(b.first_name||'',fn)>0.6);}
+function extract(r){const b=r.basic||{};let addr='',city='',state='',zip='',phone='';for(const a of(r.addresses||[])){if(a.address_purpose==='LOCATION'){addr=a.address_1||'';city=a.city||'';state=a.state||'';zip=(a.postal_code||'').substring(0,5);phone=(a.telephone_number||'').replace(/\D/g,'');break;}}return{npi:r.number||'',deg:(b.credential||'').trim().replace(/^,+|,+$/g,''),spec:r.taxonomies?.length?mapSpec(r.taxonomies[0].desc||''):'Other',addr,city,state,zip,phone};}
+function mapSpec(d){d=d.toLowerCase();if(d.includes('dermatolog'))return'Dermatology';if(d.includes('podiatric')||d.includes('podiatry')||d.includes('foot'))return'Podiatry';if(d.includes('wound'))return'Wound Care';return'Other';}
+async function search(fn,ln){await sleep(SLEEP);let m=(await npiSearch(fn,ln)).filter(r=>isMatch(r,fn,ln));if(m.length)return m;await sleep(SLEEP);m=(await npiSearch(null,ln)).filter(r=>isMatch(r,fn,ln));if(m.length)return m;await sleep(SLEEP);m=(await npiSearch(fn[0],ln)).filter(r=>isMatch(r,fn,ln));if(m.length)return m;const s=fn.replace(/\s+[A-Z]\.?\s*$/,'').trim();if(s!==fn){await sleep(SLEEP);m=(await npiSearch(s,ln)).filter(r=>isMatch(r,s,ln));if(m.length)return m;}for(const part of ln.split(/[\s-]+/)){if(part.length>3){await sleep(SLEEP);m=(await npiSearch(fn,part)).filter(r=>isMatch(r,fn,part));if(m.length)return m;}}return[];}
+function buildSQL(row){const addrStr=[row.addr,[row.city,row.state,row.zip].filter(Boolean).join(' ')].filter(Boolean).join(', ');const note=` NPI: ${row.npi}. Address: ${addrStr}. Phone: ${row.phone}. NPI verified 2026-02.`;const sets=[];if((!row.deg_crm||row.deg_crm==='?'||row.deg_crm==='')&&row.deg)sets.push(`  degree = '${row.deg.replace(/'/g,"''")}'`);if(row.spec&&row.spec!==row.spec_crm)sets.push(`  specialty = '${row.spec}'`);const safeNote=note.replace(/'/g,"''");sets.push(`  general_notes = REGEXP_REPLACE(\n    CONCAT(COALESCE(REGEXP_REPLACE(general_notes, '⚠️ NEEDS VERIFICATION[^.]*\\.\\s*', '', 'g'),''), '${safeNote}'),\n    '^\\s*\\|\\s*', '', 'g')`);const sf=row.fn.replace(/'/g,"''"),sl=row.ln.replace(/'/g,"''");return`-- ${row.fn} ${row.ln} (NPI: ${row.npi})\nUPDATE providers SET\n${sets.join(',\n')}\nWHERE first_name='${sf}' AND last_name='${sl}';\n`;}
+async function runLookup(){if(!providers.length){alert('Load CSV first.');return;}stopFlag=false;results=[];sqls=[];stats.V=0;stats.M=0;stats.N=0;stats.P=0;Object.keys(dupeCache).forEach(k=>delete dupeCache[k]);document.getElementById('runBtn').disabled=true;document.getElementById('stopBtn').disabled=false;document.getElementById('resultsCard').classList.add('hidden');logEl.textContent='Starting...';
+for(let i=0;i<providers.length;i++){if(stopFlag){log('Stopped.');break;}const p=providers[i];const cid=(p.claude_id||'').trim(),fn=(p.first_name||'').trim(),ln=(p.last_name||'').trim(),deg_crm=(p.degree||'').trim(),spec_crm=(p.specialty||'').trim(),shortId=cid.substring(0,8);document.getElementById('progressBar').style.width=Math.round((i/providers.length)*100)+'%';document.getElementById('statusText').textContent=`${i+1}/${providers.length}: ${fn} ${ln}`;const out={cid,fn,ln,deg_crm,spec_crm,npi:'',deg:'',spec:'',addr:'',city:'',state:'',zip:'',phone:'',status:'',notes:''};
+if(shortId===PLACEHOLDER_ID||fn.toLowerCase().includes('daly, fried')){out.status='PLACEHOLDER';stats.P++;log(`[SKIP] ${fn} ${ln}`);results.push(out);updStats();continue;}
+const dupeKey=DUPE_ID[shortId]||`${fn.toLowerCase()}|${ln.toLowerCase()}`,isPair=!!DUPES[dupeKey]||!!DUPE_ID[shortId];
+if(isPair&&dupeCache[dupeKey]){const c=dupeCache[dupeKey];Object.assign(out,c);out.cid=cid;out.notes+=' [duplicate]';stats[out.status==='VERIFIED'?'V':out.status==='MULTIPLE_MATCHES'?'M':'N']++;log(`[DUPE] ${fn} ${ln}`);results.push(out);if(out.status==='VERIFIED')sqls.push(buildSQL({...out,deg_crm,spec_crm}));updStats();continue;}
+let matched=[];try{matched=await search(fn,ln);}catch(e){out.status='NOT_FOUND';out.notes='API error: '+e.message;stats.N++;log(`[ERROR] ${fn} ${ln}: ${e.message}`);results.push(out);updStats();continue;}
+if(matched.length===0){out.status='NOT_FOUND';out.notes=shortId==='ce7b992c'?'Possible non-clinical':shortId==='9de246de'?'Authorized Official only':'';stats.N++;}
+else if(matched.length===1){out.status='VERIFIED';const info=extract(matched[0]);out.npi=info.npi;out.deg=info.deg;out.spec=info.spec;out.addr=info.addr;out.city=info.city;out.state=info.state;out.zip=info.zip;out.phone=info.phone;stats.V++;}
+else{out.status='MULTIPLE_MATCHES';const info=extract(matched[0]);out.npi=info.npi;out.notes=`${matched.length} FL results`;stats.M++;}
+log(`[${out.status}] ${fn} ${ln}${out.npi?' NPI:'+out.npi:''}`);if(isPair)dupeCache[dupeKey]={...out};results.push(out);if(out.status==='VERIFIED')sqls.push(buildSQL({...out,deg_crm,spec_crm}));updStats();}
+document.getElementById('progressBar').style.width='100%';document.getElementById('stopBtn').disabled=true;document.getElementById('runBtn').disabled=false;log(`\nDone. VERIFIED:${stats.V} MULTI:${stats.M} NOT_FOUND:${stats.N} SKIP:${stats.P}`);document.getElementById('resultsCard').classList.remove('hidden');document.getElementById('sqlPreview').textContent=sqls.slice(0,3).join('\n')+(sqls.length>3?`\n\n...and ${sqls.length-3} more`:'');}
+function stopLookup(){stopFlag=true;}
+function toCSV(rows){const cols=['cid','fn','ln','deg_crm','deg','spec_crm','spec','npi','addr','city','state','zip','phone','status','notes'],esc=v=>`"${(v||'').replace(/"/g,'""')}"`;return[cols.join(','),...rows.map(r=>cols.map(c=>esc(r[c])).join(','))].join('\n');}
+function downloadCSV(){if(!results.length){alert('No results.');return;}dl(new Blob([toCSV(results)],{type:'text/csv'}),'npi_results.csv');}
+function downloadSQL(){if(!sqls.length){alert('No verified matches.');return;}const hdr=`-- NPI Verified Updates — WoundCare CRM\n-- ${new Date().toISOString().slice(0,10)}\n-- Claude Chat will validate UUIDs before executing.\n\n`;dl(new Blob([hdr+sqls.join('\n\n')],{type:'text/plain'}),'npi_updates.sql');}
+function dl(blob,name){const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=name;a.click();}
+</script>
+</body>
+</html>
