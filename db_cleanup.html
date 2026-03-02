@@ -11,59 +11,64 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 h1{font-size:1.4rem;font-weight:700;color:#7f1d1d;margin-bottom:0.25rem;}
 .subtitle{font-size:0.85rem;color:#666;margin-bottom:1.25rem;}
 .card{background:#fff;border-radius:10px;padding:1.25rem;margin-bottom:1rem;box-shadow:0 1px 4px rgba(0,0,0,0.08);}
-label{font-size:0.85rem;font-weight:600;display:block;margin-bottom:0.4rem;color:#444;}
-input[type=datetime-local],input[type=date]{font-size:0.95rem;padding:0.4rem 0.6rem;border:1px solid #ccc;border-radius:6px;width:100%;max-width:280px;}
 button{border:none;border-radius:6px;padding:0.45rem 1rem;font-size:0.85rem;font-weight:600;cursor:pointer;font-family:inherit;}
-.btn-load{background:#1d4ed8;color:#fff;}
-.btn-load:hover{background:#1e3a8a;}
+.btn-load{background:#1d4ed8;color:#fff;padding:0.55rem 1.25rem;font-size:0.95rem;}
 .btn-nuke{background:#dc2626;color:#fff;font-size:1rem;padding:0.6rem 1.5rem;}
 .btn-nuke:hover{background:#b91c1c;}
 .btn-nuke:disabled{background:#9ca3af;cursor:not-allowed;}
-.btn-sm{background:#e5e7eb;color:#374151;font-size:0.75rem;padding:0.25rem 0.6rem;}
+.btn-sm{background:#e5e7eb;color:#374151;font-size:0.8rem;padding:0.3rem 0.75rem;}
 .btn-sm:hover{background:#d1d5db;}
 .btn-del{background:#dc2626;color:#fff;font-size:0.75rem;padding:0.25rem 0.6rem;}
 .btn-del:disabled{background:#ccc;cursor:not-allowed;}
-.summary-bar{background:#fee2e2;border:1px solid #fca5a5;border-radius:8px;padding:0.75rem 1rem;margin-bottom:1rem;font-weight:600;font-size:0.95rem;color:#7f1d1d;display:none;}
-.summary-bar.show{display:block;}
-.row-card{border:1px solid #fca5a5;border-radius:8px;padding:0.6rem 0.9rem;margin-bottom:0.4rem;display:flex;gap:0.75rem;align-items:flex-start;background:#fff5f5;}
-.row-card.checked{border-color:#dc2626;background:#fee2e2;}
-.chk{margin-top:0.15rem;flex-shrink:0;width:16px;height:16px;cursor:pointer;}
+.actions-bar{display:flex;gap:0.75rem;align-items:center;flex-wrap:wrap;margin-bottom:0.75rem;}
+#selCount{font-size:0.85rem;color:#555;font-weight:600;}
+.filter-row{display:flex;gap:0.5rem;flex-wrap:wrap;margin-bottom:0.75rem;align-items:center;}
+.filter-row input{font-size:0.85rem;padding:0.35rem 0.6rem;border:1px solid #ccc;border-radius:6px;flex:1;max-width:300px;}
+.filter-row label{font-size:0.82rem;color:#555;white-space:nowrap;}
+.prac-group{margin-bottom:1rem;}
+.prac-header{display:flex;justify-content:space-between;align-items:center;background:#f3f4f6;border-radius:6px 6px 0 0;padding:0.5rem 0.75rem;border:1px solid #e5e7eb;}
+.prac-name{font-weight:700;font-size:0.88rem;}
+.prac-meta{font-size:0.75rem;color:#666;}
+.prac-check-all{font-size:0.75rem;color:#1d4ed8;cursor:pointer;text-decoration:underline;background:none;border:none;padding:0;font-family:inherit;}
+.row-card{border:1px solid #e5e7eb;border-top:none;padding:0.55rem 0.75rem;display:flex;gap:0.75rem;align-items:center;background:#fff;}
+.row-card:last-child{border-radius:0 0 6px 6px;}
+.row-card.checked{background:#fee2e2;border-color:#fca5a5;}
+.chk{width:16px;height:16px;cursor:pointer;flex-shrink:0;}
 .row-info{flex:1;}
-.row-name{font-weight:600;font-size:0.85rem;}
-.row-detail{font-size:0.75rem;color:#666;margin-top:0.15rem;}
-.row-time{font-size:0.7rem;color:#9ca3af;margin-top:0.1rem;}
-.row-actions{flex-shrink:0;}
-.empty{color:#999;font-size:0.85rem;padding:0.5rem 0;}
-.loading{color:#1d4ed8;font-size:0.85rem;font-style:italic;}
+.row-addr{font-size:0.83rem;font-weight:600;}
+.row-meta{font-size:0.74rem;color:#666;margin-top:0.1rem;}
+.empty{color:#999;font-size:0.85rem;padding:0.75rem 0;}
+.loading{color:#1d4ed8;font-size:0.85rem;font-style:italic;padding:0.5rem 0;}
+.stats-bar{background:#fff;border-radius:8px;padding:0.75rem 1rem;margin-bottom:0.75rem;display:flex;gap:1.5rem;flex-wrap:wrap;box-shadow:0 1px 3px rgba(0,0,0,0.08);font-size:0.85rem;}
+.stat-item strong{font-size:1.2rem;display:block;color:#1d4ed8;}
+.stat-item.danger strong{color:#dc2626;}
 .toast{position:fixed;bottom:1rem;left:50%;transform:translateX(-50%);background:#222;color:#fff;padding:0.6rem 1.25rem;border-radius:8px;font-size:0.85rem;z-index:9999;display:none;}
 .toast.show{display:block;}
 .toast.success{background:#166534;}
 .toast.error{background:#991b1b;}
-.actions-bar{display:flex;gap:0.75rem;align-items:center;flex-wrap:wrap;margin-bottom:1rem;}
-#selCount{font-size:0.85rem;color:#666;}
-.hint{font-size:0.78rem;color:#666;margin-top:0.5rem;}
-.section-label{font-size:0.78rem;font-weight:700;color:#7f1d1d;text-transform:uppercase;letter-spacing:0.05em;margin-bottom:0.5rem;}
 </style>
 </head>
 <body>
-<h1>🧹 DB Cleanup — Bulk Delete Locations</h1>
-<p class="subtitle">Find and delete practice locations (and their provider assignments) added after a given time. Does NOT delete providers or practices themselves.</p>
+<h1>🧹 DB Cleanup — Browse &amp; Delete Locations</h1>
+<p class="subtitle">Browse all practice locations grouped by practice. Check the ones to remove, then Delete Selected. Providers and practices are NOT deleted — only location records and their assignments.</p>
 
 <div class="card">
-  <label for="sinceInput">Show locations created after:</label>
-  <input type="datetime-local" id="sinceInput">
-  <p class="hint">Set to just before you ran the bad import. Defaults to start of today.</p>
-  <br>
-  <button class="btn-load" onclick="loadLocations()">Load Locations</button>
+  <button class="btn-load" onclick="loadAll()">Load All Locations</button>
 </div>
 
-<div class="summary-bar" id="summaryBar"></div>
+<div id="statsBar" class="stats-bar" style="display:none;"></div>
 
-<div class="actions-bar" id="actionsBar" style="display:none;">
-  <button class="btn-nuke" id="nukeBtn" onclick="deleteSelected()">🗑 Delete All Selected</button>
-  <button class="btn-sm" onclick="selectAll(true)">Select All</button>
-  <button class="btn-sm" onclick="selectAll(false)">Deselect All</button>
+<div id="actionsBar" class="actions-bar" style="display:none;">
+  <button class="btn-nuke" id="nukeBtn" onclick="deleteSelected()">🗑 Delete Selected</button>
+  <button class="btn-sm" onclick="selectAll(true)">Check All</button>
+  <button class="btn-sm" onclick="selectAll(false)">Uncheck All</button>
   <span id="selCount">0 selected</span>
+</div>
+
+<div id="filterRow" class="filter-row" style="display:none;">
+  <label>Filter:</label>
+  <input type="text" id="filterInput" placeholder="practice name or city..." oninput="applyFilter()">
+  <button class="btn-sm" onclick="document.getElementById('filterInput').value='';applyFilter()">Clear</button>
 </div>
 
 <div id="locationList"></div>
@@ -76,158 +81,181 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 const { createClient } = window.supabase;
 const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
-// Default: start of today local time
-const now = new Date();
-now.setHours(0, 0, 0, 0);
-document.getElementById('sinceInput').value = now.toISOString().slice(0,16);
-
-let loadedLocs = [];
-
-function showToast(msg, type='info') {
+function showToast(msg, type) {
   const t = document.getElementById('toast');
   t.textContent = msg;
-  t.className = 'toast show ' + type;
-  setTimeout(() => t.className = 'toast', 3500);
+  t.className = 'toast show ' + (type || 'info');
+  setTimeout(() => { t.className = 'toast'; }, 3500);
 }
 
 function updateSelCount() {
-  const checked = document.querySelectorAll('.chk:checked').length;
-  document.getElementById('selCount').textContent = checked + ' selected';
+  const n = document.querySelectorAll('.chk:checked').length;
+  document.getElementById('selCount').textContent = n + ' selected';
 }
 
 function selectAll(state) {
-  document.querySelectorAll('.chk').forEach(c => {
-    c.checked = state;
-    c.closest('.row-card').classList.toggle('checked', state);
+  document.querySelectorAll('.row-card').forEach(function(card) {
+    if (card.style.display === 'none') return;
+    const chk = card.querySelector('.chk');
+    if (chk) { chk.checked = state; card.classList.toggle('checked', state); }
   });
   updateSelCount();
 }
 
-async function loadLocations() {
-  const sinceVal = document.getElementById('sinceInput').value;
-  if (!sinceVal) { showToast('Pick a date/time first', 'error'); return; }
-  const sinceISO = new Date(sinceVal).toISOString();
+function applyFilter() {
+  const q = document.getElementById('filterInput').value.toLowerCase().trim();
+  document.querySelectorAll('.prac-group').forEach(function(group) {
+    const pracName = (group.dataset.prac || '').toLowerCase();
+    const matchesPrac = !q || pracName.includes(q);
+    let anyVisible = false;
+    group.querySelectorAll('.row-card').forEach(function(card) {
+      const city = (card.dataset.city || '').toLowerCase();
+      const addr = (card.dataset.addr || '').toLowerCase();
+      const show = !q || matchesPrac || city.includes(q) || addr.includes(q);
+      card.style.display = show ? '' : 'none';
+      if (show) anyVisible = true;
+    });
+    group.style.display = anyVisible ? '' : 'none';
+  });
+  updateSelCount();
+}
 
-  document.getElementById('locationList').innerHTML = '<p class="loading">Loading...</p>';
+async function loadAll() {
+  document.getElementById('locationList').innerHTML = '<p class="loading">Loading…</p>';
   document.getElementById('actionsBar').style.display = 'none';
-  document.getElementById('summaryBar').className = 'summary-bar';
+  document.getElementById('filterRow').style.display = 'none';
+  document.getElementById('statsBar').style.display = 'none';
 
   try {
-    // Load locations created after the given time
-    const { data: locs, error } = await db
-      .from('practice_locations')
-      .select('id, practice_id, label, address, city, zip, created_at')
-      .gte('created_at', sinceISO)
-      .order('created_at', { ascending: false });
+    const results = await Promise.all([
+      db.from('practice_locations').select('id,practice_id,label,address,city,zip').order('city'),
+      db.from('provider_location_assignments').select('practice_location_id,provider_id'),
+      db.from('practices').select('id,name').order('name')
+    ]);
 
-    if (error) throw error;
+    const locs = results[0].data;
+    const locError = results[0].error;
+    const assignments = results[1].data;
+    const practices = results[2].data;
 
+    if (locError) throw locError;
     if (!locs || locs.length === 0) {
-      document.getElementById('locationList').innerHTML = '<p class="empty">No locations found created after that time.</p>';
+      document.getElementById('locationList').innerHTML = '<p class="empty">No locations found.</p>';
       return;
     }
 
-    // Load practices and assignments for context
-    const practiceIds = [...new Set(locs.map(l => l.practice_id).filter(Boolean))];
-    const locIds = locs.map(l => l.id);
-
-    const [{ data: practices }, { data: assignments }] = await Promise.all([
-      practiceIds.length
-        ? db.from('practices').select('id,name').in('id', practiceIds)
-        : Promise.resolve({ data: [] }),
-      db.from('provider_location_assignments')
-        .select('practice_location_id, provider_id')
-        .in('practice_location_id', locIds)
-    ]);
-
     const practiceMap = {};
-    (practices || []).forEach(p => practiceMap[p.id] = p.name);
-    const assignCountMap = {};
-    (assignments || []).forEach(a => {
-      assignCountMap[a.practice_location_id] = (assignCountMap[a.practice_location_id] || 0) + 1;
+    (practices || []).forEach(function(p) { practiceMap[p.id] = p.name; });
+
+    const assignCount = {};
+    (assignments || []).forEach(function(a) {
+      assignCount[a.practice_location_id] = (assignCount[a.practice_location_id] || 0) + 1;
     });
 
-    loadedLocs = locs;
+    const groups = {};
+    locs.forEach(function(loc) {
+      const pid = loc.practice_id || '__none__';
+      const pname = practiceMap[loc.practice_id] || '(No practice)';
+      if (!groups[pid]) groups[pid] = { pracName: pname, pracId: pid, locs: [] };
+      groups[pid].locs.push({ id: loc.id, address: loc.address, city: loc.city, zip: loc.zip, provCount: assignCount[loc.id] || 0 });
+    });
 
-    const summaryBar = document.getElementById('summaryBar');
-    summaryBar.className = 'summary-bar show';
-    summaryBar.textContent = `Found ${locs.length} location(s) created after ${sinceVal}. Review below and delete what should be removed.`;
+    const groupList = Object.values(groups).sort(function(a, b) { return a.pracName.localeCompare(b.pracName); });
 
-    document.getElementById('locationList').innerHTML = locs.map(loc => {
-      const pracName = practiceMap[loc.practice_id] || '(no practice)';
-      const addr = [loc.address, loc.city, loc.zip].filter(Boolean).join(', ');
-      const provCount = assignCountMap[loc.id] || 0;
-      const createdAt = new Date(loc.created_at).toLocaleString();
-      return `<div class="row-card checked" id="card-${loc.id}">
-        <input type="checkbox" class="chk" data-id="${loc.id}" checked onchange="updateSelCount();this.closest('.row-card').classList.toggle('checked',this.checked)">
-        <div class="row-info">
-          <div class="row-name">${pracName}</div>
-          <div class="row-detail">${addr || 'No address'} &nbsp;·&nbsp; ${provCount} provider assignment(s)</div>
-          <div class="row-time">Created: ${createdAt}</div>
-        </div>
-        <div class="row-actions">
-          <button class="btn-del" onclick="deleteSingle('${loc.id}', this)">Delete</button>
-        </div>
-      </div>`;
-    }).join('');
+    const noProvLocs = locs.filter(function(l) { return !assignCount[l.id]; }).length;
 
+    document.getElementById('statsBar').style.display = 'flex';
+    document.getElementById('statsBar').innerHTML =
+      '<div class="stat-item"><strong>' + groupList.length + '</strong>practices</div>' +
+      '<div class="stat-item"><strong>' + locs.length + '</strong>total locations</div>' +
+      '<div class="stat-item danger"><strong>' + noProvLocs + '</strong>locations with 0 providers</div>';
+
+    let html = '';
+    groupList.forEach(function(g) {
+      html += '<div class="prac-group" id="group-' + g.pracId + '" data-prac="' + g.pracName.replace(/"/g,'&quot;') + '">';
+      html += '<div class="prac-header">';
+      html += '<span class="prac-name">' + g.pracName + '</span>';
+      html += '<span><span class="prac-meta">' + g.locs.length + ' location(s)</span>&nbsp;';
+      html += '<button class="prac-check-all" onclick="checkGroup(\'' + g.pracId + '\',true)">check all</button>&nbsp;';
+      html += '<button class="prac-check-all" onclick="checkGroup(\'' + g.pracId + '\',false)">uncheck</button></span>';
+      html += '</div>';
+      g.locs.forEach(function(loc) {
+        const addr = [loc.address, loc.city, loc.zip].filter(Boolean).join(', ') || '(no address)';
+        const provTag = loc.provCount === 0
+          ? '<span style="color:#dc2626;font-weight:700;">0 providers assigned</span>'
+          : loc.provCount + ' provider(s)';
+        html += '<div class="row-card" id="card-' + loc.id + '" data-city="' + (loc.city || '') + '" data-addr="' + (loc.address || '') + '">';
+        html += '<input type="checkbox" class="chk" data-id="' + loc.id + '" onchange="updateSelCount();this.closest(\'.row-card\').classList.toggle(\'checked\',this.checked)">';
+        html += '<div class="row-info"><div class="row-addr">' + addr + '</div><div class="row-meta">' + provTag + '</div></div>';
+        html += '<button class="btn-del" onclick="deleteSingle(\'' + loc.id + '\',this)">Del</button>';
+        html += '</div>';
+      });
+      html += '</div>';
+    });
+
+    document.getElementById('locationList').innerHTML = html;
     document.getElementById('actionsBar').style.display = 'flex';
+    document.getElementById('filterRow').style.display = 'flex';
     updateSelCount();
 
   } catch(e) {
-    showToast('Error: ' + e.message, 'error');
-    document.getElementById('locationList').innerHTML = '<p class="empty" style="color:#dc2626;">Error loading: ' + e.message + '</p>';
+    document.getElementById('locationList').innerHTML = '<p class="empty" style="color:#dc2626;">Error: ' + e.message + '</p>';
     console.error(e);
   }
 }
 
+function checkGroup(pracId, state) {
+  const group = document.getElementById('group-' + pracId);
+  if (!group) return;
+  group.querySelectorAll('.chk').forEach(function(chk) {
+    chk.checked = state;
+    chk.closest('.row-card').classList.toggle('checked', state);
+  });
+  updateSelCount();
+}
+
 async function deleteSingle(locId, btn) {
-  btn.disabled = true; btn.textContent = '...';
+  btn.disabled = true; btn.textContent = '…';
   try {
     await db.from('provider_location_assignments').delete().eq('practice_location_id', locId);
-    await db.from('practice_locations').delete().eq('id', locId);
-    document.getElementById('card-' + locId)?.remove();
+    const res = await db.from('practice_locations').delete().eq('id', locId);
+    if (res.error) throw res.error;
+    const card = document.getElementById('card-' + locId);
+    if (card) card.remove();
     updateSelCount();
-    showToast('Deleted location', 'success');
+    showToast('Deleted', 'success');
   } catch(e) {
     showToast('Error: ' + e.message, 'error');
-    btn.disabled = false; btn.textContent = 'Delete';
+    btn.disabled = false; btn.textContent = 'Del';
   }
 }
 
 async function deleteSelected() {
-  const checked = [...document.querySelectorAll('.chk:checked')];
-  if (checked.length === 0) { showToast('Nothing selected', 'error'); return; }
-
-  const msg = `Delete ${checked.length} location(s) and their provider assignments?\n\nProviders and practices are NOT deleted — only the location records and assignments.`;
-  if (!confirm(msg)) return;
+  const checked = Array.from(document.querySelectorAll('.chk:checked'));
+  if (checked.length === 0) { showToast('Nothing checked', 'error'); return; }
+  if (!confirm('Delete ' + checked.length + ' location(s) and their provider assignments?\n\nProviders and practices are NOT deleted.')) return;
 
   const btn = document.getElementById('nukeBtn');
-  btn.disabled = true; btn.textContent = 'Deleting...';
+  btn.disabled = true; btn.textContent = 'Deleting…';
 
   let deleted = 0, failed = 0;
-  for (const chk of checked) {
-    const locId = chk.dataset.id;
+  for (let i = 0; i < checked.length; i++) {
+    const locId = checked[i].dataset.id;
     try {
       await db.from('provider_location_assignments').delete().eq('practice_location_id', locId);
       await db.from('practice_locations').delete().eq('id', locId);
-      document.getElementById('card-' + locId)?.remove();
+      const card = document.getElementById('card-' + locId);
+      if (card) card.remove();
       deleted++;
     } catch(e) {
-      console.error('Failed to delete', locId, e);
+      console.error('Failed', locId, e.message);
       failed++;
     }
   }
 
-  btn.disabled = false; btn.textContent = '🗑 Delete All Selected';
+  btn.disabled = false; btn.textContent = '🗑 Delete Selected';
   updateSelCount();
-
-  if (failed === 0) {
-    showToast(`Deleted ${deleted} location(s)`, 'success');
-    document.getElementById('summaryBar').textContent = `Done — ${deleted} location(s) deleted.`;
-  } else {
-    showToast(`Deleted ${deleted}, failed ${failed}`, 'error');
-  }
+  showToast(failed ? 'Deleted ' + deleted + ', failed ' + failed : 'Deleted ' + deleted + ' location(s)', failed ? 'error' : 'success');
 }
 </script>
 </body>
