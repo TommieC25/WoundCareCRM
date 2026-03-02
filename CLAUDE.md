@@ -170,22 +170,33 @@ If `cat /root/.github_pat` returns nothing, the PAT was lost when the container 
 2. Tell Tom: "Code is pushed to `claude/<branch>`. PAT is missing from this container — please run: `echo 'ghp_YOURTOKEN' > /root/.github_pat` and I'll complete the PR/merge."
 3. Tom provides the token → run steps 3-4 above immediately.
 
-### Queued Tasks for Next Session (logged 2026-02-28)
+### Queued Tasks for Next Session (updated 2026-03-02)
 
-#### 1. Fix corrupted `specialty` field values in DB
-Many providers have garbage data in `specialty` — county names ("Broward", "Palm Beach"), free-text strings, old picklist values, etc. These show up in the Field Routing sheet's Specialty column.
-- **Valid specialties are EXACTLY**: `Dermatology`, `Podiatry`, `Wound Care`, `Other`
-- `Dermatology` implicitly covers Mohs surgeons (no separate Mohs entry)
-- Need a DB audit/migration: map all existing non-standard values → one of the 4 valid values (or `Other`)
-- **Also fix in the CRM picklist**: the Specialty dropdown in the New Provider / Edit Provider form must show ONLY these 4 options — no freetext, no other values
+#### 0. PRIORITY — Finish DB cleanup after bad NPI import (session 2026-03-02)
+A bulk import of NPI CSV data created phantom locations for every provider. Cleanup tools are built:
+- **`db_audit.html`**: Run this first — new "Phantom Provider-Named Locations" section at top auto-detects and offers "Delete All Phantoms" button. Also flags non-Mohs dermatologists, OOT locations, self-named practices, orphaned providers.
+- **`db_cleanup.html`**: Browse ALL locations with provider names shown; solo-provider practices sorted first (most likely phantoms). Filter + bulk delete.
+- After running db_audit.html phantom cleanup, verify in CRM that affected providers still show their real practice location.
+- Then check for non-Mohs derms in db_audit.html Section 0 and delete them.
 
-#### 2. Fix corrupted Facility names (provider names appearing in Facility column)
+#### 1. Group → Location label issue (practice_locations.label column)
+Tom flagged that some locations show wrong labels. The `label` column on `practice_locations` is supposed to be a human-readable name for the office (e.g., "Jupiter Office", "Boca Raton"). Currently it often defaults to the city name from import. Need to:
+- Audit labels that are blank, generic, or wrong
+- Possibly surface/edit in the CRM profile view
+
+#### 2. Fix corrupted `specialty` field values in DB
+Many providers have garbage data in `specialty` — county names ("Broward", "Palm Beach"), free-text strings, old picklist values.
+- **Valid specialties are EXACTLY**: `Dermatology` (Mohs surgeons ONLY), `Podiatry`, `Wound Care`, `Other`, `Administrative Staff`
+- Need DB migration: map all non-standard values → one of the 5 valid values
+- **Also fix CRM picklist**: Specialty dropdown must show ONLY these 5 options
+
+#### 3. Fix corrupted Facility names (provider names appearing in Facility column)
 Some providers in the Field Routing sheet show their own name (e.g. "Aaron Blom") in the Facility column instead of the practice name. This means their `practice_locations` record has no linked `practice_id` or the `practices` record has a bad/missing name.
 - Audit providers where Facility = their own name
-- Fix the practice linkage in Supabase (correct the `practices.name` or re-link `practice_id`)
-- Vohra Wound Physicians group at 3601 SW 160th Ave (no suite) is the primary offender
+- Fix the practice linkage in Supabase
+- Vohra Wound Physicians group at 3601 SW 160th Ave (no suite) is a known offender
 
-#### 3. Re-paste & sync Apps Script after fixing data
+#### 4. Re-paste & sync Apps Script after fixing data
 After fixing specialty values and practice linkages, re-paste the current `google-apps-script/FieldRoutingSync.gs` into the Google Sheet (Extensions → Apps Script) and run Refresh Now to confirm clean output.
 
 ---

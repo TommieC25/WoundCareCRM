@@ -64,6 +64,19 @@ button{border:none;border-radius:6px;padding:0.35rem 0.75rem;font-size:0.8rem;fo
 
 <div id="sections" style="display:none;">
 
+<!-- Section -1: Phantom solo-provider locations -->
+<div class="section">
+  <div class="section-header">
+    <span class="section-title">👻 Phantom Provider-Named Locations</span>
+    <span class="count-badge" id="phantomBadge">—</span>
+  </div>
+  <p class="section-note">Locations where the practice name matches a provider's own name AND that provider also has assignments to at least one other (real) practice. These are import artifacts — the NPI import created a solo "practice" from the provider's own name. Safe to delete: removes only the phantom location + its assignment. The provider stays linked to their real practice.</p>
+  <div style="margin-bottom:0.5rem;" id="phantomDeleteAllWrap" style="display:none;">
+    <button class="btn-primary" style="background:#dc2626;" id="phantomDeleteAllBtn" onclick="deleteAllPhantoms()">🗑 Delete All Phantoms</button>
+  </div>
+  <div id="phantomList" class="loading">Loading...</div>
+</div>
+
 <!-- Section 0: Non-Mohs Dermatologists -->
 <div class="section">
   <div class="section-header">
@@ -212,6 +225,42 @@ async function deleteProvider(providerId, name, btn) {
   }
 }
 
+async function deletePhantomLoc(locId, label, btn) {
+  btn.disabled = true; btn.textContent = 'Deleting...';
+  try {
+    await db.from('provider_location_assignments').delete().eq('practice_location_id', locId);
+    await db.from('practice_locations').delete().eq('id', locId);
+    showToast(`Deleted phantom "${label}"`, 'success');
+    document.getElementById('phantom-' + locId)?.remove();
+  } catch(e) {
+    showToast('Error: ' + e.message, 'error');
+    btn.disabled = false; btn.textContent = 'Delete Location';
+  }
+}
+
+async function deleteAllPhantoms() {
+  const phantoms = window._phantoms || [];
+  if (!phantoms.length) { showToast('No phantoms to delete', 'error'); return; }
+  if (!confirm(`Delete ALL ${phantoms.length} phantom location(s)?\n\nThis removes the phantom practice location and its provider assignment. The provider stays in the CRM linked to their real practice. Cannot be undone.`)) return;
+  const btn = document.getElementById('phantomDeleteAllBtn');
+  btn.disabled = true; btn.textContent = 'Deleting...';
+  let deleted = 0, failed = 0;
+  for (const ph of phantoms) {
+    try {
+      await db.from('provider_location_assignments').delete().eq('practice_location_id', ph.locId);
+      await db.from('practice_locations').delete().eq('id', ph.locId);
+      document.getElementById('phantom-' + ph.locId)?.remove();
+      deleted++;
+    } catch(e) {
+      console.error('Failed phantom', ph.locId, e.message);
+      failed++;
+    }
+  }
+  btn.disabled = false; btn.textContent = '🗑 Delete All Phantoms';
+  window._phantoms = [];
+  showToast(failed ? `Deleted ${deleted}, failed ${failed}` : `Deleted ${deleted} phantom(s)`, failed ? 'error' : 'success');
+}
+
 async function runAudit() {
   const btn = document.getElementById('runBtn');
   btn.textContent = 'Running...'; btn.disabled = true;
@@ -248,6 +297,83 @@ async function runAudit() {
       if (!assignedLocsByProvider[a.provider_id]) assignedLocsByProvider[a.provider_id] = new Set();
       assignedLocsByProvider[a.provider_id].add(a.practice_location_id);
     });
+
+    // === SECTION -1: Phantom provider-named locations ===
+    // A "phantom" location is one where:
+    // 1. The practice name closely matches the provider's name (first+last or last+first)
+    // 2. AND that provider also has assignments to at least 1 other location under a different practice
+    const providerNameMap = {};
+    (providers || []).forEach(p => {
+      const fn = (p.first_name || '').toLowerCase().trim();
+      const ln = (p.last_name || '').toLowerCase().trim();
+      providerNameMap[p.id] = { fn, ln, full: fn + ' ' + ln, rev: ln + ' ' + fn, last: ln };
+    });
+
+    function practiceMatchesProvider(pracName, provId) {
+      const nm = providerNameMap[provId];
+      if (!nm) return false;
+      const pn = pracName.toLowerCase().trim();
+      // Match if practice name starts with or equals provider's last name or full name
+      return pn === nm.full || pn === nm.rev ||
+             pn.startsWith(nm.ln + ',') || pn.startsWith(nm.ln + ' ' + nm.fn) ||
+             pn.startsWith(nm.fn + ' ' + nm.ln) ||
+             (nm.ln.length > 3 && pn.startsWith(nm.ln));
+    }
+
+    // For each location, find if it's a phantom for any of its assigned providers
+    const phantoms = []; // {locId, locAddr, practiceName, practiceId, provId, provName}
+    (locations || []).forEach(loc => {
+      const practice = practiceMap[loc.practice_id];
+      if (!practice) return;
+      const assignedProvIds = [...(assignedProvidersByLoc[loc.id] || new Set())];
+      assignedProvIds.forEach(provId => {
+        if (!practiceMatchesProvider(practice.name, provId)) return;
+        // Check provider also has other locations under a DIFFERENT practice
+        const allProvLocs = [...(assignedLocsByProvider[provId] || new Set())];
+        const hasOtherPractice = allProvLocs.some(lid => {
+          if (lid === loc.id) return false;
+          const otherLoc = locations.find(l => l.id === lid);
+          return otherLoc && otherLoc.practice_id !== loc.practice_id;
+        });
+        if (!hasOtherPractice) return;
+        const p = (providers || []).find(pr => pr.id === provId);
+        const provName = p ? [p.first_name, p.last_name, p.degree].filter(Boolean).join(' ') : provId;
+        const addr = [loc.address, loc.city, loc.zip].filter(Boolean).join(', ');
+        phantoms.push({ locId: loc.id, locAddr: addr, practiceName: practice.name, practiceId: loc.practice_id, provId, provName });
+      });
+    });
+
+    // Deduplicate (same locId can match multiple providers — just show once)
+    const seenPhantomLocs = new Set();
+    const uniquePhantoms = phantoms.filter(ph => {
+      if (seenPhantomLocs.has(ph.locId)) return false;
+      seenPhantomLocs.add(ph.locId);
+      return true;
+    });
+
+    window._phantoms = uniquePhantoms; // store for deleteAllPhantoms()
+
+    const phantomEl = document.getElementById('phantomList');
+    const phantomBadge = document.getElementById('phantomBadge');
+    phantomBadge.textContent = uniquePhantoms.length + (uniquePhantoms.length === 0 ? ' ✓' : ' phantoms');
+    phantomBadge.className = 'count-badge ' + (uniquePhantoms.length === 0 ? 'ok' : '');
+    if (uniquePhantoms.length === 0) {
+      phantomEl.innerHTML = '<p class="empty">No phantom locations detected.</p>';
+      document.getElementById('phantomDeleteAllWrap').style.display = 'none';
+    } else {
+      document.getElementById('phantomDeleteAllWrap').style.display = 'block';
+      phantomEl.innerHTML = uniquePhantoms.map(ph => {
+        return `<div class="row-card danger" id="phantom-${ph.locId}">
+          <div class="row-info">
+            <div class="row-name">${ph.practiceName} <span class="tag tag-self">PHANTOM</span></div>
+            <div class="row-detail">${ph.locAddr || 'No address'} &nbsp;·&nbsp; Provider: ${ph.provName}</div>
+          </div>
+          <div class="row-actions">
+            <button class="btn-del" onclick="deletePhantomLoc('${ph.locId}','${ph.practiceName.replace(/'/g,"\\'")}',this)">Delete Location</button>
+          </div>
+        </div>`;
+      }).join('');
+    }
 
     // === SECTION 0: Non-Mohs Dermatologists ===
     const MOHS_RE = /mohs/i;
@@ -387,12 +513,14 @@ async function runAudit() {
     }
 
     // Stats
-    const totalIssues = ootLocs.length + selfPracs.length + orphans.length;
+    const totalIssues = uniquePhantoms.length + nonMohsDerms.length + ootLocs.length + selfPracs.length + orphans.length;
     document.getElementById('statsGrid').style.display = 'grid';
     document.getElementById('statsGrid').innerHTML = `
       <div class="stat-card"><div class="stat-num">${(providers||[]).length}</div><div class="stat-label">Total Providers</div></div>
       <div class="stat-card"><div class="stat-num">${(practices||[]).length}</div><div class="stat-label">Total Practices</div></div>
       <div class="stat-card"><div class="stat-num">${(locations||[]).length}</div><div class="stat-label">Total Locations</div></div>
+      <div class="stat-card"><div class="stat-num ${uniquePhantoms.length > 0 ? 'bad' : ''}">${uniquePhantoms.length}</div><div class="stat-label">Phantom Locations</div></div>
+      <div class="stat-card"><div class="stat-num ${nonMohsDerms.length > 0 ? 'bad' : ''}">${nonMohsDerms.length}</div><div class="stat-label">Non-Mohs Derms</div></div>
       <div class="stat-card"><div class="stat-num ${ootLocs.length > 0 ? 'bad' : ''}">${ootLocs.length}</div><div class="stat-label">OOT Locations</div></div>
       <div class="stat-card"><div class="stat-num ${selfPracs.length > 0 ? 'warn' : ''}">${selfPracs.length}</div><div class="stat-label">Self-Named Practices</div></div>
       <div class="stat-card"><div class="stat-num ${orphans.length > 0 ? 'warn' : ''}">${orphans.length}</div><div class="stat-label">Unlinked Providers</div></div>
