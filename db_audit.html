@@ -64,16 +64,13 @@ button{border:none;border-radius:6px;padding:0.35rem 0.75rem;font-size:0.8rem;fo
 
 <div id="sections" style="display:none;">
 
-<!-- Section -1: Phantom solo-provider locations -->
+<!-- Section -1: Provider-named solo practices — REVIEW ONLY -->
 <div class="section">
   <div class="section-header">
-    <span class="section-title">👻 Phantom Provider-Named Locations</span>
+    <span class="section-title">⚠️ Solo-Named Practices (Review Required)</span>
     <span class="count-badge" id="phantomBadge">—</span>
   </div>
-  <p class="section-note">Locations where the practice name matches a provider's own name AND that provider also has assignments to at least one other (real) practice. These are import artifacts — the NPI import created a solo "practice" from the provider's own name. Safe to delete: removes only the phantom location + its assignment. The provider stays linked to their real practice.</p>
-  <div style="margin-bottom:0.5rem;" id="phantomDeleteAllWrap" style="display:none;">
-    <button class="btn-primary" style="background:#dc2626;" id="phantomDeleteAllBtn" onclick="deleteAllPhantoms()">🗑 Delete All Phantoms</button>
-  </div>
+  <p class="section-note"><strong>REVIEW ONLY — do not delete without verifying.</strong> These are practices whose name closely matches a provider's own name. Many are legitimate solo practices (e.g. "Adam Plotkin DPM LLC" is Dr. Plotkin's real office). Some may be NPI import duplicates. Check each one in the CRM — only delete if the provider has a real group practice and this is a duplicate with no unique data (notes, staff, hours) of its own.</p>
   <div id="phantomList" class="loading">Loading...</div>
 </div>
 
@@ -225,41 +222,6 @@ async function deleteProvider(providerId, name, btn) {
   }
 }
 
-async function deletePhantomLoc(locId, label, btn) {
-  btn.disabled = true; btn.textContent = 'Deleting...';
-  try {
-    await db.from('provider_location_assignments').delete().eq('practice_location_id', locId);
-    await db.from('practice_locations').delete().eq('id', locId);
-    showToast(`Deleted phantom "${label}"`, 'success');
-    document.getElementById('phantom-' + locId)?.remove();
-  } catch(e) {
-    showToast('Error: ' + e.message, 'error');
-    btn.disabled = false; btn.textContent = 'Delete Location';
-  }
-}
-
-async function deleteAllPhantoms() {
-  const phantoms = window._phantoms || [];
-  if (!phantoms.length) { showToast('No phantoms to delete', 'error'); return; }
-  if (!confirm(`Delete ALL ${phantoms.length} phantom location(s)?\n\nThis removes the phantom practice location and its provider assignment. The provider stays in the CRM linked to their real practice. Cannot be undone.`)) return;
-  const btn = document.getElementById('phantomDeleteAllBtn');
-  btn.disabled = true; btn.textContent = 'Deleting...';
-  let deleted = 0, failed = 0;
-  for (const ph of phantoms) {
-    try {
-      await db.from('provider_location_assignments').delete().eq('practice_location_id', ph.locId);
-      await db.from('practice_locations').delete().eq('id', ph.locId);
-      document.getElementById('phantom-' + ph.locId)?.remove();
-      deleted++;
-    } catch(e) {
-      console.error('Failed phantom', ph.locId, e.message);
-      failed++;
-    }
-  }
-  btn.disabled = false; btn.textContent = '🗑 Delete All Phantoms';
-  window._phantoms = [];
-  showToast(failed ? `Deleted ${deleted}, failed ${failed}` : `Deleted ${deleted} phantom(s)`, failed ? 'error' : 'success');
-}
 
 async function runAudit() {
   const btn = document.getElementById('runBtn');
@@ -351,25 +313,33 @@ async function runAudit() {
       return true;
     });
 
-    window._phantoms = uniquePhantoms; // store for deleteAllPhantoms()
-
     const phantomEl = document.getElementById('phantomList');
     const phantomBadge = document.getElementById('phantomBadge');
-    phantomBadge.textContent = uniquePhantoms.length + (uniquePhantoms.length === 0 ? ' ✓' : ' phantoms');
+    phantomBadge.textContent = uniquePhantoms.length + (uniquePhantoms.length === 0 ? ' ✓' : ' to review');
     phantomBadge.className = 'count-badge ' + (uniquePhantoms.length === 0 ? 'ok' : '');
     if (uniquePhantoms.length === 0) {
-      phantomEl.innerHTML = '<p class="empty">No phantom locations detected.</p>';
-      document.getElementById('phantomDeleteAllWrap').style.display = 'none';
+      phantomEl.innerHTML = '<p class="empty">No solo-named practices found.</p>';
     } else {
-      document.getElementById('phantomDeleteAllWrap').style.display = 'block';
       phantomEl.innerHTML = uniquePhantoms.map(ph => {
-        return `<div class="row-card danger" id="phantom-${ph.locId}">
+        // Show the OTHER practices this provider is also assigned to
+        const p = (providers || []).find(pr => pr.id === ph.provId);
+        const allProvLocs = [...(assignedLocsByProvider[ph.provId] || new Set())];
+        const otherPracticeNames = [...new Set(
+          allProvLocs
+            .filter(lid => lid !== ph.locId)
+            .map(lid => {
+              const otherLoc = locations.find(l => l.id === lid);
+              return otherLoc ? (practiceMap[otherLoc.practice_id] || {}).name : null;
+            })
+            .filter(Boolean)
+        )].join(', ');
+        const noteSnip = (p && p.general_notes || '').substring(0, 100);
+        return `<div class="row-card warn" id="solo-${ph.locId}">
           <div class="row-info">
-            <div class="row-name">${ph.practiceName} <span class="tag tag-self">PHANTOM</span></div>
-            <div class="row-detail">${ph.locAddr || 'No address'} &nbsp;·&nbsp; Provider: ${ph.provName}</div>
-          </div>
-          <div class="row-actions">
-            <button class="btn-del" onclick="deletePhantomLoc('${ph.locId}','${ph.practiceName.replace(/'/g,"\\'")}',this)">Delete Location</button>
+            <div class="row-name">${ph.practiceName} <span class="tag tag-self">SOLO-NAMED</span></div>
+            <div class="row-detail">Provider: ${ph.provName} &nbsp;·&nbsp; ${ph.locAddr || 'No address'}</div>
+            ${otherPracticeNames ? `<div class="row-detail">Also assigned to: <strong>${otherPracticeNames}</strong></div>` : ''}
+            ${noteSnip ? `<div class="row-detail" style="font-style:italic;">${noteSnip}${(p.general_notes||'').length > 100 ? '...' : ''}</div>` : ''}
           </div>
         </div>`;
       }).join('');
