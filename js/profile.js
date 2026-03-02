@@ -67,8 +67,8 @@ ${practiceName ? `<span class="practice-badge" title="View practice">🏢 ${prac
 </div>
 <div class="location-actions">
 ${assign.is_primary
-  ? '<span style="font-size:0.7rem;color:#f97316;font-weight:700;padding:0.2rem 0.4rem;">★ Primary</span>'
-  : `<button class="icon-btn" onclick="setPrimaryLocation('${assign.id}')" title="Set as primary" style="font-size:0.75rem;color:#999;">☆ Set Primary</button>`}
+  ? '<span style="font-size:0.72rem;background:#fef3c7;color:#92400e;border:1px solid #fbbf24;border-radius:4px;padding:0.15rem 0.5rem;font-weight:700;">⭐ Primary</span>'
+  : `<button onclick="setPrimaryLocation('${assign.id}')" title="Make this the primary location" style="font-size:0.72rem;background:white;border:1px solid #d1d5db;color:#555;border-radius:4px;padding:0.15rem 0.5rem;font-weight:600;cursor:pointer;touch-action:manipulation;">Set Primary</button>`}
 <button class="icon-btn" onclick="editLocationDetails('${loc.id}')" title="Edit">✏️</button>
 <button class="icon-btn" onclick="removeAssignment('${assign.id}')" title="Remove">🗑️</button>
 </div>
@@ -215,8 +215,8 @@ ${mi('Providers', locPhysicians.length)}${mi('City', loc.city || '—')}${mi('Zi
 </div>
 </div>
 <div class="contact-grid">
-${ci('📍','Address',locAddr(loc))}${ci('📞','Phone',loc.phone?locPhone(loc.phone):'')}${ci('📠','Fax',loc.fax?fmtPhone(loc.fax):'')}${ci('✉️','Email',loc.practice_email?`<a href="mailto:${loc.practice_email}">${loc.practice_email}</a>`:'')}${ci('🕐','Office Hours',loc.office_hours||'')}${ci('👥','Office Staff',loc.office_staff||'')}${ci('👤','Receptionist',loc.receptionist_name||'')}${ci('📅','Best Days',loc.best_days||'')}
-${!loc.phone&&!loc.practice_email&&!loc.office_hours&&!loc.office_staff&&!loc.receptionist_name&&!loc.best_days&&!loc.fax?'<div class="empty-notice">No details recorded. Use Edit to add details.</div>':''}
+${ci('📍','Address',locAddr(loc))}${ci('📞','Phone',loc.phone?locPhone(loc.phone):'')}${ci('📠','Fax',loc.fax?fmtPhone(loc.fax):'')}${ci('✉️','Email',loc.practice_email?`<a href="mailto:${loc.practice_email}">${loc.practice_email}</a>`:'')}${ci('🕐','Office Hours',loc.office_hours||'')}${ci('👥','Office Staff',loc.office_staff||'')}${ci('👤','Receptionist',loc.receptionist_name||'')}${ci('📅','Best Days',loc.best_days||'')}${ci('📝','General Info',loc.notes||'')}
+${!loc.phone&&!loc.practice_email&&!loc.office_hours&&!loc.office_staff&&!loc.receptionist_name&&!loc.best_days&&!loc.fax&&!loc.notes?'<div class="empty-notice">No details recorded. Use Edit to add details.</div>':''}
 </div>
 </div>
 <div class="section">
