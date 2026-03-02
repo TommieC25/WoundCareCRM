@@ -130,13 +130,15 @@ async function loadAll() {
     const results = await Promise.all([
       db.from('practice_locations').select('id,practice_id,label,address,city,zip').order('city'),
       db.from('provider_location_assignments').select('practice_location_id,provider_id'),
-      db.from('practices').select('id,name').order('name')
+      db.from('practices').select('id,name').order('name'),
+      db.from('providers').select('id,first_name,last_name,degree,specialty')
     ]);
 
     const locs = results[0].data;
     const locError = results[0].error;
     const assignments = results[1].data;
     const practices = results[2].data;
+    const providers = results[3].data;
 
     if (locError) throw locError;
     if (!locs || locs.length === 0) {
@@ -147,9 +149,14 @@ async function loadAll() {
     const practiceMap = {};
     (practices || []).forEach(function(p) { practiceMap[p.id] = p.name; });
 
-    const assignCount = {};
+    const providerMap = {};
+    (providers || []).forEach(function(p) { providerMap[p.id] = p; });
+
+    // Map location -> list of provider IDs
+    const assignsByLoc = {};
     (assignments || []).forEach(function(a) {
-      assignCount[a.practice_location_id] = (assignCount[a.practice_location_id] || 0) + 1;
+      if (!assignsByLoc[a.practice_location_id]) assignsByLoc[a.practice_location_id] = [];
+      assignsByLoc[a.practice_location_id].push(a.provider_id);
     });
 
     const groups = {};
@@ -157,36 +164,57 @@ async function loadAll() {
       const pid = loc.practice_id || '__none__';
       const pname = practiceMap[loc.practice_id] || '(No practice)';
       if (!groups[pid]) groups[pid] = { pracName: pname, pracId: pid, locs: [] };
-      groups[pid].locs.push({ id: loc.id, address: loc.address, city: loc.city, zip: loc.zip, provCount: assignCount[loc.id] || 0 });
+      const provIds = assignsByLoc[loc.id] || [];
+      const provNames = provIds.map(function(id) {
+        const pr = providerMap[id];
+        if (!pr) return '?';
+        return [pr.first_name, pr.last_name, pr.degree].filter(Boolean).join(' ') + (pr.specialty ? ' (' + pr.specialty + ')' : '');
+      });
+      groups[pid].locs.push({ id: loc.id, address: loc.address, city: loc.city, zip: loc.zip, provNames: provNames });
     });
 
-    const groupList = Object.values(groups).sort(function(a, b) { return a.pracName.localeCompare(b.pracName); });
+    // Sort: solo-provider groups first (most likely phantom), then alphabetically
+    const groupList = Object.values(groups).sort(function(a, b) {
+      const aMax = Math.max(...a.locs.map(function(l) { return l.provNames.length; }));
+      const bMax = Math.max(...b.locs.map(function(l) { return l.provNames.length; }));
+      if (aMax !== bMax) return aMax - bMax; // 0 or 1 provider first
+      return a.pracName.localeCompare(b.pracName);
+    });
 
-    const noProvLocs = locs.filter(function(l) { return !assignCount[l.id]; }).length;
+    const noProvLocs = locs.filter(function(l) { return !(assignsByLoc[l.id] && assignsByLoc[l.id].length); }).length;
+    const soloProvLocs = locs.filter(function(l) { return assignsByLoc[l.id] && assignsByLoc[l.id].length === 1; }).length;
 
     document.getElementById('statsBar').style.display = 'flex';
     document.getElementById('statsBar').innerHTML =
       '<div class="stat-item"><strong>' + groupList.length + '</strong>practices</div>' +
       '<div class="stat-item"><strong>' + locs.length + '</strong>total locations</div>' +
-      '<div class="stat-item danger"><strong>' + noProvLocs + '</strong>locations with 0 providers</div>';
+      '<div class="stat-item danger"><strong>' + noProvLocs + '</strong>0-provider locations</div>' +
+      '<div class="stat-item danger"><strong>' + soloProvLocs + '</strong>solo-provider locations</div>';
 
     let html = '';
     groupList.forEach(function(g) {
+      const totalProvs = new Set();
+      g.locs.forEach(function(l) { l.provNames.forEach(function(_, i) { totalProvs.add(i + '_' + g.pracId); }); });
+      const isSolo = g.locs.every(function(l) { return l.provNames.length <= 1; });
+      const headerStyle = isSolo ? 'background:#fee2e2;' : '';
       html += '<div class="prac-group" id="group-' + g.pracId + '" data-prac="' + g.pracName.replace(/"/g,'&quot;') + '">';
-      html += '<div class="prac-header">';
-      html += '<span class="prac-name">' + g.pracName + '</span>';
-      html += '<span><span class="prac-meta">' + g.locs.length + ' location(s)</span>&nbsp;';
+      html += '<div class="prac-header" style="' + headerStyle + '">';
+      html += '<span class="prac-name">' + g.pracName + (isSolo ? ' <span style="font-size:0.7rem;color:#dc2626;font-weight:700;">SOLO</span>' : '') + '</span>';
+      html += '<span><span class="prac-meta">' + g.locs.length + ' loc</span>&nbsp;';
       html += '<button class="prac-check-all" onclick="checkGroup(\'' + g.pracId + '\',true)">check all</button>&nbsp;';
       html += '<button class="prac-check-all" onclick="checkGroup(\'' + g.pracId + '\',false)">uncheck</button></span>';
       html += '</div>';
       g.locs.forEach(function(loc) {
         const addr = [loc.address, loc.city, loc.zip].filter(Boolean).join(', ') || '(no address)';
-        const provTag = loc.provCount === 0
-          ? '<span style="color:#dc2626;font-weight:700;">0 providers assigned</span>'
-          : loc.provCount + ' provider(s)';
+        let provLine;
+        if (loc.provNames.length === 0) {
+          provLine = '<span style="color:#dc2626;font-weight:700;">No providers assigned</span>';
+        } else {
+          provLine = loc.provNames.join(' &nbsp;·&nbsp; ');
+        }
         html += '<div class="row-card" id="card-' + loc.id + '" data-city="' + (loc.city || '') + '" data-addr="' + (loc.address || '') + '">';
         html += '<input type="checkbox" class="chk" data-id="' + loc.id + '" onchange="updateSelCount();this.closest(\'.row-card\').classList.toggle(\'checked\',this.checked)">';
-        html += '<div class="row-info"><div class="row-addr">' + addr + '</div><div class="row-meta">' + provTag + '</div></div>';
+        html += '<div class="row-info"><div class="row-addr">' + addr + '</div><div class="row-meta">' + provLine + '</div></div>';
         html += '<button class="btn-del" onclick="deleteSingle(\'' + loc.id + '\',this)">Del</button>';
         html += '</div>';
       });

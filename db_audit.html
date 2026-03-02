@@ -56,13 +56,23 @@ button{border:none;border-radius:6px;padding:0.35rem 0.75rem;font-size:0.8rem;fo
 </head>
 <body>
 <h1>🔍 DB Audit — WoundCare CRM</h1>
-<p class="subtitle">Finds self-named practices, out-of-territory locations, and orphaned providers</p>
+<p class="subtitle">Finds non-Mohs dermatologists, self-named practices, out-of-territory locations, and orphaned providers</p>
 
 <button class="btn-primary" id="runBtn" onclick="runAudit()">Run Audit</button>
 
 <div id="statsGrid" class="stats-grid" style="display:none;"></div>
 
 <div id="sections" style="display:none;">
+
+<!-- Section 0: Non-Mohs Dermatologists -->
+<div class="section">
+  <div class="section-header">
+    <span class="section-title">🔪 Dermatology Providers — Mohs Unconfirmed</span>
+    <span class="count-badge" id="mohsBadge">—</span>
+  </div>
+  <p class="section-note"><strong>Dermatology in this CRM = Mohs surgeons ONLY.</strong> General dermatologists are never targets. This list shows every provider with specialty=Dermatology whose name, title, degree, or notes contain no mention of "Mohs". Review each — delete non-Mohs derms, or add "Mohs" to their notes/title to confirm them.</p>
+  <div id="mohsList" class="loading">Loading...</div>
+</div>
 
 <!-- Section 1: Out of territory -->
 <div class="section">
@@ -216,7 +226,7 @@ async function runAudit() {
       { data: locations },
       { data: assignments }
     ] = await Promise.all([
-      db.from('providers').select('id,first_name,last_name,degree,specialty,general_notes,is_target,priority').order('last_name'),
+      db.from('providers').select('id,first_name,last_name,degree,title,specialty,general_notes,is_target,priority').order('last_name'),
       db.from('practices').select('id,name').order('name'),
       db.from('practice_locations').select('id,practice_id,label,address,city,zip').order('city'),
       db.from('provider_location_assignments').select('provider_id,practice_location_id')
@@ -238,6 +248,38 @@ async function runAudit() {
       if (!assignedLocsByProvider[a.provider_id]) assignedLocsByProvider[a.provider_id] = new Set();
       assignedLocsByProvider[a.provider_id].add(a.practice_location_id);
     });
+
+    // === SECTION 0: Non-Mohs Dermatologists ===
+    const MOHS_RE = /mohs/i;
+    function hasMohsIndicator(p) {
+      return MOHS_RE.test(p.title || '') || MOHS_RE.test(p.general_notes || '') || MOHS_RE.test(p.degree || '');
+    }
+    const nonMohsDerms = (providers || []).filter(p =>
+      (p.specialty || '').toLowerCase() === 'dermatology' && !hasMohsIndicator(p)
+    );
+    const mohsEl = document.getElementById('mohsList');
+    const mohsBadge = document.getElementById('mohsBadge');
+    mohsBadge.textContent = nonMohsDerms.length + (nonMohsDerms.length === 0 ? ' ✓' : ' to review');
+    mohsBadge.className = 'count-badge ' + (nonMohsDerms.length === 0 ? 'ok' : '');
+    if (nonMohsDerms.length === 0) {
+      mohsEl.innerHTML = '<p class="empty">All dermatology providers have a Mohs indicator.</p>';
+    } else {
+      mohsEl.innerHTML = nonMohsDerms.map(p => {
+        const name = [p.first_name, p.last_name, p.degree].filter(Boolean).join(' ');
+        const detail = [p.title, p.priority ? 'Tier ' + p.priority : '', p.is_target ? 'TARGET' : 'not target'].filter(Boolean).join(' · ');
+        const noteSnip = (p.general_notes || '').substring(0, 120);
+        return `<div class="row-card danger" id="prov-mohs-${p.id}">
+          <div class="row-info">
+            <div class="row-name">${name}</div>
+            <div class="row-detail">${detail || 'No title/tier'}</div>
+            ${noteSnip ? `<div class="row-detail" style="margin-top:0.2rem;font-style:italic;">${noteSnip}${(p.general_notes||'').length > 120 ? '...' : ''}</div>` : ''}
+          </div>
+          <div class="row-actions">
+            <button class="btn-del" onclick="deleteProvider('${p.id}', '${name.replace(/'/g,"\\'")}', this)">Delete Provider</button>
+          </div>
+        </div>`;
+      }).join('');
+    }
 
     // === SECTION 1: Out-of-territory locations ===
     const ootLocs = (locations || []).filter(l => !guessCounty(l.city));
