@@ -414,7 +414,7 @@ const locationId = (locRow&&locRow.style.display!=='none'&&$('addTaskLocationSel
   ? ($('addTaskLocationSelect').value||null)
   : ($('addTaskLocationId').value||null);
 const today = localDate();
-try {
+await withSave('addTaskSaveBtn', editId ? 'Save Task' : 'Save Task', async () => {
 let error, _newRec = null;
 if (editId) {
 ({error} = await db.from('contact_logs').update({ notes: note, reminder_date: date, author: authorVal }).eq('id', editId));
@@ -438,7 +438,7 @@ const _x=document.createElement('button');_x.textContent='×';_x.style.cssText='
 _x.onclick=()=>_t.remove();_t.appendChild(_a);_t.appendChild(_x);_tc.appendChild(_t);
 setTimeout(()=>_t.remove(),15000);
 }
-} catch(e) { showToast('Error saving task: ' + e.message, 'error'); }
+});
 }
 
 function toggleAdminPanel() {
