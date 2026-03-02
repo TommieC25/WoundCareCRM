@@ -322,7 +322,7 @@ if (phoneMatch) phone = phoneMatch[1];
 // Handles both "Miami, FL 33176" and "Pembroke Pines FL 33028" (no comma before state)
 let cityLineIdx = -1;
 for (let i = lines.length - 1; i >= 0; i--) {
-  const m = lines[i].match(/^([A-Za-z][^,]*?),?\s+([A-Z]{2})\s+(\d{5})(?:-\d{4})?$/);
+  const m = lines[i].match(/^([A-Za-z][^,]*?),?\s+([A-Z]{2})\s+(\d{5})(?:-\d{4})?/);
   if (m) { city = m[1].trim(); zip = m[3]; cityLineIdx = i; break; }
 }
 // Fallback for single-line: "123 Main St, Miami, FL 33176"
@@ -371,7 +371,7 @@ function editLocationDetails(locationId) {
 const loc=practiceLocations.find(l=>l.id===locationId);if(!loc)return;
 editingLocationId=locationId;$('locationModalTitle').textContent='Edit Location';
 if ($('addressBlock')) $('addressBlock').value = '';
-setFields({locationPracticeId:loc.practice_id,locationLabel:loc.label||'',locationAddress:loc.address||'',locationCity:loc.city||'',locationZip:loc.zip||'',locationPhone:loc.phone||'',locationFax:loc.fax||'',locationEmail:loc.practice_email||'',locationHours:loc.office_hours||'',locationStaff:loc.office_staff||'',locationReceptionist:loc.receptionist_name||'',locationBestDays:loc.best_days||''});
+setFields({locationPracticeId:loc.practice_id,locationLabel:loc.label||'',locationAddress:loc.address||'',locationCity:loc.city||'',locationZip:loc.zip||'',locationPhone:loc.phone||'',locationFax:loc.fax||'',locationEmail:loc.practice_email||'',locationHours:loc.office_hours||'',locationStaff:loc.office_staff||'',locationReceptionist:loc.receptionist_name||'',locationBestDays:loc.best_days||'',locationNotes:loc.notes||''});
 $('locationSaveBtn').textContent='Save Location';$('locationSaveBtn').className='btn-primary';
 $('locationPracticeId').innerHTML='<option value="">-- Select Practice --</option>'+practices.map(p=>`<option value="${p.id}" ${p.id===loc.practice_id?'selected':''}>${p.name}</option>`).join('');
 const pr=practices.find(p=>p.id===loc.practice_id);
@@ -396,7 +396,7 @@ showToast('Practice renamed to "' + newName + '"', 'success');
 }
 async function saveLocation(e) {
 e.preventDefault();
-const data={practice_id:$('locationPracticeId').value,label:$('locationLabel').value,address:$('locationAddress').value||null,city:$('locationCity').value||null,zip:$('locationZip').value||null,phone:$('locationPhone').value||null,fax:$('locationFax').value||null,practice_email:$('locationEmail').value||null,office_hours:$('locationHours').value||null,office_staff:$('locationStaff').value||null,receptionist_name:$('locationReceptionist').value||null,best_days:$('locationBestDays').value||null};
+const data={practice_id:$('locationPracticeId').value,label:$('locationLabel').value,address:$('locationAddress').value||null,city:$('locationCity').value||null,zip:$('locationZip').value||null,phone:$('locationPhone').value||null,fax:$('locationFax').value||null,practice_email:$('locationEmail').value||null,office_hours:$('locationHours').value||null,office_staff:$('locationStaff').value||null,receptionist_name:$('locationReceptionist').value||null,best_days:$('locationBestDays').value||null,notes:$('locationNotes').value||null};
 await withSave('locationSaveBtn','Save Location',async()=>{
 if(editingLocationId){const{error}=await db.from('practice_locations').update(data).eq('id',editingLocationId);if(error)throw error;showToast('Location updated','success');
 }else{const{error}=await db.from('practice_locations').insert(data);if(error)throw error;showToast('Location added','success');}

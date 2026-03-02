@@ -239,10 +239,12 @@ if(currentPractice){renderPracticeProfile();await loadPracticeActivity(currentPr
 
 function _buildTaskContext(physicianId, locationId) {
 const phys = physicianId ? physicians.find(p => p.id === physicianId) : null;
-const loc = locationId ? practiceLocations.find(l => l.id === locationId) : null;
+let loc = locationId ? practiceLocations.find(l => l.id === locationId) : null;
+// Fall back to primary location when no explicit location given
+if (!loc && physicianId) loc = getPrimaryLoc(physicianId);
 const practice = loc ? practices.find(p => p.id === loc.practice_id) : null;
 let ctx = '';
-if (phys) { ctx = `<strong>${fmtName(phys)}</strong>`; if (practice) ctx += ` · ${practice.name}`; if (loc && loc.address) ctx += ` · ${loc.address}`; }
+if (phys) { ctx = `<strong>${fmtName(phys)}</strong>`; if (practice) ctx += ` · ${practice.name}`; if (loc && loc.address) ctx += ` · ${loc.address}${loc.city?', '+loc.city:''}`; }
 else if (practice) { ctx = `<strong>${practice.name}</strong>`; if (loc) ctx += ` · ${loc.label || loc.address || loc.city || ''}`; }
 else if (loc) { ctx = `<strong>${loc.label || loc.address || 'Location'}</strong>`; }
 return ctx;
@@ -281,7 +283,8 @@ if(locRow){
   } else if(mode==='provider'){
     const assigned=(physicianAssignments[physicianId]||[]).map(a=>{const loc=practiceLocations.find(l=>l.id===a.practice_location_id);if(!loc)return null;const prac=practices.find(pr=>pr.id===loc.practice_id);return{id:loc.id,label:`${prac?prac.name+' \u2014 ':''}${loc.label&&loc.label!==loc.city?loc.label:loc.city||'Office'}${loc.address?' ('+loc.address+')':''}`};}).filter(Boolean);
     const locs=assigned.length>0?assigned:practiceLocations.filter(l=>l.zip||l.address).map(l=>{const prac=practices.find(pr=>pr.id===l.practice_id);return{id:l.id,label:`${prac?prac.name+' \u2014 ':''}${l.label&&l.label!==l.city?l.label:l.city||'Office'}${l.address?' ('+l.address+')':''}`};});
-    const sel=$('addTaskLocationSelect');sel.innerHTML='<option value="">No specific location</option>'+locs.map(l=>`<option value="${l.id}"${l.id===locationId?' selected':''}>${l.label}</option>`).join('');
+    const noLocMsg=assigned.length===0?'<option value="" disabled style="color:#dc2626;">No locations assigned — add from profile first</option>':'';
+    const sel=$('addTaskLocationSelect');sel.innerHTML='<option value="">No specific location</option>'+noLocMsg+locs.map(l=>`<option value="${l.id}"${l.id===locationId?' selected':''}>${l.label}</option>`).join('');
     $('addTaskLocationId').value=locationId||'';
   } else {
     // practice mode: show all locations for this practice
