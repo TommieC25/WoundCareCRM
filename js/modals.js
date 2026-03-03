@@ -310,7 +310,8 @@ showToast('Deleted','success');updateSyncIndicators('synced');
 function parseAddressBlock(mode) {
 // mode = 'location' (default) fills locationAddress/City/Zip/Phone
 // mode = 'quick' fills quickPracticeAddr/City/Zip/Phone
-const srcId = (mode === 'quick') ? 'quickAddressBlock' : 'addressBlock';
+// mode = 'practice' fills practiceAddress/City/Zip/Phone
+const srcId = (mode === 'quick') ? 'quickAddressBlock' : (mode === 'practice') ? 'practiceAddressBlock' : 'addressBlock';
 const raw = ($(''+srcId)?.value || '').trim();
 if (!raw) { showToast('Paste an address first', 'info'); return; }
 const lines = raw.split('\n').map(l => l.trim()).filter(Boolean);
@@ -343,6 +344,11 @@ if (mode === 'quick') {
   if ($('quickPracticeCity') && city) $('quickPracticeCity').value = city;
   if ($('quickPracticeZip') && zip) $('quickPracticeZip').value = zip;
   if ($('quickPracticePhone') && phone && !$('quickPracticePhone').value) $('quickPracticePhone').value = phone;
+} else if (mode === 'practice') {
+  if ($('practiceAddress') && addr) $('practiceAddress').value = addr;
+  if ($('practiceCity') && city) $('practiceCity').value = city;
+  if ($('practiceZip') && zip) $('practiceZip').value = zip;
+  if ($('practicePhone') && phone && !$('practicePhone').value) $('practicePhone').value = phone;
 } else {
   if ($('locationAddress') && addr) $('locationAddress').value = addr;
   if ($('locationCity') && city) $('locationCity').value = city;

@@ -336,6 +336,11 @@ Append New Records from CSV <input type="file" accept=".csv" onchange="importCSV
 <label style="color:#0a4d3c;font-size:0.85rem;margin-bottom:0.5rem;">Primary Location (optional)</label>
 </div>
 <div>
+<label>Paste Full Address</label>
+<textarea id="practiceAddressBlock" rows="2" placeholder="Paste full address block here, e.g.:&#10;123 Main St&#10;Miami, FL 33101&#10;(305) 555-1234" style="font-size:0.9rem;min-height:50px;"></textarea>
+<button type="button" onclick="parseAddressBlock('practice')" style="margin-top:0.4rem;padding:0.4rem 1rem;background:#0a4d3c;color:white;border:none;border-radius:6px;font-size:0.85rem;cursor:pointer;font-weight:600;">⚡ Auto-Fill Fields</button>
+</div>
+<div>
 <label>Address</label>
 <input type="text" id="practiceAddress" placeholder="123 Main St">
 </div>
