@@ -44,6 +44,20 @@ if (content && content.contains(e.target)) return;
 e.preventDefault();
 }, { passive: false });
 });
+// DPM ↔ Podiatry auto-set (main provider modal)
+$('degree').addEventListener('change', function() {
+if (this.value === 'DPM' && !$('specialty').value) $('specialty').value = 'Podiatry';
+});
+$('specialty').addEventListener('change', function() {
+if (this.value === 'Podiatry' && !$('degree').value) $('degree').value = 'DPM';
+});
+// DPM ↔ Podiatry auto-set (quick-add modal)
+$('quickPhysDegree').addEventListener('change', function() {
+if (this.value === 'DPM' && !$('quickPhysSpecialty').value) $('quickPhysSpecialty').value = 'Podiatry';
+});
+$('quickPhysSpecialty').addEventListener('change', function() {
+if (this.value === 'Podiatry' && !$('quickPhysDegree').value) $('quickPhysDegree').value = 'DPM';
+});
 });
 
 // Returns YYYY-MM-DD in the user's LOCAL timezone (not UTC)
