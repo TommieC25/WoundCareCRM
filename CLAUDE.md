@@ -54,13 +54,30 @@ Expects columns: first_name, last_name, email, priority, specialty, degree, titl
 
 **Paste-CSV option**: Admin panel has a textarea for pasting CSV text directly (iPad-friendly). Functions: `importCSVPaste()`, `importCSVText(str)` in admin.js — both duck-type into `importCSV()`.
 
-**Supabase network note**: The Claude Code server environment has outbound HTTPS blocked to external hosts (`403 host_not_allowed`). Server-side import scripts cannot reach Supabase. All imports must run through the browser. GitHub API works because it uses a different path (git remote with embedded PAT).
+**Supabase network note**: The Claude Code server environment has outbound HTTPS blocked to external hosts (`403 host_not_allowed`). Server-side import scripts cannot reach Supabase. All imports must run through the browser. Git push works via local proxy (127.0.0.1:61248). GitHub REST API (`api.github.com`) is **session-dependent** — sometimes allowed, sometimes not. Always check before assuming PR creation will work.
 
 ## Export Formats
 - **Providers CSV** (UI label; formerly "Physicians CSV"): All providers with practice info, degree, last contact, Status (latest activity)
 - **Contact Logs CSV**: All activity with dates, locations, notes
 - **Practices CSV**: All locations with details
 - **Field Routing CSV**: Matches Google Sheet "Routing(Field Use)" tab — includes Status column with latest activity per provider
+
+## CRITICAL BUSINESS RULES — READ BEFORE TOUCHING PROVIDER DATA
+
+**DERMATOLOGY = MOHS SURGEONS ONLY. No exceptions, ever.**
+- This CRM exists to sell OMEZA wound care products to providers who treat chronic wounds
+- The ONLY dermatologists who belong in this database are those who **perform Mohs surgery** — Mohs is a wound-creating procedure that requires wound care follow-up
+- General dermatologists (eczema, acne, cosmetic, etc.) are NOT targets and must NEVER be imported or added
+- If a provider has specialty = 'Dermatology' in this DB, they should be a Mohs surgeon. If unsure, flag for Tom to verify rather than importing
+- **Indicators of a Mohs surgeon**: NPI taxonomy includes "Mohs", title says "Mohs Surgeon", notes mention Mohs, practice name includes "Mohs" or "Dermatologic Surgery"
+- When scraping or bulk-importing from dermatology practice websites, do NOT import every provider on the site — only those explicitly identified as Mohs surgeons
+
+**Target specialties for this CRM:**
+- `Podiatry` — all podiatrists (DPM) are targets; they treat diabetic foot wounds
+- `Wound Care` — all wound care specialists are targets
+- `Dermatology` — **Mohs surgeons ONLY**
+- `Other` — case-by-case (vascular surgery, plastic surgery, etc. who treat wounds)
+- `Administrative Staff` — office staff added for contact purposes only, not targets
 
 ## Naming Conventions
 - "Academic Connection" (UI label) = `academic_connection` column (formerly `um_connection`, still falls back to it)
@@ -72,6 +89,15 @@ Expects columns: first_name, last_name, email, priority, specialty, degree, titl
   - The DB table is now `providers` (renamed from `physicians`)
   - Tab label: "HCPs", search placeholder: "Search HCPs...", buttons: "+ New Provider", "Add Provider", "Save Provider", "Edit Provider"
   - Counts: "X provider(s)", "No providers found", "Providers & Staff" (section headers in profile)
+
+## iOS Supabase SQL Editor Rules
+**CRITICAL — violations have cost multiple failed attempts and wasted credits.**
+When writing SQL to be copy-pasted into the Supabase SQL editor on iOS (Safari):
+- **NEVER use single-letter table aliases** (especially `p` for providers — iOS treats `p.column` as an HTML `<p>` tag and wraps it in angle brackets, breaking the query)
+- **NEVER use `table.column` dot notation in a SELECT clause** — iOS converts `SELECT providers.id` to `SELECT <providers.id>` on paste
+- **ALWAYS use** `SELECT id FROM table` (no alias, no prefix) and `NOT IN (SELECT col FROM other_table)` instead of LEFT JOIN for filtering
+- **SAFE pattern**: All WHERE clause references are fine (`WHERE provider_id = x`). Only the SELECT column list triggers the iOS HTML mangling
+- When in doubt: write the simplest possible SQL with no aliases anywhere
 
 ## Common Gotchas
 - The `degree` and `title` columns were added later (PRs #15-16) — always include them in inserts
@@ -101,24 +127,83 @@ Expects columns: first_name, last_name, email, priority, specialty, degree, titl
 
 **READ THIS FIRST on every new session / conversation compaction.**
 
-### Git Environment — FULLY WORKING (updated 2026-02-23, confirmed working through PR #66)
-1. **Push access**: ONLY `claude/*` branches work via git. Pushing to `main` returns 403. Do not attempt it.
+### Git Environment — FULLY WORKING (updated 2026-02-24, confirmed working through PR #66)
+1. **Push access**: ONLY `claude/*` branches work via git. The remote is pre-configured as `http://local_proxy@127.0.0.1:61985/git/TommieC25/WoundCareCRM` — git push works with no extra setup.
 2. **`gh` CLI**: NOT installed (command not found). Do not attempt any `gh` commands.
-3. **GitHub REST API**: Works via `curl` to `https://api.github.com` with PAT token. Use this for PR creation and merge.
-4. **GitHub PAT**: Fine-grained token scoped to WoundCareCRM repo. Stored in `~/.github_pat` (not in git). Read it with `cat ~/.github_pat`.
-5. **Remote URL**: Set with PAT embedded: `git remote set-url origin https://$(cat ~/.github_pat)@github.com/TommieC25/WoundCareCRM.git`
+3. **GitHub REST API**: **Session-dependent** — `https://api.github.com` is only reachable if `api.github.com` is in the session's egress allowlist. Check with `curl -s https://api.github.com/zen` before trying. If blocked (`403 host_not_allowed`), push succeeds but PR creation/merge must be done manually by Tom on GitHub. Do NOT waste time probing — just push the branch and ask Tom to merge if the API is blocked.
+4. **GitHub PAT**: Fine-grained token scoped to WoundCareCRM repo. Stored in `~/.github_pat` = `/root/.github_pat` (not in git). **CHECK FIRST**: `PAT=$(cat /root/.github_pat 2>/dev/null)`. If empty/missing, PAT is gone (new container) — see fallback below.
+5. **Remote URL for git push**: Already set correctly via local proxy — do NOT try to reset it with a PAT. `git push -u origin <branch>` works as-is.
+6. **Remote URL for GitHub API**: Direct `https://api.github.com` calls work only if the PAT file exists.
 
 ### What TO Do for Git (full autonomous workflow)
-1. Read PAT: `PAT=$(cat ~/.github_pat)`
-2. Set remote: `git remote set-url origin https://$PAT@github.com/TommieC25/WoundCareCRM.git`
-3. Commit and push to `claude/` branch
-4. Create PR: `curl -X POST -H "Authorization: Bearer $PAT" https://api.github.com/repos/TommieC25/WoundCareCRM/pulls -d '{"title":"...","body":"...","head":"claude/...","base":"main"}'`
-5. Merge PR: `curl -X PUT -H "Authorization: Bearer $PAT" https://api.github.com/repos/TommieC25/WoundCareCRM/pulls/<number>/merge -d '{"merge_method":"squash"}'`
-- Full end-to-end autonomous — no manual steps needed from Tom.
+```bash
+# Step 1: Check PAT exists FIRST — if missing, see fallback before proceeding
+PAT=$(cat /root/.github_pat 2>/dev/null)
+if [ -z "$PAT" ]; then echo "PAT MISSING — PR creation will fail. See fallback."; fi
+
+# Step 2: Commit and push (git remote already configured, no setup needed)
+git add <files> && git commit -m "..." && git push -u origin claude/<branch>
+
+# Step 3: Create PR (requires PAT)
+PR=$(curl -s -X POST -H "Authorization: Bearer $PAT" -H "Content-Type: application/json" \
+  https://api.github.com/repos/TommieC25/WoundCareCRM/pulls \
+  -d '{"title":"...","body":"...","head":"claude/...","base":"main"}')
+PR_NUM=$(echo $PR | grep -o '"number":[0-9]*' | grep -o '[0-9]*')
+
+# Step 4: Merge PR (requires PAT)
+curl -s -X PUT -H "Authorization: Bearer $PAT" -H "Content-Type: application/json" \
+  https://api.github.com/repos/TommieC25/WoundCareCRM/pulls/$PR_NUM/merge \
+  -d '{"merge_method":"squash"}'
+
+# Step 5: Delete the branch after merge — ALWAYS do this (Tom's SOP)
+# The local git proxy does NOT support branch deletion (403 on push --delete)
+# Use the GitHub API instead:
+curl -s -X DELETE -H "Authorization: Bearer $PAT" \
+  "https://api.github.com/repos/TommieC25/WoundCareCRM/git/refs/heads/claude/<branch>"
+# If API is blocked: tell Tom to delete the branch on GitHub Branches page (trash icon)
+# NEVER leave merged branches sitting — they accumulate and confuse the repo
+```
+
+### PAT Missing Fallback (new container session)
+If `cat /root/.github_pat` returns nothing, the PAT was lost when the container was recreated. **Do NOT spend time probing ports or environment variables** — the PAT is not stored anywhere else accessible. Instead:
+1. Push the branch (still works via local proxy)
+2. Tell Tom: "Code is pushed to `claude/<branch>`. PAT is missing from this container — please run: `echo 'ghp_YOURTOKEN' > /root/.github_pat` and I'll complete the PR/merge."
+3. Tom provides the token → run steps 3-4 above immediately.
+
+### Queued Tasks for Next Session (updated 2026-03-02)
+
+#### 0. PRIORITY — Finish DB cleanup after bad NPI import (session 2026-03-02)
+A bulk import of NPI CSV data created phantom locations for every provider. Cleanup tools are built:
+- **`db_audit.html`**: Run this first — new "Phantom Provider-Named Locations" section at top auto-detects and offers "Delete All Phantoms" button. Also flags non-Mohs dermatologists, OOT locations, self-named practices, orphaned providers.
+- **`db_cleanup.html`**: Browse ALL locations with provider names shown; solo-provider practices sorted first (most likely phantoms). Filter + bulk delete.
+- After running db_audit.html phantom cleanup, verify in CRM that affected providers still show their real practice location.
+- Then check for non-Mohs derms in db_audit.html Section 0 and delete them.
+
+#### 1. Group → Location label issue (practice_locations.label column)
+Tom flagged that some locations show wrong labels. The `label` column on `practice_locations` is supposed to be a human-readable name for the office (e.g., "Jupiter Office", "Boca Raton"). Currently it often defaults to the city name from import. Need to:
+- Audit labels that are blank, generic, or wrong
+- Possibly surface/edit in the CRM profile view
+
+#### 2. Fix corrupted `specialty` field values in DB
+Many providers have garbage data in `specialty` — county names ("Broward", "Palm Beach"), free-text strings, old picklist values.
+- **Valid specialties are EXACTLY**: `Dermatology` (Mohs surgeons ONLY), `Podiatry`, `Wound Care`, `Other`, `Administrative Staff`
+- Need DB migration: map all non-standard values → one of the 5 valid values
+- **Also fix CRM picklist**: Specialty dropdown must show ONLY these 5 options
+
+#### 3. Fix corrupted Facility names (provider names appearing in Facility column)
+Some providers in the Field Routing sheet show their own name (e.g. "Aaron Blom") in the Facility column instead of the practice name. This means their `practice_locations` record has no linked `practice_id` or the `practices` record has a bad/missing name.
+- Audit providers where Facility = their own name
+- Fix the practice linkage in Supabase
+- Vohra Wound Physicians group at 3601 SW 160th Ave (no suite) is a known offender
+
+#### 4. Re-paste & sync Apps Script after fixing data
+After fixing specialty values and practice linkages, re-paste the current `google-apps-script/FieldRoutingSync.gs` into the Google Sheet (Extensions → Apps Script) and run Refresh Now to confirm clean output.
+
+---
 
 ### Session Handoff Checklist
 When picking up from a compacted/previous conversation:
-1. Read `CLAUDE.md` (this file) first
+1. Read `CLAUDE.md` (this file) first — **check Queued Tasks section above**
 2. Run `git log --oneline -10` and `git branch -a` to understand current state
 3. Check `git diff --stat origin/main...HEAD` to see what's pending
 4. Do the actual work requested — don't re-explore known constraints

@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>WoundCare CRM — Import Targets 2026-02-23</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
+<style>
+*{box-sizing:border-box;}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f0fdf4;margin:0;padding:1.5rem;color:#1e293b;}
+.card{max-width:560px;margin:0 auto;background:#fff;border-radius:14px;padding:1.75rem;box-shadow:0 4px 24px rgba(0,0,0,.10);}
+h1{font-size:1.35rem;margin:0 0 0.2rem;color:#0f172a;}
+.sub{color:#64748b;font-size:0.9rem;margin:0 0 1.5rem;}
+#status{padding:1rem 1.1rem;border-radius:8px;background:#f8fafc;border:1px solid #e2e8f0;font-size:0.88rem;line-height:1.6;min-height:3.5rem;margin-bottom:1.1rem;white-space:pre-wrap;font-family:inherit;}
+.btn{display:block;width:100%;padding:1rem;background:#0a9e6e;color:#fff;border:none;border-radius:10px;font-size:1.1rem;font-weight:700;cursor:pointer;letter-spacing:.01em;}
+.btn:active{background:#07875e;}
+.btn:disabled{background:#94a3b8;cursor:not-allowed;}
+.done{background:#dcfce7!important;border-color:#86efac!important;color:#166534!important;}
+.err{background:#fee2e2!important;border-color:#fca5a5!important;color:#991b1b!important;}
+.warn{color:#92400e;}
+</style>
+</head>
+<body>
+<div class="card">
+  <h1>Import Targets — 2026-02-23</h1>
+  <p class="sub">31 records · Vohra physicians, Wound Care HCPs, Home Health &amp; Skilled Nursing facilities</p>
+  <div id="status">Ready. Tap the button to run the import into Supabase.</div>
+  <button class="btn" id="btn" onclick="runImport()">Run Import</button>
+</div>
+<script>
+const SUPABASE_URL = 'https://xhdjywibdjzbczfjmctp.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhoZGp5d2liZGp6YmN6ZmptY3RwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk3NzE4MTYsImV4cCI6MjA4NTM0NzgxNn0.vHAfeYTVbu2Isu5AoFONvzrtJ2sS3YwF00QRe3LNrbU';
+const { createClient } = supabase;
+const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+const CSV_DATA = `first_name,last_name,degree,title,email,specialty,priority,proj_vol,ss_vol,academic_connection,general_notes,is_target,practice_name,address,city,zip,phone,fax,office_hours,office_staff,receptionist_name,best_days,practice_email
+Steve,Tran,MD,,,Family Medicine,1,,271,,CMS skin substitute utilization signal (HCPCS 15272); TOTALS=271.,Y,Vohra Wound Physicians - Miramar (Post-Acute Hub),3601 Sw 160th Ave Suite #250,Miramar,33027,305-866-9951,,,,,,
+Armando,Salazar,MD,,,Family Medicine,1,,149,,"CMS skin substitute utilization signal (HCPCS 15275); TOTALS=149. 2/20: VM: Julius Soto, Credentialing Dept",Y,Vohra Wound Physicians - Miramar (Post-Acute Hub),3601 Sw 160th Ave Suite 250,Miramar,33027,954-998-4832,,,,,,
+Charles,Stone,MD,,,Family Medicine,1,,108,,CMS skin substitute utilization signal (HCPCS 15272); TOTALS=108.,Y,Vohra Wound Physicians - Miramar (Post-Acute Hub),3601 Sw 160th Ave Suite #250,Miramar,33027,,,,,,,
+Aaron,Blom,DO,,,Family Medicine,1,,78,,CMS skin substitute utilization signal (HCPCS 15275); TOTALS=78.,Y,Vohra Wound Physicians - Miramar (Post-Acute Hub),3601 Sw 160th Ave Suite 250,Miramar,33027,,,,,,,
+Katherine,Langston,MD,,,Family Medicine,1,,70,,CMS skin substitute utilization signal (HCPCS 15275); TOTALS=70.,Y,Vohra Wound Physicians - Miramar (Post-Acute Hub),3601 Sw 160th Ave Suite 250,Miramar,33027,,,,,,,
+Jacquelyn,Perry,MD,,,Family Medicine,1,,70,,CMS skin substitute utilization signal (HCPCS 15271); TOTALS=70.,Y,Vohra Wound Physicians - Miramar (Post-Acute Hub),3601 Sw 160th Ave Suite 250,Miramar,33027,,,,,,,
+Patrick,Frost,MD,,,Family Medicine,1,,59,,CMS skin substitute utilization signal (HCPCS 15271); TOTALS=59.,Y,Vohra Wound Physicians - Miramar (Post-Acute Hub),3601 Sw 160th Ave Suite 250,Miramar,33027,,,,,,,
+Sharon,Vitale,NP,,,Wound Care,2,,376,,"CMS skin substitute utilization signal (HCPCS 15271); TOTALS=376. 2/20: got VM, no msg",Y,Vitale - Tequesta (CMS high utilizer),173 Magnolia Way nan,Tequesta,33469,561-427-5531,,,,,,
+Carlos,Reyes Chouza,,,,Wound Care,2,,349,,"CMS skin substitute utilization signal (HCPCS 15273); TOTALS=349. 2/20: Reyes Medical Ctr VM, no msg",Y,Reyes Chouza - West Palm Beach (CMS high utilizer),6367 Trails Of Foxford Ct nan,West Palm Beach,33415,561-814-1466,,,,,,
+Ivory,Christen,NP,,,Wound Care,2,,293,,CMS skin substitute utilization signal (HCPCS 15272); TOTALS=293. # NG,Y,Christen - Hallandale Beach (CMS high utilizer),201 E Hallandale Beach Blvd nan,Hallandale Beach,33009,954-455-3301,,,,,,
+Josue,Moran,NP,,,Wound Care,2,,207,,"CMS skin substitute utilization signal (HCPCS 15271); TOTALS=207. Screened for name, hung up",Y,Moran - Miami (CMS high utilizer),8852 Sw 25th St nan,Miami,33165,786-897-1748,,,,,,
+Mileydis,Curbelo,NP,,,Wound Care,2,,193,,"CMS skin substitute utilization signal (HCPCS 15275); TOTALS=193. 2/20: VM, generic greeting, Travis left VM",Y,Curbelo - Miami (CMS high utilizer),15285 Sw 88th Ter nan,Miami,33196,407-697-8810,,,,,,
+Surany,Thompson,,,,Wound Care,3,,79,,CMS skin substitute utilization signal (HCPCS 15271); TOTALS=79.,,Thompson - Boca Raton (CMS high utilizer),20237 Back Nine Dr nan,Boca Raton,33498,,,,,,,
+Christine,Gordon,NP,,,Wound Care,3,,59,,CMS skin substitute utilization signal (HCPCS 15271); TOTALS=59.,,Gordon - Coral Springs (CMS high utilizer),4753 Nw 115th Ave nan,Coral Springs,33076,,,,,,,
+Shevan,Wilks,NP,,,Wound Care,3,,47,,CMS skin substitute utilization signal (HCPCS 15271); TOTALS=47.,,Wilks - Coral Springs (CMS high utilizer),2901 Coral Hills Dr Ste 330 nan,Coral Springs,33065,,,,,,,
+Michel,Castillo Madrigal,NP,,,Wound Care,3,,41,,"CMS skin substitute utilization signal (HCPCS 15271); TOTALS=41. Phys there Thurs, gave OM email: Kamel Cancio kcancio@maxcare.com",,Castillo Madrigal - Pembroke Pines (CMS high utilizer),nan nan,Pembroke Pines,33173,954-417-0003,,,,,,
+,,,,,Wound Care,2,,,,Target medical director/clinical ops. Mobile/outpatient wound management.,Y,Genesis Wound Care Center,4995 NW 72 Ave Ste 406,Miami,33166,305-603-8410,,,,,,
+,,,,,Wound Care,2,,,,Mobile wound and post-acute services.,Y,Outreach Woundcare - Aventura,2999 NE 191st St Ste 300,Aventura,33180,888-383-5613,,,,,,
+,,,,,Wound Care,2,,,,National in-home wound model; confirm local South Florida ops contact.,Y,Personic Health (In-Home Wound Care),[Research needed],,,855-479-4217,,,,,,
+,,,,,Wound Care,2,,,,Mobile wound provider; confirm Miami-Dade/Broward coverage and medical director contact.,Y,Senior Mobile Wound Care of South Florida,[Research needed],,,800-964-4395,,,,,,
+,,,,,Home Health,2,,,,Target Director of Nursing/Clinical Director + Intake. Standardize wound protocol/supplies.,Y,Gables Home Health Inc,12360 SW 132nd Ct Ste 206,Miami,33186,305-722-2525,,,,,,
+,,,,,Home Health,3,,,,Target DON/clinical supervisor for wound program.,,Nursing South Corporation,9380 Sunset Dr,Miami,33173,305-275-0461,,,,,,
+,,,,,Home Health,3,,,,Target owner/admin + clinical leadership.,,Valor Homecare,10300 SW 72 St Ste 384,Miami,33173,305-381-5080,,,,,,
+,,,,,Home Health,3,,,,Target clinical intake + wound nurse lead.,,"24/7 Home Healthcare, Inc",9425 SW 72 St Ste 172,Miami,33173,786-536-2502,,,,,,
+,,,,,Home Health,4,,,,Regional coverage; pursue if expanding beyond Miami-Dade.,,Jewish Family Home Care,5890 S Pine Island Rd Ste 200,Davie,33328,954-908-5677,,,,,,
+,,,,,Skilled Nursing,2,,,,Target Administrator + DON + wound nurse + Admissions (discharge continuity).,Y,Palmetto Subacute Care Center,7600 SW 8th St,Miami,33144,305-261-2525,,,,,,
+,,,,,Skilled Nursing,2,,,,Target Administrator/DON; high wound census likely.,Y,West Gables Health Care Center,2525 SW 75th Ave,Miami,33155,305-265-9391,,,,,,
+,,,,,Skilled Nursing,3,,,,Large geriatric network; target wound program lead.,,Miami Jewish Health Systems,5200 NE 2nd Ave,Miami,33137,305-751-8626,,,,,,
+,,,,,Skilled Nursing,3,,,,Target DON + wound nurse + admissions.,,South Dade Nursing & Rehabilitation Center,17475 S Dixie Hwy,Miami,33157,305-255-1045,,,,,,
+,,,,,Skilled Nursing,3,,,,Target DON + wound nurse + admissions.,,North Dade Nursing & Rehabilitation Center,1255 NE 135th St,North Miami,33161,305-891-6850,,,,,,
+,,,,,Skilled Nursing,3,,,,Target DON + wound nurse; align discharge continuity.,,Floridean Health & Rehabilitation Center,47 NW 32nd Pl,Miami,33125,305-649-2911,,,,,,`;
+
+function normalizeAddr(raw) {
+  return (raw || '')
+    .trim()
+    .replace(/\bnan\b/gi, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+    .replace(/(Suite|Ste\.?|Apt\.?|Unit)\.?\s*#?\s*(\d+)/gi, '#$2')
+    .replace(/\b(Southwest|Northwest|Northeast|Southeast|North|South|East|West)\b/gi, m => {
+      const d = {southwest:'SW',northwest:'NW',northeast:'NE',southeast:'SE',north:'N',south:'S',east:'E',west:'W'};
+      return d[m.toLowerCase()] || m.toUpperCase();
+    })
+    .replace(/\b(SW|NW|NE|SE)\b/gi, m => m.toUpperCase())
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function parseCSV(text) {
+  const lines = text.split('\n').filter(l => l.trim());
+  const headers = lines[0].split(',').map(h => h.trim().toLowerCase().replace(/\s+/g, '_'));
+  const rows = [];
+  for (let i = 1; i < lines.length; i++) {
+    const vals = []; let cur = '', inQ = false;
+    for (const ch of lines[i]) {
+      if (ch === '"') { inQ = !inQ; }
+      else if (ch === ',' && !inQ) { vals.push(cur.trim()); cur = ''; }
+      else { cur += ch; }
+    }
+    vals.push(cur.trim());
+    const row = {}; headers.forEach((h, j) => row[h] = vals[j] || '');
+    rows.push(row);
+  }
+  return rows;
+}
+
+function log(msg, cls) {
+  const el = document.getElementById('status');
+  el.textContent = msg;
+  el.className = cls || '';
+}
+
+async function runImport() {
+  const btn = document.getElementById('btn');
+  btn.disabled = true;
+  btn.textContent = 'Importing…';
+  try {
+    const rows = parseCSV(CSV_DATA);
+    log(`Parsed ${rows.length} rows. Finding/creating practices…`);
+
+    // Phase 1: practices
+    const practiceNames = [...new Set(rows.map(r => (r.practice_name || '').trim()).filter(Boolean))];
+    const practiceMap = {};
+    for (const name of practiceNames) {
+      const { data: exArr } = await db.from('practices').select('*').ilike('name', name).limit(1);
+      const ex = exArr && exArr.length > 0 ? exArr[0] : null;
+      if (ex) { practiceMap[name] = ex.id; }
+      else {
+        const { data: np } = await db.from('practices').insert({ name }).select().maybeSingle();
+        if (np) practiceMap[name] = np.id;
+      }
+    }
+    function getPractId(n) {
+      const k = (n || '').trim();
+      return practiceMap[k] || practiceMap[Object.keys(practiceMap).find(x => x.toLowerCase() === k.toLowerCase())];
+    }
+
+    // Phase 2: locations
+    log('Creating practice locations…');
+    const locMap = {};
+    const seenLocKeys = new Set();
+    for (const r of rows) {
+      const practId = getPractId(r.practice_name);
+      const addr = normalizeAddr(r.address);
+      if (!practId || !addr || addr === '[Research needed]') continue;
+      const locKey = `${practId}|${addr}`;
+      if (seenLocKeys.has(locKey)) continue;
+      seenLocKeys.add(locKey);
+      const city = (r.city || '').trim();
+      const { data: exLoc } = await db.from('practice_locations').select('*').eq('practice_id', practId).eq('address', addr).maybeSingle();
+      const locRec = exLoc || (await db.from('practice_locations').insert({
+        practice_id: practId, label: city || 'Office', address: addr, city,
+        zip: (r.zip || '').trim(), phone: r.phone || null, fax: r.fax || null,
+        office_hours: r.office_hours || null, office_staff: r.office_staff || null,
+        receptionist_name: r.receptionist_name || null, best_days: r.best_days || null,
+        practice_email: r.practice_email || null
+      }).select().maybeSingle()).data;
+      if (locRec) locMap[locKey] = locRec;
+    }
+
+    // Phase 3: build provider map
+    const physMap = new Map();
+    rows.forEach(r => {
+      if (!(r.first_name || '').trim() && !(r.last_name || '').trim()) return;
+      const key = `${(r.first_name||'').trim().toLowerCase()}|${(r.last_name||'').trim().toLowerCase()}`;
+      if (!physMap.has(key)) physMap.set(key, {
+        phys: {
+          first_name: (r.first_name||'').trim(), last_name: (r.last_name||'').trim(),
+          email: r.email || null, priority: r.priority || null,
+          academic_connection: r.academic_connection || r.um_connection || null,
+          specialty: r.specialty || null, degree: r.degree || null, title: r.title || null,
+          proj_vol: r.proj_vol || r.patient_volume || null,
+          ss_vol: r.ss_vol ? parseInt(r.ss_vol, 10) || null : null,
+          general_notes: r.general_notes || null,
+          is_target: r.is_target === 'Y' || r.is_target === 'y' || r.is_target === 'true' || r.is_target === '1'
+        },
+        practiceIds: new Set(), primaryLocKey: null
+      });
+      const e = physMap.get(key);
+      const practId = getPractId(r.practice_name);
+      if (practId) e.practiceIds.add(practId);
+      const addr = normalizeAddr(r.address);
+      if (!e.primaryLocKey && practId && addr && addr !== '[Research needed]') e.primaryLocKey = `${practId}|${addr}`;
+    });
+
+    // Phase 4: providers + assignments
+    let count = 0; const total = physMap.size;
+    for (const [, entry] of physMap) {
+      count++;
+      if (count % 3 === 0 || count === total) log(`Assigning providers ${count} of ${total}…`);
+      const { data: exArr } = await db.from('providers').select('*')
+        .ilike('first_name', entry.phys.first_name).ilike('last_name', entry.phys.last_name).limit(1);
+      const ex = exArr && exArr.length > 0 ? exArr[0] : null;
+      const phys = ex || (await db.from('providers').insert(entry.phys).select().maybeSingle()).data;
+      if (!phys) continue;
+      for (const practId of entry.practiceIds) {
+        const { data: allLocs } = await db.from('practice_locations').select('id').eq('practice_id', practId);
+        for (const loc of allLocs || []) {
+          const isPrimary = entry.primaryLocKey && locMap[entry.primaryLocKey]?.id === loc.id;
+          const { data: exA } = await db.from('provider_location_assignments').select('id')
+            .eq('provider_id', phys.id).eq('practice_location_id', loc.id).maybeSingle();
+          if (!exA) await db.from('provider_location_assignments').insert({ provider_id: phys.id, practice_location_id: loc.id, is_primary: !!isPrimary });
+        }
+      }
+    }
+
+    const msg = `Done! Imported ${physMap.size} providers and ${practiceNames.length} practices.\n\nYou can close this page and hard-refresh the CRM.`;
+    log(msg, 'done');
+    btn.textContent = 'Import Complete';
+  } catch(e) {
+    log('Error: ' + e.message, 'err');
+    btn.disabled = false;
+    btn.textContent = 'Retry Import';
+  }
+}
+</script>
+</body>
+</html>

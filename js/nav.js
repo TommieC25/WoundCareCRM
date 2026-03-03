@@ -2,12 +2,12 @@
 
 // --- Realtime ---
 function setupRealtimeSubscription() {
-['physicians','practices','practice_locations','physician_location_assignments'].forEach(t =>
+['providers','practices','practice_locations','provider_location_assignments'].forEach(t =>
 db.channel(t+'-ch').on('postgres_changes',{event:'*',schema:'public',table:t},()=>loadAllData()).subscribe());
 db.channel('contact-logs-ch')
 .on('postgres_changes',{event:'*',schema:'public',table:'contact_logs'},(payload)=>{
 const pid=payload.new?.provider_id||payload.old?.provider_id;
-if(currentPhysician&&pid===currentPhysician.id) loadContactLogs(currentPhysician.id).then(()=>renderProfile());
+if(currentPhysician&&pid===currentPhysician.id&&currentView==='physicians') loadContactLogs(currentPhysician.id).then(()=>renderProfile());
 }).subscribe();
 }
 
@@ -15,17 +15,15 @@ if(currentPhysician&&pid===currentPhysician.id) loadContactLogs(currentPhysician
 function calcCalendarDate(days) {
 const d = new Date();
 d.setDate(d.getDate() + days);
-return d.toISOString().split('T')[0];
+return localDate(d);
 }
-function calcBusinessDate(days) { return calcCalendarDate(days); }
-function updateReminderPreview() { populateReminderDateButtons(); } // legacy alias
 // prefix defaults to 'reminder'; task modal uses 'task' — IDs: {prefix}DateButtons, {prefix}SelectedDate, {prefix}DatePreview
 function populateReminderDateButtons(prefix) {
 prefix = prefix || 'reminder';
 const container = $(prefix + 'DateButtons');
 if (!container) return;
-const addDays = (base, n) => { const d = new Date(base + 'T12:00:00'); d.setDate(d.getDate() + n); return d.toISOString().split('T')[0]; };
-const today = new Date().toISOString().split('T')[0];
+const addDays = (base, n) => { const d = new Date(base + 'T12:00:00'); d.setDate(d.getDate() + n); return localDate(d); };
+const today = localDate();
 const dow = new Date(today + 'T12:00:00').getDay(); // 0=Sun,6=Sat
 const buttons = [];
 buttons.push({ label: 'Today', date: today });
@@ -70,28 +68,9 @@ document.querySelectorAll(`.reminder-date-btn[data-prefix="${prefix}"]`).forEach
   btn.style.borderColor = sel ? '#d97706' : '#fcd34d';
 });
 }
-function getUpcomingBusinessDays(count) {
-const result = [];
-const d = new Date();
-const today = d.toISOString().split('T')[0];
-let cursor = new Date(d);
-if (cursor.getDay() !== 0 && cursor.getDay() !== 6) {
-result.push({date: today, label: d.toLocaleDateString('en-US', {weekday:'short', month:'short', day:'numeric'})});
-}
-while (result.length < count) {
-cursor.setDate(cursor.getDate() + 1);
-if (cursor.getDay() === 0 || cursor.getDay() === 6) continue;
-const iso = cursor.toISOString().split('T')[0];
-const label = cursor.toLocaleDateString('en-US', {weekday:'short', month:'short', day:'numeric'});
-result.push({date: iso, label});
-}
-return result;
-}
-
 // --- View routing ---
 function setView(view) {
 currentView = view;
-saveViewState();
 $('tabPhysicians').classList.toggle('active', view === 'physicians');
 $('tabPractices').classList.toggle('active', view === 'practices');
 $('tabActivity').classList.toggle('active', view === 'activity');
@@ -109,7 +88,8 @@ renderActivityView();
 return;
 }
 if(view==='tasks'){
-$('searchInput').parentElement.parentElement.style.display='none';
+$('searchInput').placeholder='Search tasks...';
+$('searchInput').parentElement.parentElement.style.display='';
 $('addBtn').style.display='none';
 $('sortControls').style.display='none';
 $('tierFilterControls').style.display='none';
@@ -185,7 +165,7 @@ $('sidebar').classList.remove('open');
 $('sidebarOverlay').style.display = 'none';
 }
 function updateCount() {
-const search = $('searchInput').value.toLowerCase();
+const search = $('searchInput').value.trim().toLowerCase();
 if (currentView === 'physicians') {
 const filtered = getFilteredPhysicians(search);
 $('physicianCount').textContent =
@@ -229,16 +209,17 @@ function ld(val,icon,content){return val?`<div class="location-detail"><span cla
 function locAddr(loc){const a=(loc.address||'')+', '+(loc.city||'')+' '+(loc.zip||'');return`<a href="https://maps.apple.com/?q=${encodeURIComponent(a)}" target="_blank" style="color:#0a4d3c;text-decoration:underline;">${loc.address}${loc.city?', '+loc.city:''}${loc.zip?' '+loc.zip:''}</a>`}
 function fmtPhone(p){if(!p)return'';var d=(p+'').replace(/\D/g,'');if(d.length===11&&d[0]==='1')d=d.substring(1);if(d.length===10)return d.substring(0,3)+'-'+d.substring(3,6)+'-'+d.substring(6);return p;}
 function locPhone(p){var f=fmtPhone(p);return`<a href="tel:${(p||'').replace(/\D/g,'')}">${f||p}</a>`}
-function locDetails(loc){return ld(loc.address,'📍',locAddr(loc))+ld(loc.phone,'📞',locPhone(loc.phone))+ld(loc.fax,'📠',fmtPhone(loc.fax))+ld(loc.practice_email,'✉️',loc.practice_email?`<a href="mailto:${loc.practice_email}">${loc.practice_email}</a>`:'')+ld(loc.office_hours,'🕐')+ld(loc.office_staff,'👥')+ld(loc.receptionist_name,'👤')+ld(loc.best_days,'📅')}
+function locDetails(loc){return ld(loc.address,'📍',locAddr(loc))+ld(loc.phone,'📞',locPhone(loc.phone))+ld(loc.fax,'📠',fmtPhone(loc.fax))+ld(loc.practice_email,'✉️',loc.practice_email?`<a href="mailto:${loc.practice_email}">${loc.practice_email}</a>`:'')+ld(loc.office_hours,'🕐')+ld(loc.office_staff,'👥')+ld(loc.receptionist_name,'👤')+ld(loc.best_days,'📅')+ld(loc.notes,'📝')}
 function mi(label,val){return `<div class="meta-item"><div class="meta-label">${label}</div><div class="meta-value">${val}</div></div>`}
 function parseNoteTime(notes){const tm=(notes||'').match(/^\[(\d{1,2}:\d{2}(?:\s*[APap][Mm])?)\]\s*/);return tm?{time:' '+tm[1],text:notes.replace(tm[0],'')}:{time:'',text:notes||''};}
+function parseTaskRecord(notes){const tm=(notes||'').match(/^\[(\d{1,2}:\d{2}(?:\s*[APap][Mm])?)\]\s*/);let dn=tm?notes.replace(tm[0],''):(notes||'');const txm=dn.match(/\s*\|\s*\[Task:\s*(.*?)\]$/);const taskNote=txm?txm[1].trim():'';if(txm)dn=dn.slice(0,txm.index).trim();return{noteTime:tm?tm[1]:'',displayNotes:dn,taskNote};}
 function renderLogEntry(e,opts={}){const{time,text}=parseNoteTime(e.notes);const preview=opts.full?text:(text.length>120?text.substring(0,120)+'...':text);
 const fmtCD=(ds)=>{if(!ds)return'';const d=new Date(ds+'T12:00:00');return d.toLocaleDateString('en-US',{month:'short',day:'numeric'});};
 const headerLine1=`${fmtCD(e.contact_date)}${time?' · '+time.trim():''}${e.author?' — '+e.author:''}`;
 const locCtx=e.practice_location_id?getLocationContext(e.practice_location_id):'';
 const physPart=opts.physName?` | ${opts.physName}`:'';
 const headerLine2=(locCtx||physPart)?`<div style="font-size:0.78rem;color:#555;margin-top:0.1rem;">${locCtx}${physPart}</div>`:'';
-const reminderLine=e.reminder_date?(e.reminder_date==='2099-12-31'?`<span style="font-size:0.7rem;padding:0.15rem 0.5rem;background:#e5e7eb;color:#6b7280;border-radius:4px;margin-left:0.4rem;">📌 Open</span>`:`<span style="font-size:0.7rem;padding:0.15rem 0.5rem;background:#fef3c7;color:#92400e;border-radius:4px;margin-left:0.4rem;">🔔 ${new Date(e.reminder_date+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'})}</span>`):'';
+const reminderLine=e.reminder_date?(e.reminder_date==='2000-01-01'?`<span style="font-size:0.7rem;padding:0.15rem 0.5rem;background:#d1fae5;color:#065f46;border-radius:4px;margin-left:0.4rem;">✓ Done</span>`:e.reminder_date==='2099-12-31'?`<span style="font-size:0.7rem;padding:0.15rem 0.5rem;background:#e5e7eb;color:#6b7280;border-radius:4px;margin-left:0.4rem;">📌 Open</span>`:`<span style="font-size:0.7rem;padding:0.15rem 0.5rem;background:#fef3c7;color:#92400e;border-radius:4px;margin-left:0.4rem;">🔔 ${new Date(e.reminder_date+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'})}</span>`):'';
 const editFn=opts.editFn||`editNote('${e.id}')`;
 const delFn=opts.deleteFn||`deleteNote('${e.id}')`;
 const actions=opts.editable?`<div class="contact-entry-actions"><button class="icon-btn" onclick="event.stopPropagation();${editFn}" title="Edit">✏️</button><button class="icon-btn" onclick="event.stopPropagation();${delFn}" title="Delete">🗑️</button></div>`:'';
@@ -251,12 +232,6 @@ const a = physicianAssignments[physicianId] || [];
 const assign = a.find(x => x.is_primary) || a[0];
 if (!assign) return {};
 return assign.practice_locations || practiceLocations.find(l => l.id === assign.practice_location_id) || {};
-}
-function formatTimestamp(isoString) {
-if (!isoString) return '';
-const date = new Date(isoString);
-const options = { month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' };
-return date.toLocaleDateString('en-US', options);
 }
 function getLocationLabel(locationId) {
 const loc = practiceLocations.find(l => l.id === locationId);
@@ -291,7 +266,7 @@ let base = filterTier ? physicians.filter(p => normPriority(p.priority) === filt
 if (!search) return base;
 return base.filter(p => {
 const np = normPriority(p.priority);
-if ([p.first_name,p.last_name,p.specialty,p.email,p.general_notes,np?'P'+np:null,p.academic_connection||p.um_connection,p.proj_vol,p.mohs_volume,p.practice_name].some(v=>(v||'').toLowerCase().includes(search))) return true;
+if ([((p.first_name||'')+' '+(p.last_name||'')).trim(),fmtName(p),p.first_name,p.last_name,p.specialty,p.email,p.general_notes,np?'P'+np:null,p.academic_connection||p.um_connection,p.proj_vol,p.mohs_volume,p.practice_name].some(v=>String(v??'').toLowerCase().includes(search))) return true;
 const logs=contactLogs[p.id]||[];
 if(logs.some(l=>(l.notes||'').toLowerCase().includes(search)||(l.author||'').toLowerCase().includes(search))) return true;
 const assigns=physicianAssignments[p.id]||[];
@@ -312,17 +287,21 @@ return locs.some(l=>[l.address,l.city,l.zip,l.phone,l.fax,l.practice_email,l.off
 function filterList() {
 const val = $('searchInput').value;
 $('searchClear').style.display = val ? 'flex' : 'none';
-renderList();
+if(currentView==='tasks') renderTasksView();
+else if(currentView==='activity') renderActivityView();
+else renderList();
 }
 function clearSearch() {
 $('searchInput').value = '';
 $('searchClear').style.display = 'none';
-renderList();
+if(currentView==='tasks') renderTasksView();
+else if(currentView==='activity') renderActivityView();
+else renderList();
 $('searchInput').focus();
 }
 function renderList() {
 const list = $('physicianList');
-const search = $('searchInput').value.toLowerCase();
+const search = $('searchInput').value.trim().toLowerCase();
 if (currentView === 'physicians') {
 renderPhysicianList(list, search);
 } else {
@@ -387,7 +366,7 @@ $('mainContent').innerHTML = `
 <p>Select a ${currentView === 'physicians' ? 'provider' : 'practice'} from the list to view details</p>
 </div>
 <div class="section" style="margin-top:1rem;">
-<div class="section-header"><h3 style="color:#92400e;">Follow-Up Reminders</h3></div>
+<div class="section-header"><h3 style="color:#92400e;">Follow-Up Reminders</h3><button onclick="openAddTaskModal(null,null)" style="padding:0.4rem 0.9rem;background:#0a4d3c;color:white;border:none;border-radius:6px;font-size:0.85rem;font-weight:600;cursor:pointer;">+ New Task</button></div>
 <div id="remindersContent"><div class="loading">Loading reminders...</div></div>
 </div>
 <div class="section">
@@ -402,8 +381,11 @@ ${mi('Providers',physicians.length)}${mi('Practices',practices.length)}${mi('Loc
 </div>
 `;
 try {
-const today = new Date().toISOString().split('T')[0];
-const {data:reminders,error:remErr} = await db.from('contact_logs').select('*').not('reminder_date','is',null).order('reminder_date',{ascending:true});
+const today = localDate();
+const [{data:reminders,error:remErr},{data:recentLogs,error:actErr}] = await Promise.all([
+  db.from('contact_logs').select('*').not('reminder_date','is',null).neq('reminder_date','2000-01-01').order('reminder_date',{ascending:true}),
+  db.from('contact_logs').select('*').order('created_at',{ascending:false}).limit(15),
+]);
 if (reminders) { if (!window._taskDetailLogs) window._taskDetailLogs = {}; reminders.forEach(r => window._taskDetailLogs[r.id] = r); }
 const rc = $('remindersContent');
 if (remErr) { rc.innerHTML = '<div class="empty-notice">Could not load reminders</div>'; }
@@ -422,9 +404,7 @@ overdue.forEach(r => {
 const phys = r.provider_id ? physicians.find(p => p.id === r.provider_id) : null;
 const physName = phys ? fmtName(phys) : (r.practice_location_id ? getLocationLabel(r.practice_location_id) : 'Location Note');
 const emailLink = phys?.email ? ` — <a href="mailto:${phys.email}" onclick="event.stopPropagation()" style="color:#0a4d3c;font-size:0.75rem;">✉️ Email</a>` : '';
-const tm = (r.notes||'').match(/^\[(\d{1,2}:\d{2}(?:\s*[APap][Mm])?)\]\s*/);
-let displayNotes = tm ? r.notes.replace(tm[0], '') : (r.notes||'');
-const taskMatch=displayNotes.match(/\s*\|\s*\[Task:\s*(.*?)\]$/);const taskNote=taskMatch?taskMatch[1].trim():'';if(taskMatch)displayNotes=displayNotes.slice(0,taskMatch.index).trim();
+const {displayNotes,taskNote}=parseTaskRecord(r.notes);
 const preview = displayNotes.length > 100 ? displayNotes.substring(0,100) + '...' : displayNotes;
 html += `<div class="contact-entry" style="cursor:pointer;border-left-color:#dc2626;background:#fff5f5;margin-bottom:0.5rem;display:flex;gap:0.5rem;align-items:flex-start;" onclick="openTaskDetailModal('${r.id}')">
 <button onclick="event.stopPropagation();completeReminder('${r.id}')" title="Mark complete" style="background:none;border:2px solid #dc2626;color:#dc2626;border-radius:50%;width:22px;height:22px;min-width:22px;cursor:pointer;font-size:0.75rem;display:flex;align-items:center;justify-content:center;margin-top:0.15rem;flex-shrink:0;">✓</button>
@@ -450,9 +430,7 @@ dayReminders.forEach(r => {
 const phys = r.provider_id ? physicians.find(p => p.id === r.provider_id) : null;
 const physName = phys ? fmtName(phys) : (r.practice_location_id ? getLocationLabel(r.practice_location_id) : 'Location Note');
 const emailLink = phys?.email ? ` — <a href="mailto:${phys.email}" onclick="event.stopPropagation()" style="color:#0a4d3c;font-size:0.75rem;">✉️ Email</a>` : '';
-const tm = (r.notes||'').match(/^\[(\d{1,2}:\d{2}(?:\s*[APap][Mm])?)\]\s*/);
-let displayNotes = tm ? r.notes.replace(tm[0], '') : (r.notes||'');
-const taskMatch=displayNotes.match(/\s*\|\s*\[Task:\s*(.*?)\]$/);const taskNote=taskMatch?taskMatch[1].trim():'';if(taskMatch)displayNotes=displayNotes.slice(0,taskMatch.index).trim();
+const {displayNotes,taskNote}=parseTaskRecord(r.notes);
 const preview = displayNotes.length > 100 ? displayNotes.substring(0,100) + '...' : displayNotes;
 html += `<div class="contact-entry" style="cursor:pointer;border-left-color:#f59e0b;margin-bottom:0.5rem;display:flex;gap:0.5rem;align-items:flex-start;" onclick="openTaskDetailModal('${r.id}')">
 <button onclick="event.stopPropagation();completeReminder('${r.id}')" title="Mark complete" style="background:none;border:2px solid #f59e0b;color:#92400e;border-radius:50%;width:22px;height:22px;min-width:22px;cursor:pointer;font-size:0.75rem;display:flex;align-items:center;justify-content:center;margin-top:0.15rem;flex-shrink:0;">✓</button>
@@ -472,11 +450,7 @@ html += `<div style="margin-bottom:0.5rem;"><div style="font-size:0.75rem;font-w
 openReminders.forEach(r => {
 const phys = r.provider_id ? physicians.find(p => p.id === r.provider_id) : null;
 const physName = phys ? fmtName(phys) : (r.practice_location_id ? getLocationLabel(r.practice_location_id) : 'Location Note');
-const tm = (r.notes||'').match(/^\[(\d{1,2}:\d{2}(?:\s*[APap][Mm])?)\]\s*/);
-let displayNotes = tm ? r.notes.replace(tm[0], '') : (r.notes||'');
-const taskMatch = displayNotes.match(/\s*\|\s*\[Task:\s*(.*?)\]$/);
-const taskNote = taskMatch ? taskMatch[1].trim() : '';
-if (taskMatch) displayNotes = displayNotes.slice(0, taskMatch.index).trim();
+const {displayNotes,taskNote}=parseTaskRecord(r.notes);
 const preview = displayNotes.length > 80 ? displayNotes.substring(0,80) + '...' : displayNotes;
 html += `<div class="contact-entry" style="cursor:pointer;border-left-color:#6b7280;margin-bottom:0.5rem;display:flex;gap:0.5rem;align-items:flex-start;" onclick="openTaskDetailModal('${r.id}')">
 <button onclick="event.stopPropagation();completeReminder('${r.id}')" title="Mark complete" style="background:none;border:2px solid #6b7280;color:#6b7280;border-radius:50%;width:22px;height:22px;min-width:22px;cursor:pointer;font-size:0.75rem;display:flex;align-items:center;justify-content:center;margin-top:0.15rem;flex-shrink:0;">✓</button>
@@ -495,8 +469,7 @@ const rc = $('remindersContent');
 if (rc) rc.innerHTML = '<div class="empty-notice">Could not load reminders</div>';
 }
 try {
-const {data:recentLogs,error} = await db.from('contact_logs').select('*').order('created_at',{ascending:false}).limit(15);
-if (error) throw error;
+if (actErr) throw actErr;
 const container = $('recentActivityContent');
 if (!recentLogs || recentLogs.length === 0) {
 container.innerHTML = '<div class="empty-notice">No contact notes yet. Start logging your visits and calls!</div>';
@@ -549,27 +522,3 @@ closeSidebar();
 }
 }
 
-// --- State persistence (restore last view after minimize/reopen) ---
-function saveViewState() {
-try {
-const s = { view: currentView, ts: Date.now() };
-if (currentPhysician) s.physicianId = currentPhysician.id;
-else if (currentLocationId) s.locationId = currentLocationId;
-else if (currentPractice) s.practiceId = currentPractice.id;
-localStorage.setItem('crmViewState', JSON.stringify(s));
-} catch(e) {}
-}
-async function restoreViewState() {
-try {
-const raw = localStorage.getItem('crmViewState');
-if (!raw) return;
-const s = JSON.parse(raw);
-const MAX_AGE = 4 * 60 * 60 * 1000; // 4 hours
-if (Date.now() - s.ts > MAX_AGE) { localStorage.removeItem('crmViewState'); return; }
-if (s.physicianId) { await viewPhysician(s.physicianId); }
-else if (s.locationId) { viewLocation(s.locationId); }
-else if (s.practiceId) { await viewPractice(s.practiceId); }
-else if (s.view && s.view !== 'physicians') { setView(s.view); }
-} catch(e) {}
-}
-document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') saveViewState(); });

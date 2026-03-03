@@ -1,0 +1,511 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DB Audit — WoundCare CRM</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f5f5f5;color:#222;padding:1rem;}
+h1{font-size:1.4rem;font-weight:700;color:#0a4d3c;margin-bottom:0.25rem;}
+.subtitle{font-size:0.85rem;color:#666;margin-bottom:1.5rem;}
+.section{background:#fff;border-radius:10px;padding:1.25rem;margin-bottom:1.5rem;box-shadow:0 1px 4px rgba(0,0,0,0.08);}
+.section-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:1rem;}
+.section-title{font-size:1rem;font-weight:700;}
+.count-badge{background:#fee2e2;color:#991b1b;font-size:0.75rem;font-weight:700;padding:0.2rem 0.6rem;border-radius:999px;}
+.count-badge.ok{background:#dcfce7;color:#166534;}
+.count-badge.warn{background:#fef3c7;color:#92400e;}
+.row-card{border:1px solid #e5e5e5;border-radius:8px;padding:0.75rem 1rem;margin-bottom:0.5rem;display:flex;gap:0.75rem;align-items:flex-start;}
+.row-card.danger{border-color:#fca5a5;background:#fff5f5;}
+.row-card.warn{border-color:#fcd34d;background:#fffbeb;}
+.row-card.neutral{border-color:#d1d5db;background:#f9fafb;}
+.row-info{flex:1;}
+.row-name{font-weight:600;font-size:0.9rem;}
+.row-detail{font-size:0.78rem;color:#666;margin-top:0.2rem;}
+.row-actions{display:flex;gap:0.4rem;flex-shrink:0;flex-wrap:wrap;}
+button{border:none;border-radius:6px;padding:0.35rem 0.75rem;font-size:0.8rem;font-weight:600;cursor:pointer;font-family:inherit;}
+.btn-del{background:#dc2626;color:#fff;}
+.btn-del:hover{background:#b91c1c;}
+.btn-del:disabled{background:#ccc;cursor:not-allowed;}
+.btn-view{background:#e5e7eb;color:#374151;}
+.btn-view:hover{background:#d1d5db;}
+.btn-primary{background:#0a4d3c;color:#fff;padding:0.5rem 1.25rem;font-size:0.9rem;}
+.btn-primary:hover{background:#064030;}
+.empty{color:#999;font-size:0.85rem;padding:0.5rem 0;}
+.loading{color:#666;font-size:0.85rem;font-style:italic;}
+.tag{display:inline-block;font-size:0.7rem;font-weight:600;padding:0.1rem 0.4rem;border-radius:4px;margin-left:0.35rem;}
+.tag-oot{background:#fee2e2;color:#991b1b;}
+.tag-self{background:#fef3c7;color:#92400e;}
+.tag-orphan{background:#ede9fe;color:#5b21b6;}
+.stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:0.75rem;margin-bottom:1.5rem;}
+.stat-card{background:#fff;border-radius:8px;padding:0.9rem;box-shadow:0 1px 3px rgba(0,0,0,0.08);text-align:center;}
+.stat-num{font-size:1.8rem;font-weight:800;color:#0a4d3c;}
+.stat-num.bad{color:#dc2626;}
+.stat-num.warn{color:#d97706;}
+.stat-label{font-size:0.72rem;color:#666;margin-top:0.1rem;}
+.toast{position:fixed;bottom:1rem;left:50%;transform:translateX(-50%);background:#222;color:#fff;padding:0.6rem 1.25rem;border-radius:8px;font-size:0.85rem;z-index:9999;display:none;}
+.toast.show{display:block;}
+.toast.success{background:#166534;}
+.toast.error{background:#991b1b;}
+#runBtn{margin-bottom:1.25rem;}
+.section-note{font-size:0.78rem;color:#666;margin-bottom:0.75rem;line-height:1.4;}
+.confirm-bar{background:#fef3c7;border:1px solid #fcd34d;border-radius:8px;padding:0.75rem 1rem;margin-bottom:0.75rem;font-size:0.85rem;display:none;}
+.confirm-bar.show{display:flex;gap:0.75rem;align-items:center;}
+</style>
+</head>
+<body>
+<h1>🔍 DB Audit — WoundCare CRM</h1>
+<p class="subtitle">Finds non-Mohs dermatologists, self-named practices, out-of-territory locations, and orphaned providers</p>
+
+<button class="btn-primary" id="runBtn" onclick="runAudit()">Run Audit</button>
+
+<div id="statsGrid" class="stats-grid" style="display:none;"></div>
+
+<div id="sections" style="display:none;">
+
+<!-- Section -1: Provider-named solo practices — REVIEW ONLY -->
+<div class="section">
+  <div class="section-header">
+    <span class="section-title">⚠️ Solo-Named Practices (Review Required)</span>
+    <span class="count-badge" id="phantomBadge">—</span>
+  </div>
+  <p class="section-note"><strong>REVIEW ONLY — do not delete without verifying.</strong> These are practices whose name closely matches a provider's own name. Many are legitimate solo practices (e.g. "Adam Plotkin DPM LLC" is Dr. Plotkin's real office). Some may be NPI import duplicates. Check each one in the CRM — only delete if the provider has a real group practice and this is a duplicate with no unique data (notes, staff, hours) of its own.</p>
+  <div id="phantomList" class="loading">Loading...</div>
+</div>
+
+<!-- Section 0: Non-Mohs Dermatologists -->
+<div class="section">
+  <div class="section-header">
+    <span class="section-title">🔪 Dermatology Providers — Mohs Unconfirmed</span>
+    <span class="count-badge" id="mohsBadge">—</span>
+  </div>
+  <p class="section-note"><strong>Dermatology in this CRM = Mohs surgeons ONLY.</strong> General dermatologists are never targets. This list shows every provider with specialty=Dermatology whose name, title, degree, or notes contain no mention of "Mohs". Review each — delete non-Mohs derms, or add "Mohs" to their notes/title to confirm them.</p>
+  <div id="mohsList" class="loading">Loading...</div>
+</div>
+
+<!-- Section 1: Out of territory -->
+<div class="section">
+  <div class="section-header">
+    <span class="section-title">🗺️ Out-of-Territory Locations</span>
+    <span class="count-badge" id="ootBadge">—</span>
+  </div>
+  <p class="section-note">Practice locations in cities not in Miami-Dade, Broward, or Palm Beach counties. These should almost never exist in this CRM.</p>
+  <div id="ootList" class="loading">Loading...</div>
+</div>
+
+<!-- Section 2: Self-named practices -->
+<div class="section">
+  <div class="section-header">
+    <span class="section-title">👤 Self-Named Practices</span>
+    <span class="count-badge" id="selfBadge">—</span>
+  </div>
+  <p class="section-note">Practices whose name looks like a provider's name (contains a degree like MD/DO/DPM, or matches a provider's full name). These are usually import artifacts.</p>
+  <div id="selfList" class="loading">Loading...</div>
+</div>
+
+<!-- Section 3: Orphaned providers -->
+<div class="section">
+  <div class="section-header">
+    <span class="section-title">🔗 Providers With No Location Assigned</span>
+    <span class="count-badge" id="orphanBadge">—</span>
+  </div>
+  <p class="section-note">Providers in the DB with zero practice location assignments. They show "0 locations" in the CRM. May be valid (need assignment) or garbage that slipped in.</p>
+  <div id="orphanList" class="loading">Loading...</div>
+</div>
+
+<!-- Section 4: Empty practices -->
+<div class="section">
+  <div class="section-header">
+    <span class="section-title">🏢 Practices With No Providers</span>
+    <span class="count-badge" id="emptyPracBadge">—</span>
+  </div>
+  <p class="section-note">Practices where no provider is assigned to any of their locations. May be valid (location-only entries) or import ghosts.</p>
+  <div id="emptyPracList" class="loading">Loading...</div>
+</div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const SUPABASE_URL = 'https://xhdjywibdjzbczfjmctp.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhoZGp5d2liZGp6YmN6ZmptY3RwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk3NzE4MTYsImV4cCI6MjA4NTM0NzgxNn0.vHAfeYTVbu2Isu5AoFONvzrtJ2sS3YwF00QRe3LNrbU';
+const { createClient } = window.supabase;
+const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+function showToast(msg, type='info') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show ' + type;
+  setTimeout(() => t.className = 'toast', 3000);
+}
+
+// Same territory city list as guessCounty() in admin.js
+const MD_CITIES = ['miami','hialeah','homestead','key biscayne','coral gables','south miami','palmetto bay','doral','north miami','aventura','miami beach','miami gardens','miami lakes','opa-locka','sunny isles','key largo','pinecrest','bay harbor islands','bal harbour','surfside','miami shores','cutler bay','kendall','el portal','biscayne park','sweetwater','west miami','florida city','leisure city','perrine','naranja','virginia gardens','medley'];
+const BR_CITIES = ['fort lauderdale','hollywood','pembroke pines','coral springs','deerfield beach','plantation','davie','weston','tamarac','lauderdale lakes','coconut creek','pompano beach','cooper city','hallandale beach','margate','miramar','sunrise','oakland park','wilton manors','lauderhill','north lauderdale','parkland','lighthouse point','dania beach','hillsboro beach','sea ranch lakes','lazy lake'];
+const PB_CITIES = ['west palm beach','boca raton','boynton beach','delray beach','palm beach gardens','jupiter','lake worth','wellington','royal palm beach','belle glade','palm city','atlantis','north palm beach','greenacres','riviera beach','lake worth beach','juno beach','highland beach','tequesta','loxahatchee','palm beach shores','south bay','pahokee'];
+
+function guessCounty(city) {
+  if (!city) return '';
+  const c = city.toLowerCase();
+  if (MD_CITIES.some(mc => c.includes(mc))) return 'Miami-Dade';
+  if (BR_CITIES.some(bc => c.includes(bc))) return 'Broward';
+  if (PB_CITIES.some(pc => c.includes(pc))) return 'Palm Beach';
+  return '';
+}
+
+// Degree patterns that suggest a practice name is actually a person's name
+const DEGREE_RE = /\b(MD|DO|DPM|PA-C|NP|APRN|RN|PhD|FAAD|FACFAS|MPH|DPT|LCSW|DDS|DMD|DC|OD|PharmD|FACS|FACOS)\b/i;
+
+function looksLikeName(practiceName, providers) {
+  if (DEGREE_RE.test(practiceName)) return true;
+  const lower = practiceName.toLowerCase().trim();
+  return providers.some(p => {
+    const full = (p.first_name + ' ' + p.last_name).toLowerCase().trim();
+    const fullRev = (p.last_name + ' ' + p.first_name).toLowerCase().trim();
+    return lower === full || lower === fullRev ||
+           lower.startsWith(full) || lower.startsWith(p.last_name.toLowerCase() + ',') ||
+           lower.startsWith(p.last_name.toLowerCase() + ' ' + p.first_name.toLowerCase());
+  });
+}
+
+async function deletePracticeAndLocations(practiceId, practiceName, btn) {
+  if (!confirm(`Delete practice "${practiceName}" and ALL its locations?\n\nThis also removes provider assignments at those locations. Providers themselves are NOT deleted.`)) return;
+  btn.disabled = true; btn.textContent = 'Deleting...';
+  try {
+    // Get all location IDs for this practice
+    const { data: locs } = await db.from('practice_locations').select('id').eq('practice_id', practiceId);
+    const locIds = (locs || []).map(l => l.id);
+    // Delete assignments at those locations
+    for (const lid of locIds) {
+      await db.from('provider_location_assignments').delete().eq('practice_location_id', lid);
+    }
+    // Delete the locations
+    if (locIds.length) await db.from('practice_locations').delete().in('id', locIds);
+    // Delete the practice
+    await db.from('practices').delete().eq('id', practiceId);
+    showToast(`Deleted "${practiceName}"`, 'success');
+    btn.closest('.row-card').remove();
+  } catch(e) {
+    showToast('Error: ' + e.message, 'error');
+    btn.disabled = false; btn.textContent = 'Delete Practice';
+  }
+}
+
+async function deleteLocation(locId, label, btn) {
+  if (!confirm(`Delete location "${label}"?\n\nProvider assignments at this location are also removed. The providers and the practice itself are NOT deleted.`)) return;
+  btn.disabled = true; btn.textContent = 'Deleting...';
+  try {
+    await db.from('provider_location_assignments').delete().eq('practice_location_id', locId);
+    await db.from('practice_locations').delete().eq('id', locId);
+    showToast(`Deleted location "${label}"`, 'success');
+    btn.closest('.row-card').remove();
+  } catch(e) {
+    showToast('Error: ' + e.message, 'error');
+    btn.disabled = false; btn.textContent = 'Delete Location';
+  }
+}
+
+async function deleteProvider(providerId, name, btn) {
+  if (!confirm(`Delete provider "${name}"?\n\nThis also removes their location assignments and contact logs. Cannot be undone.`)) return;
+  btn.disabled = true; btn.textContent = 'Deleting...';
+  try {
+    await db.from('contact_logs').delete().eq('provider_id', providerId);
+    await db.from('provider_location_assignments').delete().eq('provider_id', providerId);
+    await db.from('providers').delete().eq('id', providerId);
+    showToast(`Deleted "${name}"`, 'success');
+    btn.closest('.row-card').remove();
+  } catch(e) {
+    showToast('Error: ' + e.message, 'error');
+    btn.disabled = false; btn.textContent = 'Delete Provider';
+  }
+}
+
+
+async function runAudit() {
+  const btn = document.getElementById('runBtn');
+  btn.textContent = 'Running...'; btn.disabled = true;
+  document.getElementById('sections').style.display = 'none';
+  document.getElementById('statsGrid').style.display = 'none';
+
+  try {
+    // Load everything
+    const [
+      { data: providers },
+      { data: practices },
+      { data: locations },
+      { data: assignments }
+    ] = await Promise.all([
+      db.from('providers').select('id,first_name,last_name,degree,title,specialty,general_notes,is_target,priority').order('last_name'),
+      db.from('practices').select('id,name').order('name'),
+      db.from('practice_locations').select('id,practice_id,label,address,city,zip').order('city'),
+      db.from('provider_location_assignments').select('provider_id,practice_location_id')
+    ]);
+
+    // Build lookup maps
+    const practiceMap = {};
+    (practices || []).forEach(p => practiceMap[p.id] = p);
+    const locsByPractice = {};
+    (locations || []).forEach(l => {
+      if (!locsByPractice[l.practice_id]) locsByPractice[l.practice_id] = [];
+      locsByPractice[l.practice_id].push(l);
+    });
+    const assignedProvidersByLoc = {};
+    const assignedLocsByProvider = {};
+    (assignments || []).forEach(a => {
+      if (!assignedProvidersByLoc[a.practice_location_id]) assignedProvidersByLoc[a.practice_location_id] = new Set();
+      assignedProvidersByLoc[a.practice_location_id].add(a.provider_id);
+      if (!assignedLocsByProvider[a.provider_id]) assignedLocsByProvider[a.provider_id] = new Set();
+      assignedLocsByProvider[a.provider_id].add(a.practice_location_id);
+    });
+
+    // === SECTION -1: Phantom provider-named locations ===
+    // A "phantom" location is one where:
+    // 1. The practice name closely matches the provider's name (first+last or last+first)
+    // 2. AND that provider also has assignments to at least 1 other location under a different practice
+    const providerNameMap = {};
+    (providers || []).forEach(p => {
+      const fn = (p.first_name || '').toLowerCase().trim();
+      const ln = (p.last_name || '').toLowerCase().trim();
+      providerNameMap[p.id] = { fn, ln, full: fn + ' ' + ln, rev: ln + ' ' + fn, last: ln };
+    });
+
+    function practiceMatchesProvider(pracName, provId) {
+      const nm = providerNameMap[provId];
+      if (!nm) return false;
+      const pn = pracName.toLowerCase().trim();
+      // Match if practice name starts with or equals provider's last name or full name
+      return pn === nm.full || pn === nm.rev ||
+             pn.startsWith(nm.ln + ',') || pn.startsWith(nm.ln + ' ' + nm.fn) ||
+             pn.startsWith(nm.fn + ' ' + nm.ln) ||
+             (nm.ln.length > 3 && pn.startsWith(nm.ln));
+    }
+
+    // For each location, find if it's a phantom for any of its assigned providers
+    const phantoms = []; // {locId, locAddr, practiceName, practiceId, provId, provName}
+    (locations || []).forEach(loc => {
+      const practice = practiceMap[loc.practice_id];
+      if (!practice) return;
+      const assignedProvIds = [...(assignedProvidersByLoc[loc.id] || new Set())];
+      assignedProvIds.forEach(provId => {
+        if (!practiceMatchesProvider(practice.name, provId)) return;
+        // Check provider also has other locations under a DIFFERENT practice
+        const allProvLocs = [...(assignedLocsByProvider[provId] || new Set())];
+        const hasOtherPractice = allProvLocs.some(lid => {
+          if (lid === loc.id) return false;
+          const otherLoc = locations.find(l => l.id === lid);
+          return otherLoc && otherLoc.practice_id !== loc.practice_id;
+        });
+        if (!hasOtherPractice) return;
+        const p = (providers || []).find(pr => pr.id === provId);
+        const provName = p ? [p.first_name, p.last_name, p.degree].filter(Boolean).join(' ') : provId;
+        const addr = [loc.address, loc.city, loc.zip].filter(Boolean).join(', ');
+        phantoms.push({ locId: loc.id, locAddr: addr, practiceName: practice.name, practiceId: loc.practice_id, provId, provName });
+      });
+    });
+
+    // Deduplicate (same locId can match multiple providers — just show once)
+    const seenPhantomLocs = new Set();
+    const uniquePhantoms = phantoms.filter(ph => {
+      if (seenPhantomLocs.has(ph.locId)) return false;
+      seenPhantomLocs.add(ph.locId);
+      return true;
+    });
+
+    const phantomEl = document.getElementById('phantomList');
+    const phantomBadge = document.getElementById('phantomBadge');
+    phantomBadge.textContent = uniquePhantoms.length + (uniquePhantoms.length === 0 ? ' ✓' : ' to review');
+    phantomBadge.className = 'count-badge ' + (uniquePhantoms.length === 0 ? 'ok' : '');
+    if (uniquePhantoms.length === 0) {
+      phantomEl.innerHTML = '<p class="empty">No solo-named practices found.</p>';
+    } else {
+      phantomEl.innerHTML = uniquePhantoms.map(ph => {
+        // Show the OTHER practices this provider is also assigned to
+        const p = (providers || []).find(pr => pr.id === ph.provId);
+        const allProvLocs = [...(assignedLocsByProvider[ph.provId] || new Set())];
+        const otherPracticeNames = [...new Set(
+          allProvLocs
+            .filter(lid => lid !== ph.locId)
+            .map(lid => {
+              const otherLoc = locations.find(l => l.id === lid);
+              return otherLoc ? (practiceMap[otherLoc.practice_id] || {}).name : null;
+            })
+            .filter(Boolean)
+        )].join(', ');
+        const noteSnip = (p && p.general_notes || '').substring(0, 100);
+        return `<div class="row-card warn" id="solo-${ph.locId}">
+          <div class="row-info">
+            <div class="row-name">${ph.practiceName} <span class="tag tag-self">SOLO-NAMED</span></div>
+            <div class="row-detail">Provider: ${ph.provName} &nbsp;·&nbsp; ${ph.locAddr || 'No address'}</div>
+            ${otherPracticeNames ? `<div class="row-detail">Also assigned to: <strong>${otherPracticeNames}</strong></div>` : ''}
+            ${noteSnip ? `<div class="row-detail" style="font-style:italic;">${noteSnip}${(p.general_notes||'').length > 100 ? '...' : ''}</div>` : ''}
+          </div>
+        </div>`;
+      }).join('');
+    }
+
+    // === SECTION 0: Non-Mohs Dermatologists ===
+    const MOHS_RE = /mohs/i;
+    function hasMohsIndicator(p) {
+      return MOHS_RE.test(p.title || '') || MOHS_RE.test(p.general_notes || '') || MOHS_RE.test(p.degree || '');
+    }
+    const nonMohsDerms = (providers || []).filter(p =>
+      (p.specialty || '').toLowerCase() === 'dermatology' && !hasMohsIndicator(p)
+    );
+    const mohsEl = document.getElementById('mohsList');
+    const mohsBadge = document.getElementById('mohsBadge');
+    mohsBadge.textContent = nonMohsDerms.length + (nonMohsDerms.length === 0 ? ' ✓' : ' to review');
+    mohsBadge.className = 'count-badge ' + (nonMohsDerms.length === 0 ? 'ok' : '');
+    if (nonMohsDerms.length === 0) {
+      mohsEl.innerHTML = '<p class="empty">All dermatology providers have a Mohs indicator.</p>';
+    } else {
+      mohsEl.innerHTML = nonMohsDerms.map(p => {
+        const name = [p.first_name, p.last_name, p.degree].filter(Boolean).join(' ');
+        const detail = [p.title, p.priority ? 'Tier ' + p.priority : '', p.is_target ? 'TARGET' : 'not target'].filter(Boolean).join(' · ');
+        const noteSnip = (p.general_notes || '').substring(0, 120);
+        return `<div class="row-card danger" id="prov-mohs-${p.id}">
+          <div class="row-info">
+            <div class="row-name">${name}</div>
+            <div class="row-detail">${detail || 'No title/tier'}</div>
+            ${noteSnip ? `<div class="row-detail" style="margin-top:0.2rem;font-style:italic;">${noteSnip}${(p.general_notes||'').length > 120 ? '...' : ''}</div>` : ''}
+          </div>
+          <div class="row-actions">
+            <button class="btn-del" onclick="deleteProvider('${p.id}', '${name.replace(/'/g,"\\'")}', this)">Delete Provider</button>
+          </div>
+        </div>`;
+      }).join('');
+    }
+
+    // === SECTION 1: Out-of-territory locations ===
+    const ootLocs = (locations || []).filter(l => !guessCounty(l.city));
+    const ootEl = document.getElementById('ootList');
+    const ootBadge = document.getElementById('ootBadge');
+    ootBadge.textContent = ootLocs.length + (ootLocs.length === 0 ? ' ✓' : ' issues');
+    ootBadge.className = 'count-badge ' + (ootLocs.length === 0 ? 'ok' : '');
+    if (ootLocs.length === 0) {
+      ootEl.innerHTML = '<p class="empty">No out-of-territory locations found.</p>';
+    } else {
+      ootEl.innerHTML = ootLocs.map(loc => {
+        const practice = practiceMap[loc.practice_id] || {};
+        const provCount = (assignedProvidersByLoc[loc.id] || new Set()).size;
+        const addrStr = [loc.address, loc.city, loc.zip].filter(Boolean).join(', ');
+        return `<div class="row-card danger" id="loc-${loc.id}">
+          <div class="row-info">
+            <div class="row-name">${practice.name || '(No practice)'} <span class="tag tag-oot">OUT OF TERRITORY</span></div>
+            <div class="row-detail">${addrStr || 'No address'} &nbsp;·&nbsp; ${provCount} provider(s) assigned</div>
+          </div>
+          <div class="row-actions">
+            <button class="btn-del" onclick="deleteLocation('${loc.id}', '${(addrStr||loc.city||'location').replace(/'/g,"\\'")}', this)">Delete Location</button>
+          </div>
+        </div>`;
+      }).join('');
+    }
+
+    // === SECTION 2: Self-named practices ===
+    const selfPracs = (practices || []).filter(p => looksLikeName(p.name, providers || []));
+    const selfEl = document.getElementById('selfList');
+    const selfBadge = document.getElementById('selfBadge');
+    selfBadge.textContent = selfPracs.length + (selfPracs.length === 0 ? ' ✓' : ' issues');
+    selfBadge.className = 'count-badge ' + (selfPracs.length === 0 ? 'ok' : '');
+    if (selfPracs.length === 0) {
+      selfEl.innerHTML = '<p class="empty">No self-named practices detected.</p>';
+    } else {
+      selfEl.innerHTML = selfPracs.map(prac => {
+        const locs = locsByPractice[prac.id] || [];
+        const totalProviders = new Set();
+        locs.forEach(l => (assignedProvidersByLoc[l.id] || new Set()).forEach(pid => totalProviders.add(pid)));
+        const cities = [...new Set(locs.map(l => l.city).filter(Boolean))].join(', ');
+        return `<div class="row-card warn" id="prac-${prac.id}">
+          <div class="row-info">
+            <div class="row-name">${prac.name} <span class="tag tag-self">SELF-NAMED</span></div>
+            <div class="row-detail">${locs.length} location(s) &nbsp;·&nbsp; ${totalProviders.size} provider(s) &nbsp;·&nbsp; ${cities || 'no city'}</div>
+          </div>
+          <div class="row-actions">
+            <button class="btn-del" onclick="deletePracticeAndLocations('${prac.id}', '${prac.name.replace(/'/g,"\\'")}', this)">Delete Practice</button>
+          </div>
+        </div>`;
+      }).join('');
+    }
+
+    // === SECTION 3: Orphaned providers (0 locations) ===
+    const orphans = (providers || []).filter(p => !(assignedLocsByProvider[p.id]?.size > 0));
+    const orphanEl = document.getElementById('orphanList');
+    const orphanBadge = document.getElementById('orphanBadge');
+    orphanBadge.textContent = orphans.length + (orphans.length === 0 ? ' ✓' : ' issues');
+    orphanBadge.className = 'count-badge ' + (orphans.length === 0 ? 'ok' : orphans.length < 5 ? 'warn' : '');
+    if (orphans.length === 0) {
+      orphanEl.innerHTML = '<p class="empty">All providers have at least one location assigned.</p>';
+    } else {
+      orphanEl.innerHTML = orphans.map(p => {
+        const name = [p.first_name, p.last_name, p.degree].filter(Boolean).join(' ');
+        const detail = [p.specialty, p.priority ? 'Tier ' + p.priority : '', p.is_target ? 'TARGET' : ''].filter(Boolean).join(' · ');
+        const noteSnip = (p.general_notes || '').substring(0, 100);
+        return `<div class="row-card neutral" id="prov-${p.id}">
+          <div class="row-info">
+            <div class="row-name">${name} <span class="tag tag-orphan">NO LOCATION</span></div>
+            <div class="row-detail">${detail || 'No specialty/tier'}</div>
+            ${noteSnip ? `<div class="row-detail" style="margin-top:0.2rem;font-style:italic;">${noteSnip}${p.general_notes?.length > 100 ? '...' : ''}</div>` : ''}
+          </div>
+          <div class="row-actions">
+            <button class="btn-del" onclick="deleteProvider('${p.id}', '${name.replace(/'/g,"\\'")}', this)">Delete Provider</button>
+          </div>
+        </div>`;
+      }).join('');
+    }
+
+    // === SECTION 4: Practices with no providers ===
+    const emptyPracs = (practices || []).filter(prac => {
+      const locs = locsByPractice[prac.id] || [];
+      const total = locs.reduce((n, l) => n + (assignedProvidersByLoc[l.id]?.size || 0), 0);
+      return total === 0;
+    });
+    const emptyPracEl = document.getElementById('emptyPracList');
+    const emptyPracBadge = document.getElementById('emptyPracBadge');
+    emptyPracBadge.textContent = emptyPracs.length + (emptyPracs.length === 0 ? ' ✓' : ' items');
+    emptyPracBadge.className = 'count-badge ' + (emptyPracs.length === 0 ? 'ok' : 'warn');
+    if (emptyPracs.length === 0) {
+      emptyPracEl.innerHTML = '<p class="empty">All practices have at least one provider assigned.</p>';
+    } else {
+      emptyPracEl.innerHTML = emptyPracs.map(prac => {
+        const locs = locsByPractice[prac.id] || [];
+        const cities = [...new Set(locs.map(l => l.city).filter(Boolean))].join(', ');
+        return `<div class="row-card neutral" id="eprac-${prac.id}">
+          <div class="row-info">
+            <div class="row-name">${prac.name}</div>
+            <div class="row-detail">${locs.length} location(s) &nbsp;·&nbsp; ${cities || 'no city'}</div>
+          </div>
+          <div class="row-actions">
+            <button class="btn-del" onclick="deletePracticeAndLocations('${prac.id}', '${prac.name.replace(/'/g,"\\'")}', this)">Delete Practice</button>
+          </div>
+        </div>`;
+      }).join('');
+    }
+
+    // Stats
+    const totalIssues = uniquePhantoms.length + nonMohsDerms.length + ootLocs.length + selfPracs.length + orphans.length;
+    document.getElementById('statsGrid').style.display = 'grid';
+    document.getElementById('statsGrid').innerHTML = `
+      <div class="stat-card"><div class="stat-num">${(providers||[]).length}</div><div class="stat-label">Total Providers</div></div>
+      <div class="stat-card"><div class="stat-num">${(practices||[]).length}</div><div class="stat-label">Total Practices</div></div>
+      <div class="stat-card"><div class="stat-num">${(locations||[]).length}</div><div class="stat-label">Total Locations</div></div>
+      <div class="stat-card"><div class="stat-num ${uniquePhantoms.length > 0 ? 'bad' : ''}">${uniquePhantoms.length}</div><div class="stat-label">Phantom Locations</div></div>
+      <div class="stat-card"><div class="stat-num ${nonMohsDerms.length > 0 ? 'bad' : ''}">${nonMohsDerms.length}</div><div class="stat-label">Non-Mohs Derms</div></div>
+      <div class="stat-card"><div class="stat-num ${ootLocs.length > 0 ? 'bad' : ''}">${ootLocs.length}</div><div class="stat-label">OOT Locations</div></div>
+      <div class="stat-card"><div class="stat-num ${selfPracs.length > 0 ? 'warn' : ''}">${selfPracs.length}</div><div class="stat-label">Self-Named Practices</div></div>
+      <div class="stat-card"><div class="stat-num ${orphans.length > 0 ? 'warn' : ''}">${orphans.length}</div><div class="stat-label">Unlinked Providers</div></div>
+    `;
+
+    document.getElementById('sections').style.display = 'block';
+    showToast('Audit complete — ' + totalIssues + ' issue(s) found', totalIssues > 0 ? 'error' : 'success');
+
+  } catch(e) {
+    showToast('Audit failed: ' + e.message, 'error');
+    console.error(e);
+  } finally {
+    btn.textContent = 'Re-Run Audit'; btn.disabled = false;
+  }
+}
+</script>
+</body>
+</html>

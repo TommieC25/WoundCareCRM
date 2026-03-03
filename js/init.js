@@ -34,8 +34,6 @@ let cachedLatestActivity = {};
 document.addEventListener('DOMContentLoaded', async () => {
 setToday();
 await loadAllData();
-await runVolumeMigration();
-await runASMigration();
 setupRealtimeSubscription();
 setView('tasks'); // always start at task list on page load/refresh
 // Prevent background scroll when modals are open (iPad fix)
@@ -46,7 +44,24 @@ if (content && content.contains(e.target)) return;
 e.preventDefault();
 }, { passive: false });
 });
+// DPM ↔ Podiatry auto-set (main provider modal)
+$('degree').addEventListener('change', function() {
+if (this.value === 'DPM' && !$('specialty').value) $('specialty').value = 'Podiatry';
 });
+$('specialty').addEventListener('change', function() {
+if (this.value === 'Podiatry' && !$('degree').value) $('degree').value = 'DPM';
+});
+// DPM ↔ Podiatry auto-set (quick-add modal)
+$('quickPhysDegree').addEventListener('change', function() {
+if (this.value === 'DPM' && !$('quickPhysSpecialty').value) $('quickPhysSpecialty').value = 'Podiatry';
+});
+$('quickPhysSpecialty').addEventListener('change', function() {
+if (this.value === 'Podiatry' && !$('quickPhysDegree').value) $('quickPhysDegree').value = 'DPM';
+});
+});
+
+// Returns YYYY-MM-DD in the user's LOCAL timezone (not UTC)
+function localDate(d) { const dt=d||new Date(); return dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0')+'-'+String(dt.getDate()).padStart(2,'0'); }
 
 function setToday() {
 const today = new Date();

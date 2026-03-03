@@ -24,10 +24,10 @@ ${associatedPractices.length > 0 ? associatedPractices.map(pr => `<span style="c
 </div>
 <div class="profile-meta">
 ${p.specialty==='Administrative Staff'
-  ? `${p.title?mi('Role',p.title):mi('Role','Office Staff')}${p.email?`<div class="meta-item"><div class="meta-label">Email</div><div class="meta-value"><a href="mailto:${p.email}" style="color:#0a4d3c;">${p.email}</a></div></div>`:''}<div class="meta-item"><div class="meta-label">Type</div><div class="meta-value" style="color:#7c3aed;font-weight:600;">Staff Contact</div></div>`
-  : `<div class="meta-item"><div class="meta-label">Priority Tier</div><div class="meta-value"><select onchange="quickSavePriority(this.value)" style="font-size:0.85rem;font-weight:700;padding:0.2rem 0.4rem;border:2px solid #0a4d3c;border-radius:6px;color:#0a4d3c;background:white;width:auto;cursor:pointer;">${['','1','2','3','4','5'].map(v=>v===''?`<option value="" ${!normPriority(p.priority)?'selected':''}>— set tier —</option>`:`<option value="${v}" ${normPriority(p.priority)===v?'selected':''}>P${v}</option>`).join('')}</select></div></div>${mi('Specialty',p.specialty||'Not set')}${mi('Degree',p.degree||'—')}${p.title?mi('Title',p.title):''}${p.email?`<div class="meta-item"><div class="meta-label">Email</div><div class="meta-value"><a href="mailto:${p.email}" style="color:#0a4d3c;">${p.email}</a></div></div>`:''}${mi('Academic Connection',p.academic_connection||p.um_connection||'None')}${mi('Projected Volume',p.proj_vol||p.mohs_volume||'Unknown')}`}
-<div class="meta-item"><span class="meta-label">Advanced Solution</span><label style="display:inline-flex;align-items:center;gap:0.4rem;cursor:pointer;padding:0.25rem 0.6rem;border-radius:6px;background:${p.advanced_solution?'#f97316':'#e5e5e5'};color:${p.advanced_solution?'white':'#666'};font-size:0.8rem;font-weight:700;transition:all 0.2s;" onclick="toggleAdvancedSolution(event)"><input type="checkbox" ${p.advanced_solution?'checked':''} style="width:16px;height:16px;min-width:16px;" onchange="toggleAdvancedSolution(event)">${p.advanced_solution?'YES':'NO'}</label></div>
-<div class="meta-item"><span class="meta-label">Sales Target</span><label style="display:inline-flex;align-items:center;gap:0.4rem;cursor:pointer;padding:0.25rem 0.6rem;border-radius:6px;background:${p.is_target?'#dc2626':'#e5e5e5'};color:${p.is_target?'white':'#666'};font-size:0.8rem;font-weight:700;transition:all 0.2s;" onclick="toggleTarget(event)"><input type="checkbox" ${p.is_target?'checked':''} style="width:16px;height:16px;min-width:16px;" onchange="toggleTarget(event)">${p.is_target?'YES':'NO'}</label></div>
+  ? `${p.title?mi('Role',p.title):mi('Role','Office Staff')}${p.email?`<div class="meta-item" style="grid-column:1/-1"><div class="meta-label">Email</div><div class="meta-value" style="word-break:break-all;"><a href="mailto:${p.email}" style="color:#0a4d3c;">${p.email}</a></div></div>`:''}<div class="meta-item"><div class="meta-label">Type</div><div class="meta-value" style="color:#7c3aed;font-weight:600;">Staff Contact</div></div>`
+  : `<div class="meta-item"><div class="meta-label">Priority Tier</div><div class="meta-value"><select onchange="quickSavePriority(this.value)" style="font-size:0.85rem;font-weight:700;padding:0.2rem 0.4rem;border:2px solid #0a4d3c;border-radius:6px;color:#0a4d3c;background:white;width:auto;cursor:pointer;">${['','1','2','3','4','5'].map(v=>v===''?`<option value="" ${!normPriority(p.priority)?'selected':''}>— set tier —</option>`:`<option value="${v}" ${normPriority(p.priority)===v?'selected':''}>P${v}</option>`).join('')}</select></div></div>${mi('Specialty',p.specialty||'Not set')}${mi('Degree',p.degree||'—')}${p.title?mi('Title',p.title):''}${p.email?`<div class="meta-item" style="grid-column:1/-1"><div class="meta-label">Email</div><div class="meta-value" style="word-break:break-all;"><a href="mailto:${p.email}" style="color:#0a4d3c;">${p.email}</a></div></div>`:''}${p.mobile_phone?`<div class="meta-item"><div class="meta-label">Mobile</div><div class="meta-value"><a href="tel:${p.mobile_phone}" style="color:#0a4d3c;">${fmtPhone(p.mobile_phone)}</a></div></div>`:''}${mi('Academic Connection',p.academic_connection||p.um_connection||'None')}${mi('Projected Volume',p.proj_vol||p.mohs_volume||'Unknown')}`}
+<div class="meta-item"><span class="meta-label">Advanced Solution</span><label style="display:inline-flex;align-items:center;gap:0.4rem;cursor:pointer;padding:0.25rem 0.6rem;border-radius:6px;background:${p.advanced_solution?'#f97316':'#e5e5e5'};color:${p.advanced_solution?'white':'#666'};font-size:0.8rem;font-weight:700;transition:all 0.2s;" onclick="toggleAdvancedSolution(event)"><input type="checkbox" ${p.advanced_solution?'checked':''} style="width:16px;height:16px;min-width:16px;" readonly>${p.advanced_solution?'YES':'NO'}</label></div>
+<div class="meta-item"><span class="meta-label">Sales Target</span><label style="display:inline-flex;align-items:center;gap:0.4rem;cursor:pointer;padding:0.25rem 0.6rem;border-radius:6px;background:${p.is_target?'#dc2626':'#e5e5e5'};color:${p.is_target?'white':'#666'};font-size:0.8rem;font-weight:700;transition:all 0.2s;" onclick="toggleTarget(event)"><input type="checkbox" ${p.is_target?'checked':''} style="width:16px;height:16px;min-width:16px;" readonly>${p.is_target?'YES':'NO'}</label></div>
 ${mi('Last Contact',p.last_contact||'Never')}${mi('Locations',assignments.length+' location'+(assignments.length!==1?'s':''))}
 </div>
 </div>
@@ -40,8 +40,9 @@ ${mi('Last Contact',p.last_contact||'Never')}${mi('Locations',assignments.length
 </div>
 <div class="contact-grid">
 ${ci('✉️',p.specialty==='Administrative Staff'?'Email':'Provider Email',p.email?`<a href="mailto:${p.email}">${p.email}</a>`:'')}
+${ci('📱','Mobile Phone',p.mobile_phone?`<a href="tel:${p.mobile_phone}">${fmtPhone(p.mobile_phone)}</a>`:'')}
 ${ci('📝','General Notes',p.general_notes)}
-${!p.email&&!p.general_notes?'<div class="empty-notice">Click Edit to add email and notes</div>':''}
+${!p.email&&!p.mobile_phone&&!p.general_notes?'<div class="empty-notice">Click Edit to add email, mobile, and notes</div>':''}
 </div>
 </div>
 <div class="section">
@@ -65,6 +66,9 @@ ${assign.is_primary ? '<span class="location-badge">Primary</span>' : ''}
 ${practiceName ? `<span class="practice-badge" title="View practice">🏢 ${practiceName}</span>` : ''}
 </div>
 <div class="location-actions">
+${assign.is_primary
+  ? '<span style="font-size:0.72rem;background:#fef3c7;color:#92400e;border:1px solid #fbbf24;border-radius:4px;padding:0.15rem 0.5rem;font-weight:700;">⭐ Primary</span>'
+  : `<button onclick="setPrimaryLocation('${assign.id}')" title="Make this the primary location" style="font-size:0.72rem;background:white;border:1px solid #d1d5db;color:#555;border-radius:4px;padding:0.15rem 0.5rem;font-weight:600;cursor:pointer;touch-action:manipulation;">Set Primary</button>`}
 <button class="icon-btn" onclick="editLocationDetails('${loc.id}')" title="Edit">✏️</button>
 <button class="icon-btn" onclick="removeAssignment('${assign.id}')" title="Remove">🗑️</button>
 </div>
@@ -155,7 +159,10 @@ locations.map(loc => `
 <div class="section">
 <div class="section-header">
 <h3>Activity Log</h3>
+<div style="display:flex;gap:0.5rem;">
+<button class="edit-btn" onclick="openAddTaskForPractice()">+ Task</button>
 <button class="edit-btn" onclick="openPracticeContactModal()">+ Log Call</button>
+</div>
 </div>
 <div id="practiceActivityContent"><div class="loading">Loading activity...</div></div>
 </div>
@@ -208,8 +215,8 @@ ${mi('Providers', locPhysicians.length)}${mi('City', loc.city || '—')}${mi('Zi
 </div>
 </div>
 <div class="contact-grid">
-${ci('📍','Address',locAddr(loc))}${ci('📞','Phone',loc.phone?locPhone(loc.phone):'')}${ci('📠','Fax',loc.fax?fmtPhone(loc.fax):'')}${ci('✉️','Email',loc.practice_email?`<a href="mailto:${loc.practice_email}">${loc.practice_email}</a>`:'')}${ci('🕐','Office Hours',loc.office_hours||'')}${ci('👥','Office Staff',loc.office_staff||'')}${ci('👤','Receptionist',loc.receptionist_name||'')}${ci('📅','Best Days',loc.best_days||'')}
-${!loc.phone&&!loc.practice_email&&!loc.office_hours&&!loc.office_staff&&!loc.receptionist_name&&!loc.best_days&&!loc.fax?'<div class="empty-notice">No details recorded. Use Edit to add details.</div>':''}
+${ci('📍','Address',locAddr(loc))}${ci('📞','Phone',loc.phone?locPhone(loc.phone):'')}${ci('📠','Fax',loc.fax?fmtPhone(loc.fax):'')}${ci('✉️','Email',loc.practice_email?`<a href="mailto:${loc.practice_email}">${loc.practice_email}</a>`:'')}${ci('🕐','Office Hours',loc.office_hours||'')}${ci('👥','Office Staff',loc.office_staff||'')}${ci('👤','Receptionist',loc.receptionist_name||'')}${ci('📅','Best Days',loc.best_days||'')}${ci('📝','General Info',loc.notes||'')}
+${!loc.phone&&!loc.practice_email&&!loc.office_hours&&!loc.office_staff&&!loc.receptionist_name&&!loc.best_days&&!loc.fax&&!loc.notes?'<div class="empty-notice">No details recorded. Use Edit to add details.</div>':''}
 </div>
 </div>
 <div class="section">
@@ -258,7 +265,7 @@ return;
 }
 el.innerHTML = '<div class="contact-entries">' + logs.map(e => {
 const phys = e.provider_id ? physicians.find(p => p.id === e.provider_id) : null;
-return renderLogEntry(e, { physName: phys ? fmtName(phys) : null, editable: false, full: true, showTimestamp: true });
+return renderLogEntry(e, { physName: phys ? fmtName(phys) : null, editable: true, editFn: `editPracticeNote('${e.id}')`, deleteFn: `deletePracticeNote('${e.id}')`, onClick: phys ? `viewPhysician('${phys.id}')` : undefined, full: true, showTimestamp: true });
 }).join('') + '</div>';
 } catch(err) {
 const el = $('locationActivityContent');
@@ -284,7 +291,7 @@ return;
 }
 el.innerHTML = '<div class="contact-entries">' + logs.map(e => {
 const phys = e.provider_id ? physicians.find(p => p.id === e.provider_id) : null;
-return renderLogEntry(e, { physName: phys ? fmtName(phys) : null });
+return renderLogEntry(e, { physName: phys ? fmtName(phys) : null, editable: true, editFn: `editPracticeNote('${e.id}')`, deleteFn: `deletePracticeNote('${e.id}')`, onClick: phys ? `viewPhysician('${phys.id}')` : undefined, full: true, showTimestamp: true });
 }).join('') + '</div>';
 } catch(e) {
 const el = $('practiceActivityContent');
@@ -381,9 +388,7 @@ entries.push({provider_id:null,contact_date:dateVal,author:authorVal,notes:baseN
 }
 const {error} = await db.from('contact_logs').insert(entries);
 if (error) throw error;
-for (const pid of physIds) {
-await db.from('providers').update({last_contact:dateVal}).eq('id',pid);
-}
+await Promise.all(physIds.map(pid => db.from('providers').update({last_contact:dateVal}).eq('id',pid)));
 const label = physIds.length > 0 ? `Call logged for ${physIds.length} physician${physIds.length!==1?'s':''}` : 'Location note logged';
 showToast(label, 'success');
 await loadAllData();
@@ -450,9 +455,7 @@ entries = [{ provider_id: null, contact_date: dateVal, author: authorVal, notes:
 }
 const { error } = await db.from('contact_logs').insert(entries);
 if (error) throw error;
-for (const pid of physIds) {
-await db.from('providers').update({ last_contact: dateVal }).eq('id', pid);
-}
+await Promise.all(physIds.map(pid => db.from('providers').update({ last_contact: dateVal }).eq('id', pid)));
 const label = physIds.length > 0 ? `Note logged for ${physIds.length} physician${physIds.length !== 1 ? 's' : ''}` : 'Location note logged';
 showToast(label, 'success');
 await loadAllData();

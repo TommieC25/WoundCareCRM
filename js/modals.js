@@ -124,13 +124,13 @@ showToast(newVal?'Marked as Sales Target':'Removed from Sales Targets','success'
 }
 function editPhysicianInfo() {
 editMode=true;const p=currentPhysician;$('modalTitle').textContent='Edit Provider';
-setFields({firstName:p.first_name,lastName:p.last_name,physicianEmail:p.email||'',priority:normPriority(p.priority)||'',specialty:p.specialty||'',umConnection:p.academic_connection||p.um_connection||'',patientVolume:p.proj_vol||p.mohs_volume||'',physicianGeneralNotes:p.general_notes||'',degree:p.degree||'',staffTitle:p.title||''});$('isTarget').checked=!!p.is_target;
+setFields({firstName:p.first_name,lastName:p.last_name,physicianEmail:p.email||'',mobilePhone:p.mobile_phone||'',priority:normPriority(p.priority)||'',specialty:p.specialty||'',umConnection:p.academic_connection||p.um_connection||'',patientVolume:p.proj_vol||p.mohs_volume||'',physicianGeneralNotes:p.general_notes||'',degree:p.degree||'',staffTitle:p.title||''});$('isTarget').checked=!!p.is_target;
 $('practiceSelector').style.display='none';$('locationSelector').style.display='none';
 $('physicianSaveBtn').textContent='Save Provider';$('physicianSaveBtn').className='btn-primary';$('physicianModal').classList.add('active');
 }
 async function savePhysician(e) {
 e.preventDefault();
-const data = {first_name:$('firstName').value,last_name:$('lastName').value,email:$('physicianEmail').value||null,priority:$('priority').value||null,specialty:$('specialty').value||null,academic_connection:$('umConnection').value||null,proj_vol:$('patientVolume').value||null,general_notes:$('physicianGeneralNotes').value||null};
+const data = {first_name:$('firstName').value,last_name:$('lastName').value,email:$('physicianEmail').value||null,mobile_phone:$('mobilePhone').value||null,priority:$('priority').value||null,specialty:$('specialty').value||null,academic_connection:$('umConnection').value||null,proj_vol:$('patientVolume').value||null,mohs_volume:null,general_notes:$('physicianGeneralNotes').value||null};
 const degreeVal=$('degree').value||null;const titleVal=$('staffTitle').value||null;
 data.degree=degreeVal;data.title=titleVal;data.is_target=!!$('isTarget').checked;
 await withSave('physicianSaveBtn','Save Provider',async()=>{
@@ -158,7 +158,16 @@ await loadAllData();renderList();setTimeout(()=>closePhysicianModal(),500);
 });
 }
 async function deletePhysician() {
-await dbDel('providers',currentPhysician.id,`Delete ${fmtName(currentPhysician)}?`,async()=>{physicians=physicians.filter(p=>p.id!==currentPhysician.id);currentPhysician=null;renderList();renderEmptyState();});
+if(!currentPhysician)return;
+if(!confirm(`Delete ${fmtName(currentPhysician)}?`))return;
+try{
+updateSyncIndicators('syncing');
+const pid=currentPhysician.id;
+const{error}=await db.rpc('delete_provider',{provider_id_param:pid});
+if(error)throw error;
+physicians=physicians.filter(ph=>ph.id!==pid);currentPhysician=null;renderList();renderEmptyState();
+showToast('Deleted','success');updateSyncIndicators('synced');
+}catch(e){console.error('Delete error:',e);showToast('Error: '+e.message,'error');updateSyncIndicators('error');}
 }
 
 // --- Practice modal ---
@@ -283,37 +292,74 @@ setTimeout(()=>closePracticeModal(),500);
 });
 }
 async function deletePractice() {
-await dbDel('practices',currentPractice.id,`Delete ${currentPractice.name}? This will also delete all its locations.`,async()=>{practices=practices.filter(p=>p.id!==currentPractice.id);currentPractice=null;await loadAllData();renderList();renderEmptyState();});
+if(!currentPractice)return;
+if(!confirm(`Delete ${currentPractice.name}? This will also delete all its locations.`))return;
+try{
+updateSyncIndicators('syncing');
+const pid=currentPractice.id;
+const locIds=practiceLocations.filter(l=>l.practice_id===pid).map(l=>l.id);
+if(locIds.length>0){
+const{error:e1}=await db.from('provider_location_assignments').delete().in('practice_location_id',locIds);if(e1)throw e1;
+const{error:e2}=await db.from('practice_locations').delete().eq('practice_id',pid);if(e2)throw e2;
 }
-function parseAddressBlock() {
-const raw = ($('addressBlock')?.value || '').trim();
+const{error:e3}=await db.from('practices').delete().eq('id',pid);if(e3)throw e3;
+practices=practices.filter(p=>p.id!==pid);currentPractice=null;await loadAllData();renderList();renderEmptyState();
+showToast('Deleted','success');updateSyncIndicators('synced');
+}catch(e){console.error('Delete error:',e);showToast('Error: '+e.message,'error');updateSyncIndicators('error');}
+}
+function parseAddressBlock(mode) {
+// mode = 'location' (default) fills locationAddress/City/Zip/Phone
+// mode = 'quick' fills quickPracticeAddr/City/Zip/Phone
+// mode = 'practice' fills practiceAddress/City/Zip/Phone
+const srcId = (mode === 'quick') ? 'quickAddressBlock' : (mode === 'practice') ? 'practiceAddressBlock' : 'addressBlock';
+const raw = ($(''+srcId)?.value || '').trim();
 if (!raw) { showToast('Paste an address first', 'info'); return; }
 const lines = raw.split('\n').map(l => l.trim()).filter(Boolean);
-let addr = '', city = '', zip = '', phone = '', state = '';
-const zipMatch = raw.match(/\b(\d{5})(?:-\d{4})?\b/);
-if (zipMatch) zip = zipMatch[1];
+let addr = '', city = '', zip = '', phone = '';
+// Phone
 const phoneMatch = raw.match(/(\(?\d{3}\)?[\s.\-]\d{3}[\s.\-]\d{4})/);
 if (phoneMatch) phone = phoneMatch[1];
-const stateMatch = raw.match(/\b([A-Z]{2})\s+\d{5}/);
-if (stateMatch) state = stateMatch[1];
-const oneliner = raw.replace(/\n/g,' ');
-const cityStateZip = oneliner.match(/,\s*([^,]+),\s*[A-Z]{2}\s+\d{5}/);
-if (cityStateZip) city = cityStateZip[1].trim();
-if (lines.length >= 2) {
-addr = lines[0];
-if (!city && lines[1]) {
-const m = lines[1].match(/^([^,]+)/);
-if (m) city = m[1].trim();
+// City/State/Zip: search lines bottom-up for a line like "City[,] ST 12345"
+// Handles both "Miami, FL 33176" and "Pembroke Pines FL 33028" (no comma before state)
+let cityLineIdx = -1;
+for (let i = lines.length - 1; i >= 0; i--) {
+  const m = lines[i].match(/^([A-Za-z][^,]*?),?\s+([A-Z]{2})\s+(\d{5})(?:-\d{4})?/);
+  if (m) { city = m[1].trim(); zip = m[3]; cityLineIdx = i; break; }
 }
+// Fallback for single-line: "123 Main St, Miami, FL 33176"
+if (!city) {
+  const m = raw.replace(/\n/g,' ').match(/,\s*([A-Za-z][A-Za-z\s\-'\.]*?),?\s+([A-Z]{2})\s+(\d{5})/);
+  if (m) { city = m[1].trim(); zip = m[3]; }
+}
+// Zip fallback: look for FL state abbreviation then 5 digits (not directionals like NE/NW/SE/SW)
+if (!zip) { const m = raw.match(/\bFL\s+(\d{5})\b/); if (m) zip = m[1]; }
+// Address: first line starting with a digit, excluding the city/state/zip line
+for (let i = 0; i < lines.length; i++) {
+  if (i === cityLineIdx) continue;
+  if (/^\d/.test(lines[i])) { addr = lines[i]; break; }
+}
+if (!addr && cityLineIdx > 0) addr = lines[0];
+// If city was found via single-line fallback (cityLineIdx=-1), addr may contain the city/state/zip tail — strip it
+if (addr && city && cityLineIdx === -1) {
+  const tailMatch = addr.match(new RegExp(',?\\s*' + city.replace(/[.*+?^${}()|[\]\\]/g,'\\$&') + '.*$', 'i'));
+  if (tailMatch && tailMatch.index > 0) addr = addr.slice(0, tailMatch.index).trim().replace(/,\s*$/, '');
+}
+if (mode === 'quick') {
+  if ($('quickPracticeAddr') && addr) $('quickPracticeAddr').value = addr;
+  if ($('quickPracticeCity') && city) $('quickPracticeCity').value = city;
+  if ($('quickPracticeZip') && zip) $('quickPracticeZip').value = zip;
+  if ($('quickPracticePhone') && phone && !$('quickPracticePhone').value) $('quickPracticePhone').value = phone;
+} else if (mode === 'practice') {
+  if ($('practiceAddress') && addr) $('practiceAddress').value = addr;
+  if ($('practiceCity') && city) $('practiceCity').value = city;
+  if ($('practiceZip') && zip) $('practiceZip').value = zip;
+  if ($('practicePhone') && phone && !$('practicePhone').value) $('practicePhone').value = phone;
 } else {
-const commaIdx = oneliner.indexOf(',');
-if (commaIdx > 0) addr = oneliner.substring(0, commaIdx).trim();
-else addr = raw;
+  if ($('locationAddress') && addr) $('locationAddress').value = addr;
+  if ($('locationCity') && city) $('locationCity').value = city;
+  if ($('locationZip') && zip) $('locationZip').value = zip;
+  if ($('locationPhone') && phone && !$('locationPhone').value) $('locationPhone').value = phone;
 }
-if ($('locationAddress') && addr) $('locationAddress').value = addr;
-if ($('locationCity') && city) $('locationCity').value = city;
-if ($('locationZip') && zip) $('locationZip').value = zip;
-if ($('locationPhone') && phone && !$('locationPhone').value) $('locationPhone').value = phone;
 showToast('Address fields filled — review and adjust as needed', 'success');
 }
 
@@ -336,7 +382,7 @@ function editLocationDetails(locationId) {
 const loc=practiceLocations.find(l=>l.id===locationId);if(!loc)return;
 editingLocationId=locationId;$('locationModalTitle').textContent='Edit Location';
 if ($('addressBlock')) $('addressBlock').value = '';
-setFields({locationPracticeId:loc.practice_id,locationLabel:loc.label||'',locationAddress:loc.address||'',locationCity:loc.city||'',locationZip:loc.zip||'',locationPhone:loc.phone||'',locationFax:loc.fax||'',locationEmail:loc.practice_email||'',locationHours:loc.office_hours||'',locationStaff:loc.office_staff||'',locationReceptionist:loc.receptionist_name||'',locationBestDays:loc.best_days||''});
+setFields({locationPracticeId:loc.practice_id,locationLabel:loc.label||'',locationAddress:loc.address||'',locationCity:loc.city||'',locationZip:loc.zip||'',locationPhone:loc.phone||'',locationFax:loc.fax||'',locationEmail:loc.practice_email||'',locationHours:loc.office_hours||'',locationStaff:loc.office_staff||'',locationReceptionist:loc.receptionist_name||'',locationBestDays:loc.best_days||'',locationNotes:loc.notes||''});
 $('locationSaveBtn').textContent='Save Location';$('locationSaveBtn').className='btn-primary';
 $('locationPracticeId').innerHTML='<option value="">-- Select Practice --</option>'+practices.map(p=>`<option value="${p.id}" ${p.id===loc.practice_id?'selected':''}>${p.name}</option>`).join('');
 const pr=practices.find(p=>p.id===loc.practice_id);
@@ -361,7 +407,7 @@ showToast('Practice renamed to "' + newName + '"', 'success');
 }
 async function saveLocation(e) {
 e.preventDefault();
-const data={practice_id:$('locationPracticeId').value,label:$('locationLabel').value,address:$('locationAddress').value||null,city:$('locationCity').value||null,zip:$('locationZip').value||null,phone:$('locationPhone').value||null,fax:$('locationFax').value||null,practice_email:$('locationEmail').value||null,office_hours:$('locationHours').value||null,office_staff:$('locationStaff').value||null,receptionist_name:$('locationReceptionist').value||null,best_days:$('locationBestDays').value||null};
+const data={practice_id:$('locationPracticeId').value,label:$('locationLabel').value,address:$('locationAddress').value||null,city:$('locationCity').value||null,zip:$('locationZip').value||null,phone:$('locationPhone').value||null,fax:$('locationFax').value||null,practice_email:$('locationEmail').value||null,office_hours:$('locationHours').value||null,office_staff:$('locationStaff').value||null,receptionist_name:$('locationReceptionist').value||null,best_days:$('locationBestDays').value||null,notes:$('locationNotes').value||null};
 await withSave('locationSaveBtn','Save Location',async()=>{
 if(editingLocationId){const{error}=await db.from('practice_locations').update(data).eq('id',editingLocationId);if(error)throw error;showToast('Location updated','success');
 }else{const{error}=await db.from('practice_locations').insert(data);if(error)throw error;showToast('Location added','success');}
@@ -369,7 +415,14 @@ await loadAllData();if(currentPractice)renderPracticeProfile();if(currentPhysici
 });
 }
 async function deleteLocation(locationId) {
-await dbDel('practice_locations',locationId,'Delete this location and all provider assignments?',async()=>{await loadAllData();if(currentPractice)renderPracticeProfile();});
+if(!confirm('Delete this location and all provider assignments?'))return;
+try{
+updateSyncIndicators('syncing');
+const{error:e1}=await db.from('provider_location_assignments').delete().eq('practice_location_id',locationId);if(e1)throw e1;
+const{error:e2}=await db.from('practice_locations').delete().eq('id',locationId);if(e2)throw e2;
+await loadAllData();if(currentPractice)renderPracticeProfile();
+showToast('Deleted','success');updateSyncIndicators('synced');
+}catch(e){console.error('Delete error:',e);showToast('Error: '+e.message,'error');updateSyncIndicators('error');}
 }
 
 // --- Assign location modal ---
@@ -445,12 +498,12 @@ try {
 updateSyncIndicators('syncing');
 const {data:newPract,error:pe} = await db.from('practices').insert({name}).select().single();
 if (pe) throw pe;
-const locData = {practice_id:newPract.id,label:'Main Office',address:$('quickPracticeAddr').value||null,city:$('quickPracticeCity').value||null,zip:$('quickPracticeZip').value||null,phone:$('quickPracticePhone').value||null};
+const locData = {practice_id:newPract.id,label:'Main Office',address:$('quickPracticeAddr').value||null,city:$('quickPracticeCity').value||null,zip:$('quickPracticeZip').value||null,phone:$('quickPracticePhone').value||null,practice_email:$('quickPracticeEmail').value||null};
 const {data:newLoc,error:le} = await db.from('practice_locations').insert(locData).select().single();
 if (le) throw le;
 const {error:ae} = await db.from('provider_location_assignments').insert({provider_id:currentPhysician.id,practice_location_id:newLoc.id,is_primary:false});
 if (ae) throw ae;
-['quickPracticeName','quickPracticeAddr','quickPracticeCity','quickPracticeZip','quickPracticePhone'].forEach(id=>{const el=$(id);if(el)el.value='';});
+['quickPracticeName','quickPracticeAddr','quickPracticeCity','quickPracticeZip','quickPracticePhone','quickPracticeEmail','quickAddressBlock'].forEach(id=>{const el=$(id);if(el)el.value='';});
 await loadAllData();
 renderProfile();
 closeAssignLocationModal();
@@ -465,9 +518,26 @@ updateSyncIndicators('error');
 async function removeAssignment(assignmentId) {
 await dbDel('provider_location_assignments',assignmentId,'Remove this location assignment?',async()=>{await loadAllData();renderProfile();});
 }
+async function setPrimaryLocation(assignmentId) {
+if (!currentPhysician) return;
+try {
+  updateSyncIndicators('syncing');
+  // Clear primary on all assignments for this provider
+  const {error:e1} = await db.from('provider_location_assignments').update({is_primary:false}).eq('provider_id',currentPhysician.id);
+  if (e1) throw e1;
+  // Set primary on the chosen one
+  const {error:e2} = await db.from('provider_location_assignments').update({is_primary:true}).eq('id',assignmentId);
+  if (e2) throw e2;
+  await loadAllData();
+  renderProfile();
+  showToast('Primary location updated', 'success');
+  updateSyncIndicators('synced');
+} catch(e) { showToast('Error: '+e.message, 'error'); updateSyncIndicators('error'); }
+}
 
 // --- Assign provider modal (from practice view) ---
 function openAssignPhysicianModal() {
+if(!currentPractice)return;
 const locations = practiceLocations.filter(l => l.practice_id === currentPractice.id);
 const select = $('assignPhysLocationSelect');
 select.innerHTML = locations.map(loc => `<option value="${loc.id}">${loc.label || 'Office'} - ${loc.address || ''}, ${loc.city || ''}</option>`).join('');
@@ -495,6 +565,7 @@ $('assignPhysicianOptions').innerHTML = filtered.map(p => `
 `).join('') || '<div class="empty-notice">No providers found</div>';
 }
 function filterAssignPhysicianOptions() {
+if(!currentPractice)return;
 const currentChecked = new Set();
 document.querySelectorAll('#assignPhysicianOptions .selector-option').forEach(opt => {
 const cb = opt.querySelector('input[type="checkbox"]');
@@ -515,11 +586,13 @@ cb.checked = !cb.checked;
 }
 function closeAssignPhysicianModal(){closeModal('assignPhysicianModal');}
 async function quickAddPhysician() {
+const errEl=$('quickAddError');if(errEl){errEl.style.display='none';errEl.textContent='';}
+function showQuickErr(msg){if(errEl){errEl.textContent=msg;errEl.style.display='block';}else{showToast(msg,'error');}}
 const first = $('quickPhysFirst').value.trim();
 const last = $('quickPhysLast').value.trim();
-if (!first || !last) { showToast('First and last name required', 'error'); return; }
+if (!first || !last) { showQuickErr('First and last name are required.'); return; }
 const locId = $('assignPhysLocationSelect').value;
-if (!locId) { showToast('Select a location first', 'error'); return; }
+if (!locId) { showQuickErr('Please select a location at the top of this form.'); return; }
 try {
 updateSyncIndicators('syncing');
 const data = {first_name:first,last_name:last,degree:$('quickPhysDegree').value||null,specialty:$('quickPhysSpecialty').value||null,priority:$('quickPhysPriority').value||null};

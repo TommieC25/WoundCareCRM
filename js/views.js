@@ -1,19 +1,83 @@
 // === js/views.js === Activity view, Tasks view, Dashboard view, Map view
 let _taskDetailLogs = {};
 function closeTaskDetailModal() { closeModal('taskDetailModal'); }
+
+// Opens the task edit modal directly from a task card (bypasses activity editor)
+function editTaskFromList(logId) {
+const r = _taskDetailLogs[logId] || (window._taskDetailLogs||{})[logId];
+if (!r) return;
+window._openedTaskRec = r;
+openEditTaskModal();
+}
+
+// === CALENDAR EXPORT (.ics) ===
+function downloadTaskICS(r, phys, loc, practice, timeVal) {
+  if (!r.reminder_date || r.reminder_date === '2099-12-31') { return; }
+  const name = phys ? fmtName(phys) : (practice ? practice.name : (loc ? (loc.label || 'Office') : 'Task'));
+  const {displayNotes:dn,taskNote} = parseTaskRecord(r.notes);
+  const ds = r.reminder_date.replace(/-/g, '');
+  let desc = '';
+  if (taskNote) desc += 'Task: ' + taskNote + '\\n';
+  if (phys && phys.specialty) desc += phys.specialty + '\\n';
+  const np = phys ? normPriority(phys.priority) : null;
+  if (np) desc += 'Tier ' + np + '\\n';
+  if (dn) desc += dn.replace(/[\r\n]+/g, '\\n');
+  let location = '';
+  if (loc) { const parts = [practice ? practice.name : null, loc.address, loc.city, loc.zip].filter(Boolean); location = parts.join(', '); }
+  const uid = 'woundcare-' + (r.id || Date.now()) + '@woundcarecrm';
+  const stamp = new Date().toISOString().replace(/[-:.]/g,'').slice(0,15) + 'Z';
+  let dtStart,dtEnd;if(timeVal){const[hh,mm]=timeVal.split(':');const dEnd=new Date(r.reminder_date+'T'+timeVal+':00');dEnd.setHours(dEnd.getHours()+1);const endStr=r.reminder_date.replace(/-/g,'')+`T${String(dEnd.getHours()).padStart(2,'0')}${String(dEnd.getMinutes()).padStart(2,'0')}00`;dtStart='DTSTART:'+ds+'T'+hh+mm+'00';dtEnd='DTEND:'+endStr;}else{const dsNext=(()=>{const d=new Date(r.reminder_date+'T12:00:00');d.setDate(d.getDate()+1);return d.toISOString().slice(0,10).replace(/-/g,'');})();dtStart='DTSTART;VALUE=DATE:'+ds;dtEnd='DTEND;VALUE=DATE:'+dsNext;}
+  const ics = ['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//WoundCareCRM//EN','CALSCALE:GREGORIAN','METHOD:PUBLISH','BEGIN:VEVENT','UID:'+uid,'DTSTAMP:'+stamp,dtStart,dtEnd,'SUMMARY:Visit \u2014 '+name,location?'LOCATION:'+location:null,desc?'DESCRIPTION:'+desc:null,'BEGIN:VALARM','TRIGGER:-PT30M','ACTION:DISPLAY','DESCRIPTION:Upcoming: '+name,'END:VALARM','END:VEVENT','END:VCALENDAR'].filter(l=>l!==null).join('\r\n');
+  const blob = new Blob([ics], {type:'text/calendar;charset=utf-8'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = 'visit-' + name.replace(/\s+/g,'-').replace(/[^a-z0-9-]/gi,'').toLowerCase() + '.ics';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+function buildGoogleCalendarUrl(r, phys, loc, practice, timeVal) {
+  const name = phys ? fmtName(phys) : (practice ? practice.name : (loc ? (loc.label || 'Office') : 'Task'));
+  const {displayNotes:dn,taskNote} = parseTaskRecord(r.notes);
+  const ds = r.reminder_date.replace(/-/g, '');
+  const parts = [];
+  if (taskNote) parts.push('Task: ' + taskNote);
+  if (phys && phys.specialty) parts.push(phys.specialty);
+  const np = phys ? normPriority(phys.priority) : null;
+  if (np) parts.push('Tier ' + np);
+  if (dn) parts.push(dn);
+  let location = '';
+  if (loc) { const lp = [practice ? practice.name : null, loc.address, loc.city, loc.zip].filter(Boolean); location = lp.join(', '); }
+  let calDates;if(timeVal){const[hh,mm]=timeVal.split(':');const dEnd=new Date(r.reminder_date+'T'+timeVal+':00');dEnd.setHours(dEnd.getHours()+1);const endStr=r.reminder_date.replace(/-/g,'')+`T${String(dEnd.getHours()).padStart(2,'0')}${String(dEnd.getMinutes()).padStart(2,'0')}00`;calDates=ds+'T'+hh+mm+'00/'+endStr;}else{const dsNext=(()=>{const d=new Date(r.reminder_date+'T12:00:00');d.setDate(d.getDate()+1);return d.toISOString().slice(0,10).replace(/-/g,'');})();calDates=ds+'/'+dsNext;}
+  const params = new URLSearchParams({ action:'TEMPLATE', text:'Visit \u2014 '+name, dates:calDates, details:parts.join('\n'), location });
+  return 'https://calendar.google.com/calendar/render?' + params.toString();
+}
+function exportTaskToCalendar(logId) {
+  const r = (_taskDetailLogs||{})[logId] || (window._taskDetailLogs||{})[logId];
+  if (!r) return;
+  const phys = r.provider_id ? physicians.find(p=>p.id===r.provider_id) : null;
+  const loc = r.practice_location_id ? practiceLocations.find(l=>l.id===r.practice_location_id) : null;
+  const practice = loc ? practices.find(p=>p.id===loc.practice_id) : null;
+  const timeVal = ($('taskCalTime')||{}).value || '';
+  downloadTaskICS(r, phys, loc, practice, timeVal);
+}
+function openGoogleCalendar(logId) {
+  const r = (_taskDetailLogs||{})[logId] || (window._taskDetailLogs||{})[logId];
+  if (!r) return;
+  if (!r.reminder_date || r.reminder_date === '2099-12-31') { return; }
+  const phys = r.provider_id ? physicians.find(p=>p.id===r.provider_id) : null;
+  const loc = r.practice_location_id ? practiceLocations.find(l=>l.id===r.practice_location_id) : null;
+  const practice = loc ? practices.find(p=>p.id===loc.practice_id) : null;
+  const timeVal = ($('taskCalTime')||{}).value || '';
+  window.open(buildGoogleCalendarUrl(r, phys, loc, practice, timeVal), '_blank');
+}
 function openTaskDetailModal(logId) {
-const r = _taskDetailLogs[logId];
+const r = _taskDetailLogs[logId] || (window._taskDetailLogs||{})[logId];
 if (!r) return;
 const phys = r.provider_id ? physicians.find(p => p.id === r.provider_id) : null;
 const loc = r.practice_location_id ? practiceLocations.find(l => l.id === r.practice_location_id) : null;
 const practice = loc ? practices.find(p => p.id === loc.practice_id) : null;
-const tm = (r.notes||'').match(/^\[(\d{1,2}:\d{2}(?:\s*[APap][Mm])?)\]\s*/);
-let displayNotes = tm ? r.notes.replace(tm[0], '') : (r.notes||'');
-const taskMatch = displayNotes.match(/\s*\|\s*\[Task:\s*(.*?)\]$/);
-const taskNote = taskMatch ? taskMatch[1].trim() : '';
-if (taskMatch) displayNotes = displayNotes.slice(0, taskMatch.index).trim();
-const noteTime = tm ? tm[1] : '';
-const today = new Date().toISOString().split('T')[0];
+const {noteTime,displayNotes,taskNote}=parseTaskRecord(r.notes);
+const today = localDate();
 const isOverdue = r.reminder_date && r.reminder_date !== '2099-12-31' && r.reminder_date < today;
 const isOpen = r.reminder_date === '2099-12-31';
 const isStaff = phys?.specialty === 'Administrative Staff';
@@ -48,7 +112,7 @@ ${taskNote?`<div style="font-weight:700;color:#92400e;background:#fef3c7;padding
 ${r.reminder_date?`<div style="margin-top:0.6rem;padding:0.3rem 0.6rem;border-radius:6px;font-size:0.82rem;font-weight:600;${isOpen?'background:#e5e7eb;color:#6b7280;':isOverdue?'background:#fef2f2;color:#dc2626;':'background:#fef3c7;color:#92400e;'}">${isOpen?'📌 Open task — no due date':isOverdue?`⚠️ OVERDUE — Due ${fmtD(r.reminder_date)}`:`🔔 Due ${fmtD(r.reminder_date)}`}</div>`:''}
 </div>`;
 // Reschedule buttons — quick date change without opening the edit modal
-const rAdd = (n) => { const d = new Date(today+'T12:00:00'); d.setDate(d.getDate()+n); return d.toISOString().split('T')[0]; };
+const rAdd = (n) => { const d = new Date(today+'T12:00:00'); d.setDate(d.getDate()+n); return localDate(d); };
 const dow = new Date(today+'T12:00:00').getDay();
 const daysToNextMon = ((8-dow)%7)||7;
 const rBtns = [{label:'Today',date:today},{label:'Tom',date:rAdd(1)}];
@@ -70,6 +134,7 @@ html += `<div style="display:flex;flex-direction:column;gap:0.5rem;">
 ${delFn?`<button onclick="${delFn}" style="flex:1;padding:0.7rem;background:#dc2626;color:white;border:none;border-radius:8px;font-weight:600;font-size:0.875rem;cursor:pointer;">🗑️ Delete</button>`:''}
 </div>
 ${profileFn?`<button onclick="${profileFn}" style="padding:0.7rem;background:rgba(10,77,60,0.08);color:#0a4d3c;border:2px solid #0a4d3c;border-radius:8px;font-weight:600;font-size:0.875rem;cursor:pointer;">👤 View Full Profile</button>`:''}
+${(!isOpen && r.reminder_date)?`<div><div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.4rem;"><span style="font-size:0.82rem;color:#555;min-width:5.5rem;font-weight:500;">Visit time</span><input type="time" id="taskCalTime" style="flex:1;padding:0.4rem 0.6rem;border:1px solid #d1d5db;border-radius:6px;font-size:0.9rem;font-family:inherit;" aria-label="Calendar event time"><span style="font-size:0.72rem;color:#aaa;white-space:nowrap;">optional</span></div><div style="display:flex;gap:0.5rem;"><button onclick="openGoogleCalendar('${r.id}')" style="flex:1;padding:0.7rem;background:rgba(59,130,246,0.08);color:#1d4ed8;border:2px solid #3b82f6;border-radius:8px;font-weight:600;font-size:0.875rem;cursor:pointer;-webkit-tap-highlight-color:transparent;">📅 Google Calendar</button><button onclick="exportTaskToCalendar('${r.id}')" style="padding:0.7rem 0.85rem;background:rgba(59,130,246,0.08);color:#1d4ed8;border:2px solid #3b82f6;border-radius:8px;font-weight:600;font-size:0.875rem;cursor:pointer;-webkit-tap-highlight-color:transparent;" title="Add to Apple Calendar / Outlook">🍎 Apple Cal</button></div></div>`:''}
 </div>`;
 $('taskDetailTitle').textContent = phys ? fmtName(phys) : (practice?.name || loc?.label || 'Task');
 $('taskDetailBody').innerHTML = html;
@@ -78,7 +143,7 @@ $('taskDetailModal').classList.add('active');
 $('taskDetailModal').onclick = function(e){ if(e.target===this) closeTaskDetailModal(); };
 }
 async function rescheduleTask(logId, newDate) {
-const r = _taskDetailLogs[logId];
+const r = _taskDetailLogs[logId] || (window._taskDetailLogs||{})[logId];
 if (!r) return;
 try {
 const {error} = await db.from('contact_logs').update({reminder_date: newDate}).eq('id', logId);
@@ -96,9 +161,9 @@ try{
 const{data:allLogs,error}=await db.from('contact_logs').select('*').order('contact_date',{ascending:false}).order('created_at',{ascending:false}).limit(200);
 if(error)throw error;
 const physMap={};physicians.forEach(p=>physMap[p.id]=p);
-const search=$('searchInput').value.toLowerCase();
-const filtered=search?allLogs.filter(l=>{const p=physMap[l.provider_id]||{};
-return(l.notes||'').toLowerCase().includes(search)||(l.author||'').toLowerCase().includes(search)||(p.first_name||'').toLowerCase().includes(search)||(p.last_name||'').toLowerCase().includes(search);
+const search=$('searchInput').value.trim().toLowerCase();
+const filtered=search?allLogs.filter(l=>{const p=physMap[l.provider_id]||{};const fullName=((p.first_name||'')+' '+(p.last_name||'')).trim();
+return(l.notes||'').toLowerCase().includes(search)||(l.author||'').toLowerCase().includes(search)||fullName.toLowerCase().includes(search)||(p.first_name||'').toLowerCase().includes(search)||(p.last_name||'').toLowerCase().includes(search);
 }):allLogs;
 $('physicianList').innerHTML=filtered.length===0?'<li class="loading">No activity found</li>':
 filtered.map(l=>{const p=l.provider_id?physMap[l.provider_id]:null;
@@ -115,7 +180,7 @@ return`<li class="physician-item" onclick="${clickFn}">
 $('physicianCount').textContent=filtered.length+' of '+allLogs.length+' activities';
 $('mainContent').innerHTML=`<div class="section"><div class="section-header"><h3>Activity Log</h3><div style="font-size:0.8rem;color:#666;">${filtered.length} entries${search?' matching "'+search+'"':''}</div></div>
 ${filtered.length===0?'<div class="empty-notice">No activity found.</div>':
-'<div class="contact-entries">'+filtered.map(e=>{const phys=e.provider_id?physMap[e.provider_id]:null;const canEdit=!!e.provider_id;return renderLogEntry(e,{physName:phys?fmtName(phys):null,editable:canEdit,editFn:`editNoteFromActivity('${e.id}','${e.provider_id}')`,deleteFn:`deleteNoteFromActivity('${e.id}','${e.provider_id}')`,full:true,showTimestamp:true});}).join('')+'</div>'}
+'<div class="contact-entries">'+filtered.map(e=>{const phys=e.provider_id?physMap[e.provider_id]:null;const editFn=e.provider_id?`editNoteFromActivity('${e.id}','${e.provider_id}')`:`editPracticeNote('${e.id}')`;const delFn=e.provider_id?`deleteNoteFromActivity('${e.id}','${e.provider_id}')`:`deletePracticeNote('${e.id}')`;return renderLogEntry(e,{physName:phys?fmtName(phys):null,editable:true,editFn,deleteFn:delFn,full:true,showTimestamp:true});}).join('')+'</div>'}
 </div>`;
 }catch(e){console.error('Activity view error:',e);$('physicianList').innerHTML='<li class="loading">Error loading activity</li>';$('mainContent').innerHTML='<div class="empty-state"><h2>Activity</h2><p>Error loading. Try again.</p></div>';}
 }
@@ -123,32 +188,36 @@ ${filtered.length===0?'<div class="empty-notice">No activity found.</div>':
 // --- Tasks view ---
 async function renderTasksView(){
 $('physicianCount').textContent='Tasks & Reminders';
-const today = new Date().toISOString().split('T')[0];
+const today = localDate();
 try {
-const{data:reminders,error}=await db.from('contact_logs').select('*').not('reminder_date','is',null).order('reminder_date',{ascending:true});
+const{data:allReminders,error}=await db.from('contact_logs').select('*').not('reminder_date','is',null).order('reminder_date',{ascending:true});
+const reminders=(allReminders||[]).filter(r=>r.reminder_date!=='2000-01-01');
+const completedTasks=(allReminders||[]).filter(r=>r.reminder_date==='2000-01-01').sort((a,b)=>b.contact_date.localeCompare(a.contact_date));
 if(error)throw error;
 const physMap={};physicians.forEach(p=>physMap[p.id]=p);
-_taskDetailLogs={};reminders.forEach(r=>_taskDetailLogs[r.id]=r);
+_taskDetailLogs={};[...reminders,...completedTasks].forEach(r=>_taskDetailLogs[r.id]=r);
+const newTaskBtn=`<button onclick="openAddTaskModal(null,null)" style="padding:0.4rem 0.9rem;background:#0a4d3c;color:white;border:none;border-radius:6px;font-size:0.85rem;font-weight:600;cursor:pointer;">+ New Task</button>`;
 if(!reminders||reminders.length===0){
-$('mainContent').innerHTML=`<div class="section"><div class="section-header"><h3>Tasks &amp; Reminders</h3></div><div class="empty-notice">No follow-up reminders set. Add a reminder when logging a contact note.</div></div>`;
-return;
+if(completedTasks.length===0){$('mainContent').innerHTML=`<div class="section"><div class="section-header"><h3>Tasks &amp; Reminders</h3>${newTaskBtn}</div><div class="empty-notice">No tasks yet. Use the button above to create one.</div></div>`;return;}
+// No active tasks but completed ones exist — fall through to show completed section
 }
+const search=$('searchInput').value.trim().toLowerCase();
+const filtered=search?reminders.filter(r=>{const ph=physMap[r.provider_id]||{};const fullName=((ph.first_name||'')+' '+(ph.last_name||'')).trim();return(r.notes||'').toLowerCase().includes(search)||(r.author||'').toLowerCase().includes(search)||fullName.toLowerCase().includes(search)||(ph.first_name||'').toLowerCase().includes(search)||(ph.last_name||'').toLowerCase().includes(search);}):reminders;
+if(search&&filtered.length===0){$('mainContent').innerHTML=`<div class="section"><div class="section-header"><h3>Tasks &amp; Reminders</h3>${newTaskBtn}</div><div class="empty-notice">No tasks matching "${search}".</div></div>`;return;}
 const OPEN_DATE='2099-12-31';
-const openTasks=reminders.filter(r=>r.reminder_date===OPEN_DATE);
-const datedR=reminders.filter(r=>r.reminder_date!==OPEN_DATE);
+const openTasks=filtered.filter(r=>r.reminder_date===OPEN_DATE);
+const datedR=filtered.filter(r=>r.reminder_date!==OPEN_DATE);
 const overdue=datedR.filter(r=>r.reminder_date<today);
 const upcoming=datedR.filter(r=>r.reminder_date>=today);
-let html=`<div class="section"><div class="section-header"><h3>Tasks &amp; Reminders</h3><div style="font-size:0.8rem;color:#666;">${reminders.length} total${overdue.length>0?` — <span style="color:#dc2626;font-weight:600;">${overdue.length} overdue</span>`:''}${openTasks.length>0?` — ${openTasks.length} open`:''}</div></div>`;
+let html=`<div class="section"><div class="section-header"><h3>Tasks &amp; Reminders</h3><div style="display:flex;align-items:center;gap:0.75rem;"><div style="font-size:0.8rem;color:#666;">${reminders.length===0?'All caught up!':search?`${filtered.length} of ${reminders.length} matching "${search}"`:reminders.length+' active'}${overdue.length>0?` — <span style="color:#dc2626;font-weight:600;">${overdue.length} overdue</span>`:''}${openTasks.length>0?` — ${openTasks.length} open`:''}</div>${newTaskBtn}</div></div>`;
 if(overdue.length>0){
 html+=`<div style="margin-bottom:1rem;"><div style="font-size:0.75rem;font-weight:700;color:#dc2626;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:0.5rem;padding-bottom:0.25rem;border-bottom:2px solid #fca5a5;">⚠️ Overdue (${overdue.length})</div><div class="contact-entries">`;
 overdue.forEach(r=>{
 const phys=r.provider_id?physMap[r.provider_id]:null;const physName=phys?fmtName(phys):(r.practice_location_id?getLocationLabel(r.practice_location_id):'Location Note');
 const emailLink=phys?.email?` <a href="mailto:${phys.email}" style="color:#0a4d3c;font-size:0.75rem;">✉️ Email</a>`:'';
-const tm=(r.notes||'').match(/^\[(\d{1,2}:\d{2}(?:\s*[APap][Mm])?)\]\s*/);
-let displayNotes=tm?r.notes.replace(tm[0],''):(r.notes||'');
-const taskMatch=displayNotes.match(/\s*\|\s*\[Task:\s*(.*?)\]$/);const taskNote=taskMatch?taskMatch[1].trim():'';if(taskMatch)displayNotes=displayNotes.slice(0,taskMatch.index).trim();
+const {displayNotes,taskNote}=parseTaskRecord(r.notes);
 const preview=displayNotes.length>120?displayNotes.substring(0,120)+'...':displayNotes;
-const editFn=r.provider_id?`editNoteFromActivity('${r.id}','${r.provider_id}')`:''
+const editFn=`editTaskFromList('${r.id}')`
 const delFn=r.provider_id?`deleteNoteFromActivity('${r.id}','${r.provider_id}').then(()=>renderTasksView())`:''
 html+=`<div class="contact-entry" style="border-left-color:#dc2626;background:#fff5f5;display:flex;gap:0.5rem;align-items:flex-start;cursor:pointer;" onclick="openTaskDetailModal('${r.id}')"><button onclick="event.stopPropagation();completeReminder('${r.id}').then(()=>renderTasksView())" title="Mark complete" style="background:none;border:2px solid #dc2626;color:#dc2626;border-radius:50%;width:24px;height:24px;min-width:24px;cursor:pointer;font-size:0.8rem;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:0.15rem;">✓</button><div style="flex:1;"><div style="font-weight:600;color:#dc2626;">${physName}${emailLink}</div><div style="font-size:0.75rem;color:#dc2626;font-weight:600;">Due ${r.reminder_date} — OVERDUE</div>${taskNote?`<div style="font-size:0.85rem;font-weight:600;color:#92400e;background:#fef3c7;padding:0.2rem 0.5rem;border-radius:4px;margin-top:0.25rem;">📋 ${taskNote}</div>`:''}<div style="font-size:0.85rem;color:#333;margin-top:0.2rem;">${preview}</div><div style="font-size:0.7rem;color:#999;margin-top:0.2rem;">Note from ${r.contact_date}${r.author?' by '+r.author:''}</div>${editFn||delFn?`<div style="display:flex;gap:0.5rem;margin-top:0.4rem;">${editFn?`<button class="icon-btn" onclick="event.stopPropagation();${editFn}" title="Edit note & reminder date" style="font-size:0.85rem;">✏️ Edit</button>`:''}${delFn?`<button class="icon-btn" onclick="event.stopPropagation();${delFn}" title="Delete" style="font-size:0.85rem;color:#dc2626;">🗑️ Delete</button>`:''}</div>`:''}</div></div>`;
 });
@@ -163,11 +232,9 @@ html+=`<div style="margin-bottom:0.75rem;"><div style="font-size:0.75rem;font-we
 dayR.forEach(r=>{
 const phys=r.provider_id?physMap[r.provider_id]:null;const physName=phys?fmtName(phys):(r.practice_location_id?getLocationLabel(r.practice_location_id):'Location Note');
 const emailLink=phys?.email?` <a href="mailto:${phys.email}" onclick="event.stopPropagation()" style="color:#0a4d3c;font-size:0.75rem;">✉️ Email</a>`:'';
-const tm=(r.notes||'').match(/^\[(\d{1,2}:\d{2}(?:\s*[APap][Mm])?)\]\s*/);
-let displayNotes=tm?r.notes.replace(tm[0],''):(r.notes||'');
-const taskMatch=displayNotes.match(/\s*\|\s*\[Task:\s*(.*?)\]$/);const taskNote=taskMatch?taskMatch[1].trim():'';if(taskMatch)displayNotes=displayNotes.slice(0,taskMatch.index).trim();
+const {displayNotes,taskNote}=parseTaskRecord(r.notes);
 const preview=displayNotes.length>120?displayNotes.substring(0,120)+'...':displayNotes;
-const editFn=r.provider_id?`editNoteFromActivity('${r.id}','${r.provider_id}')`:''
+const editFn=`editTaskFromList('${r.id}')`
 const delFn=r.provider_id?`deleteNoteFromActivity('${r.id}','${r.provider_id}').then(()=>renderTasksView())`:''
 html+=`<div class="contact-entry" style="border-left-color:#f59e0b;display:flex;gap:0.5rem;align-items:flex-start;cursor:pointer;" onclick="openTaskDetailModal('${r.id}')"><button onclick="event.stopPropagation();completeReminder('${r.id}').then(()=>renderTasksView())" title="Mark complete" style="background:none;border:2px solid #f59e0b;color:#92400e;border-radius:50%;width:24px;height:24px;min-width:24px;cursor:pointer;font-size:0.8rem;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:0.15rem;">✓</button><div style="flex:1;"><div style="font-weight:600;color:#0a4d3c;">${physName}${emailLink}</div>${taskNote?`<div style="font-size:0.85rem;font-weight:600;color:#92400e;background:#fef3c7;padding:0.2rem 0.5rem;border-radius:4px;margin-top:0.25rem;">📋 ${taskNote}</div>`:''}<div style="font-size:0.85rem;color:#333;margin-top:0.2rem;">${preview}</div><div style="font-size:0.7rem;color:#999;margin-top:0.2rem;">Note from ${r.contact_date}${r.author?' by '+r.author:''}</div>${editFn||delFn?`<div style="display:flex;gap:0.5rem;margin-top:0.4rem;">${editFn?`<button class="icon-btn" onclick="event.stopPropagation();${editFn}" title="Edit note & reminder date" style="font-size:0.85rem;">✏️ Edit</button>`:''}${delFn?`<button class="icon-btn" onclick="event.stopPropagation();${delFn}" title="Delete" style="font-size:0.85rem;color:#dc2626;">🗑️ Delete</button>`:''}</div>`:''}</div></div>`;
 });
@@ -179,13 +246,23 @@ html+=`<div style="margin-bottom:0.75rem;"><div style="font-size:0.75rem;font-we
 openTasks.forEach(r=>{
 const phys=r.provider_id?physMap[r.provider_id]:null;const physName=phys?fmtName(phys):(r.practice_location_id?getLocationLabel(r.practice_location_id):'Location Note');
 const emailLink=phys?.email?` <a href="mailto:${phys.email}" onclick="event.stopPropagation()" style="color:#0a4d3c;font-size:0.75rem;">✉️ Email</a>`:'';
-const tm=(r.notes||'').match(/^\[(\d{1,2}:\d{2}(?:\s*[APap][Mm])?)\]\s*/);
-let displayNotes=tm?r.notes.replace(tm[0],''):(r.notes||'');
-const taskMatch=displayNotes.match(/\s*\|\s*\[Task:\s*(.*?)\]$/);const taskNote=taskMatch?taskMatch[1].trim():'';if(taskMatch)displayNotes=displayNotes.slice(0,taskMatch.index).trim();
+const {displayNotes,taskNote}=parseTaskRecord(r.notes);
 const preview=displayNotes.length>120?displayNotes.substring(0,120)+'...':displayNotes;
-const editFn=r.provider_id?`editNoteFromActivity('${r.id}','${r.provider_id}')`:''
+const editFn=`editTaskFromList('${r.id}')`
 const delFn=r.provider_id?`deleteNoteFromActivity('${r.id}','${r.provider_id}').then(()=>renderTasksView())`:''
 html+=`<div class="contact-entry" style="border-left-color:#6b7280;display:flex;gap:0.5rem;align-items:flex-start;cursor:pointer;" onclick="openTaskDetailModal('${r.id}')"><button onclick="event.stopPropagation();completeReminder('${r.id}').then(()=>renderTasksView())" title="Mark complete" style="background:none;border:2px solid #6b7280;color:#6b7280;border-radius:50%;width:24px;height:24px;min-width:24px;cursor:pointer;font-size:0.8rem;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:0.15rem;">✓</button><div style="flex:1;"><div style="font-weight:600;color:#0a4d3c;">${physName}${emailLink}</div>${taskNote?`<div style="font-size:0.85rem;font-weight:600;color:#92400e;background:#fef3c7;padding:0.2rem 0.5rem;border-radius:4px;margin-top:0.25rem;">📋 ${taskNote}</div>`:''}<div style="font-size:0.85rem;color:#333;margin-top:0.2rem;">${preview}</div><div style="font-size:0.7rem;color:#999;margin-top:0.2rem;">Note from ${r.contact_date}${r.author?' by '+r.author:''}</div>${editFn||delFn?`<div style="display:flex;gap:0.5rem;margin-top:0.4rem;">${editFn?`<button class="icon-btn" onclick="event.stopPropagation();${editFn}" title="Edit note & reminder date" style="font-size:0.85rem;">✏️ Edit</button>`:''}${delFn?`<button class="icon-btn" onclick="event.stopPropagation();${delFn}" title="Delete" style="font-size:0.85rem;color:#dc2626;">🗑️ Delete</button>`:''}</div>`:''}</div></div>`;
+});
+html+='</div></div>';
+}
+if(completedTasks.length>0){
+const showCount=20;const shown=completedTasks.slice(0,showCount);
+html+=`<div style="margin-bottom:0.75rem;"><div style="font-size:0.75rem;font-weight:700;color:#10b981;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:0.5rem;padding-bottom:0.25rem;border-bottom:2px solid #a7f3d0;">✓ Recently Completed (${completedTasks.length}${completedTasks.length>showCount?' — showing '+showCount:''})</div><div class="contact-entries">`;
+shown.forEach(r=>{
+const phys=r.provider_id?physMap[r.provider_id]:null;const physName=phys?fmtName(phys):(r.practice_location_id?getLocationLabel(r.practice_location_id):'Note');
+const {displayNotes}=parseTaskRecord(r.notes);
+const preview=displayNotes.length>100?displayNotes.substring(0,100)+'...':displayNotes;
+const delFn=r.provider_id?`deleteNoteFromActivity('${r.id}','${r.provider_id}').then(()=>renderTasksView())`:''
+html+=`<div class="contact-entry" style="border-left-color:#10b981;background:#f0fdf4;opacity:0.85;display:flex;gap:0.5rem;align-items:flex-start;"><div style="width:24px;height:24px;min-width:24px;border-radius:50%;background:#10b981;color:white;display:flex;align-items:center;justify-content:center;font-size:0.8rem;flex-shrink:0;margin-top:0.15rem;">✓</div><div style="flex:1;"><div style="font-weight:600;color:#065f46;">${physName}</div><div style="font-size:0.85rem;color:#333;margin-top:0.1rem;">${preview}</div><div style="font-size:0.7rem;color:#999;margin-top:0.2rem;">Logged ${r.contact_date}${r.author?' by '+r.author:''}</div>${delFn?`<button class="icon-btn" onclick="${delFn}" style="font-size:0.8rem;color:#dc2626;margin-top:0.25rem;">🗑️ Delete</button>`:''}</div></div>`;
 });
 html+='</div></div>';
 }
@@ -198,9 +275,9 @@ $('mainContent').innerHTML=html;
 async function renderDashboard(){
 const{data:allLogs,error}=await db.from('contact_logs').select('*').order('contact_date',{ascending:false});
 const logs=allLogs||[];
-const now=new Date();const today=now.toISOString().slice(0,10);
-const weekAgo=new Date(now-7*86400000).toISOString().slice(0,10);
-const monthAgo=new Date(now-30*86400000).toISOString().slice(0,10);
+const now=new Date();const today=localDate(now);
+const weekAgo=localDate(new Date(now-7*86400000));
+const monthAgo=localDate(new Date(now-30*86400000));
 const thisWeek=logs.filter(l=>l.contact_date>=weekAgo).length;
 const thisMonth=logs.filter(l=>l.contact_date>=monthAgo).length;
 const tierCounts={};physicians.forEach(p=>{const t=p.priority||'Unset';tierCounts[t]=(tierCounts[t]||0)+1;});
