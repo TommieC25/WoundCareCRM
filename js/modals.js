@@ -339,6 +339,11 @@ for (let i = 0; i < lines.length; i++) {
   if (/^\d/.test(lines[i])) { addr = lines[i]; break; }
 }
 if (!addr && cityLineIdx > 0) addr = lines[0];
+// If city was found via single-line fallback (cityLineIdx=-1), addr may contain the city/state/zip tail — strip it
+if (addr && city && cityLineIdx === -1) {
+  const tailMatch = addr.match(new RegExp(',?\\s*' + city.replace(/[.*+?^${}()|[\]\\]/g,'\\$&') + '.*$', 'i'));
+  if (tailMatch && tailMatch.index > 0) addr = addr.slice(0, tailMatch.index).trim().replace(/,\s*$/, '');
+}
 if (mode === 'quick') {
   if ($('quickPracticeAddr') && addr) $('quickPracticeAddr').value = addr;
   if ($('quickPracticeCity') && city) $('quickPracticeCity').value = city;
