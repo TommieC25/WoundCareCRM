@@ -261,6 +261,12 @@ return date.toLocaleDateString('en-US', options);
 function getLocationLabel(locationId) {
 const loc = practiceLocations.find(l => l.id === locationId);
 if (!loc) return '';
+const practice = practices.find(p => p.id === loc.practice_id);
+const practiceName = practice?.name || '';
+const locLabel = loc.label || '';
+if (practiceName && locLabel) return `${practiceName} — ${locLabel}`;
+if (practiceName) return practiceName;
+if (locLabel) return locLabel;
 return `${loc.address}, ${loc.city}`;
 }
 function getLocationContext(locationId) {
