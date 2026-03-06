@@ -1,6 +1,7 @@
 // === js/views.js === Activity view, Tasks view, Dashboard view, Map view
 let _taskDetailLogs = {};
 let activitySubTab = 'history'; // 'history' | 'activity' | 'tasks'
+const fmtD = ds => { if(!ds)return''; const d=new Date(ds+'T12:00:00'); return d.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'}); };
 
 // --- Activity sub-tab navigation HTML helper ---
 function _activityTabsHtml() {
@@ -96,7 +97,6 @@ const isOpen = r.reminder_date === '2099-12-31';
 const isStaff = phys?.specialty === 'Administrative Staff';
 const np = phys ? normPriority(phys.priority) : null;
 const tierColors = {'1':'#ef4444','2':'#f97316','3':'#3b82f6','4':'#8b5cf6','5':'#64748b'};
-const fmtD = ds => { if(!ds)return''; const d=new Date(ds+'T12:00:00'); return d.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'}); };
 let html = '';
 if (phys) {
 html += `<div style="padding:1rem;background:#f0f9f6;border-radius:10px;margin-bottom:0.75rem;border:1px solid #d1e7dd;">
@@ -199,7 +199,7 @@ const delFn=e.provider_id?`deleteNoteFromActivity('${e.id}','${e.provider_id}')`
 return renderLogEntry(e,{physName:phys?fmtName(phys):null,editable:true,editFn,deleteFn:delFn,full:true,showTimestamp:true});}}).join('')+'</div>';}
 html+='</div>';
 $('mainContent').innerHTML=html;
-}catch(e){console.error('History view error:',e);$('mainContent').innerHTML='<div class="empty-state"><h2>History</h2><p>Error: '+(e&&e.message?e.message:String(e))+'</p></div>';}
+}catch(e){console.error('History view error:',e);$('mainContent').innerHTML='<div class="empty-state"><h2>History</h2><p>Error loading. Try again.</p></div>';}
 }
 
 // --- Activity view (pure notes only, no tasks) ---
