@@ -165,6 +165,8 @@ function closeExportModal(){closeModal('exportModal');}
 function escCSV(val){if(val==null)return '';const s=String(val);if(s.includes(',')||s.includes('"')||s.includes('\n'))return '"'+s.replace(/"/g,'""')+'"';return s;}
 function downloadCSV(filename,headers,rows){const csv=[headers.join(','),...rows.map(r=>r.map(escCSV).join(','))].join('\n');const blob=new Blob([csv],{type:'text/csv;charset=utf-8;'});const url=URL.createObjectURL(blob);const a=document.createElement('a');a.href=url;a.download=filename;document.body.appendChild(a);a.click();document.body.removeChild(a);URL.revokeObjectURL(url);}
 function todayStamp(){const d=new Date();return d.toISOString().slice(0,10)+'_'+d.toTimeString().slice(0,8).replace(/:/g,'');}
+// Format YYYY-MM-DD as MM/DD for compact spreadsheet display
+function fmtDateMD(ds){if(!ds)return'';const m=ds.match(/^(\d{4})-(\d{2})-(\d{2})$/);return m?m[2]+'/'+m[3]:ds;}
 
 async function exportCSV(type){
 const st=document.getElementById('exportStatus');st.style.display='block';st.style.background='#e0f2fe';st.style.color='#075985';st.textContent='Preparing export...';
@@ -185,8 +187,8 @@ const{data:allLogs}=await db.from('contact_logs').select('*').order('contact_dat
 const latestLog={};(allLogs||[]).forEach(l=>{if(!latestLog[l.provider_id])latestLog[l.provider_id]=l;});
 const h=['Last Name','First Name','Degree','Practice','Tier','Specialty','Email','Mobile Phone','Academic Connection','Projected Volume','SS Volume','Primary Address','Primary City','Primary ZIP','Primary Phone','Primary Fax','Office Hours','Best Days','Receptionist','Location Count','Last Contact','Status','General Notes'];
 const rows=(allPhys||[]).map(p=>{const as=am[p.id]||[];const pl=(as.find(a=>a.is_primary)||as[0])?.practice_locations||{};
-const log=latestLog[p.id];const statusNote=log?(log.notes||'').replace(/^\[\d{1,2}:\d{2}\]\s*/,''):'';const statusPreview=statusNote.length>80?statusNote.substring(0,80)+'...':statusNote;const status=log?log.contact_date+': '+statusPreview:'';
-return[p.last_name,p.first_name,p.degree||'',pl.practices?.name||p.practice_name||'',p.priority||'',p.specialty||'',p.email||'',fmtPhone(p.mobile_phone),p.academic_connection||'',p.proj_vol||p.mohs_volume||'',p.ss_vol||'',pl.address||'',pl.city||'',pl.zip||'',fmtPhone(pl.phone),fmtPhone(pl.fax),pl.office_hours||'',pl.best_days||'',pl.receptionist_name||'',as.length,p.last_contact||'',status,p.general_notes||''];});
+const log=latestLog[p.id];const statusNote=log?(log.notes||'').replace(/^\[\d{1,2}:\d{2}\]\s*/,''):'';const statusPreview=statusNote.length>80?statusNote.substring(0,80)+'...':statusNote;const status=log?fmtDateMD(log.contact_date)+': '+statusPreview:'';
+return[p.last_name,p.first_name,p.degree||'',pl.practices?.name||p.practice_name||'',p.priority||'',p.specialty||'',p.email||'',fmtPhone(p.mobile_phone),p.academic_connection||'',p.proj_vol||p.mohs_volume||'',p.ss_vol||'',pl.address||'',pl.city||'',pl.zip||'',fmtPhone(pl.phone),fmtPhone(pl.fax),pl.office_hours||'',pl.best_days||'',pl.receptionist_name||'',as.length,fmtDateMD(p.last_contact),status,p.general_notes||''];});
 downloadCSV('providers_export_'+todayStamp()+'.csv',h,rows);
 }
 
@@ -197,14 +199,14 @@ const h=['Date','Time','Author','Provider Last Name','Provider First Name','Loca
 const rows=(allLogs||[]).map(l=>{const p=pm[l.provider_id]||{};const loc=l.practice_location_id?getLocationLabel(l.practice_location_id):'';
 let notes=l.notes||'',time=l.contact_time||'';
 if(!time&&notes.startsWith('[')){const m=notes.match(/^\[(\d{1,2}:\d{2})\]\s*/);if(m){time=m[1];notes=notes.slice(m[0].length);}}
-return[l.contact_date,time,l.author||'',p.last_name||'',p.first_name||'',loc,notes];});
+return[fmtDateMD(l.contact_date),time,l.author||'',p.last_name||'',p.first_name||'',loc,notes];});
 downloadCSV('contact_logs_export_'+todayStamp()+'.csv',h,rows);
 }
 
 async function exportPractices(){
-const{data:allLocs,error}=await db.from('practice_locations').select('*, practices(name)').order('city');if(error)throw error;
-const h=['Practice Name','Location Label','Address','City','ZIP','Phone','Fax','Office Email','Office Hours','Office Staff','Receptionist','Best Days'];
-const rows=(allLocs||[]).map(l=>[l.practices?.name||'',l.label||'',l.address||'',l.city||'',l.zip||'',fmtPhone(l.phone),fmtPhone(l.fax),l.practice_email||'',l.office_hours||'',l.office_staff||'',l.receptionist_name||'',l.best_days||'']);
+const{data:allLocs,error}=await db.from('practice_locations').select('*, practices(name, website, email)').order('city');if(error)throw error;
+const h=['Practice Name','Practice Email','Practice Website','Location Label','Address','City','ZIP','Phone','Fax','Office Email','Office Hours','Office Staff','Receptionist','Best Days'];
+const rows=(allLocs||[]).map(l=>[l.practices?.name||'',l.practices?.email||'',l.practices?.website||'',l.label||'',l.address||'',l.city||'',l.zip||'',fmtPhone(l.phone),fmtPhone(l.fax),l.practice_email||'',l.office_hours||'',l.office_staff||'',l.receptionist_name||'',l.best_days||'']);
 downloadCSV('practices_locations_export_'+todayStamp()+'.csv',h,rows);
 }
 
@@ -295,7 +297,7 @@ let status = '';
 if (r.activity) {
 const note = (r.activity.notes || '').replace(/^\[\d{1,2}:\d{2}\]\s*/, '');
 const preview = note.length > 80 ? note.substring(0, 80) + '...' : note;
-status = r.activity.contact_date + ': ' + preview;
+status = fmtDateMD(r.activity.contact_date) + ': ' + preview;
 }
 if (r.type === 'loc-only') {
 return ['','','','','','(Enter HCP first name)','(Enter HCP last name)','','',status,'',practiceName,l?.address||'',l?.city||'',l?.zip||'',fmtPhone(l?.phone),'',l?.city?guessCounty(l.city):'',l?.practice_email?'Email: '+l.practice_email:''];
