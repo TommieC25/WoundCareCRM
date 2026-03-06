@@ -214,8 +214,8 @@ const reminderLine=e.reminder_date?(e.reminder_date==='2000-01-01'?`<span style=
 const editFn=opts.editFn||`editNote('${e.id}')`;
 const delFn=opts.deleteFn||`deleteNote('${e.id}')`;
 const actions=opts.editable?`<div class="contact-entry-actions"><button class="icon-btn" onclick="event.stopPropagation();${editFn}" title="Edit">✏️</button><button class="icon-btn" onclick="event.stopPropagation();${delFn}" title="Delete">🗑️</button></div>`:'';
-const click=opts.onClick?` style="cursor:pointer" onclick="${opts.onClick}"`:'';
-return `<div class="contact-entry"${click}><div class="contact-entry-header"><div><span class="contact-entry-date">${headerLine1}</span>${reminderLine}${headerLine2}</div>${actions}</div><div class="contact-entry-notes">${preview}</div></div>`;}
+const today=localDate();const _isDone=e.reminder_date==='2000-01-01';const _isOD=e.reminder_date&&!_isDone&&e.reminder_date!=='2099-12-31'&&e.reminder_date<today;const barColor=e.reminder_date?(_isDone?'#10b981':_isOD?'#dc2626':'#6b7280'):null;if(barColor){if(!window._taskDetailLogs)window._taskDetailLogs={};window._taskDetailLogs[e.id]=e;}const divStyle=(barColor?`border-left-color:${barColor};`:'')+(opts.onClick?'cursor:pointer;':'');const clickAttr=opts.onClick?` onclick="${opts.onClick}"`:'';
+return `<div class="contact-entry"${divStyle?` style="${divStyle}"`:''}${clickAttr}><div class="contact-entry-header"><div><span class="contact-entry-date">${headerLine1}</span>${reminderLine}${headerLine2}</div>${actions}</div><div class="contact-entry-notes">${preview}</div></div>`;}
 // Renders a single entry in the provider profile log — handles both tasks (colored bars) and plain notes
 function renderProfileEntry(e) {
 if (!e.reminder_date) {
