@@ -70,32 +70,23 @@ document.querySelectorAll(`.reminder-date-btn[data-prefix="${prefix}"]`).forEach
 }
 // --- View routing ---
 function setView(view) {
+// 'tasks' is now a sub-tab of 'activity'; route it there
+if(view==='tasks'){activitySubTab='tasks';view='activity';}
 currentView = view;
 $('tabPhysicians').classList.toggle('active', view === 'physicians');
 $('tabPractices').classList.toggle('active', view === 'practices');
 $('tabActivity').classList.toggle('active', view === 'activity');
 $('tabMap').classList.toggle('active', view === 'map');
 if(view==='activity'){
-$('searchInput').placeholder='Search activity...';
+$('searchInput').placeholder='Search...';
 $('addBtn').style.display='none';
 $('sortControls').style.display='none';
 $('tierFilterControls').style.display='none';
 $('searchInput').parentElement.parentElement.style.display='';
-$('physicianList').innerHTML='<li class="loading">Loading activity...</li>';
-$('mainContent').innerHTML='<div class="empty-state"><h2>Activity Log</h2><p>Loading recent activity…</p></div>';
+$('physicianList').innerHTML='<li class="loading">Loading...</li>';
+$('mainContent').innerHTML='<div class="empty-state"><p>Loading…</p></div>';
 currentPhysician=null;currentPractice=null;
-renderActivityView();
-return;
-}
-if(view==='tasks'){
-$('searchInput').placeholder='Search tasks...';
-$('searchInput').parentElement.parentElement.style.display='';
-$('addBtn').style.display='none';
-$('sortControls').style.display='none';
-$('tierFilterControls').style.display='none';
-$('physicianList').innerHTML='';
-currentPhysician=null;currentPractice=null;
-renderTasksView();
+renderActivityTabView();
 return;
 }
 if(view==='map'){
@@ -225,6 +216,33 @@ const delFn=opts.deleteFn||`deleteNote('${e.id}')`;
 const actions=opts.editable?`<div class="contact-entry-actions"><button class="icon-btn" onclick="event.stopPropagation();${editFn}" title="Edit">✏️</button><button class="icon-btn" onclick="event.stopPropagation();${delFn}" title="Delete">🗑️</button></div>`:'';
 const click=opts.onClick?` style="cursor:pointer" onclick="${opts.onClick}"`:'';
 return `<div class="contact-entry"${click}><div class="contact-entry-header"><div><span class="contact-entry-date">${headerLine1}</span>${reminderLine}${headerLine2}</div>${actions}</div><div class="contact-entry-notes">${preview}</div></div>`;}
+// Renders a single entry in the provider profile log — handles both tasks (colored bars) and plain notes
+function renderProfileEntry(e) {
+if (!e.reminder_date) {
+// Plain activity note — use standard renderer
+return renderLogEntry(e,{editable:true,showTimestamp:true,full:true});
+}
+// Task entry — show with status-colored bar and complete button
+const today = localDate();
+const isDone = e.reminder_date === '2000-01-01';
+const isOpen = e.reminder_date === '2099-12-31';
+const isOverdue = !isDone && !isOpen && e.reminder_date < today;
+let barColor = '#6b7280'; // pending = gray
+if (isDone) barColor = '#10b981'; // completed = green
+else if (isOverdue) barColor = '#dc2626'; // overdue = red
+// populate _taskDetailLogs so task detail modal can open this record
+if (!window._taskDetailLogs) window._taskDetailLogs = {};
+window._taskDetailLogs[e.id] = e;
+const {displayNotes,taskNote} = parseTaskRecord(e.notes);
+const preview = displayNotes.length > 120 ? displayNotes.slice(0,120)+'...' : displayNotes;
+const editFn = `editTaskFromList('${e.id}')`;
+const delFn = `deleteNote('${e.id}')`;
+const cardId = `plog-${e.id}`;
+const statusText = isDone ? '✓ Completed' : isOpen ? '📌 Open — no due date' : isOverdue ? `⚠️ OVERDUE — Due ${new Date(e.reminder_date+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'})}` : `🔔 Due ${new Date(e.reminder_date+'T12:00:00').toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})}`;
+const bgColor = isDone ? 'background:#f0fdf4;opacity:0.9;' : isOverdue ? 'background:#fff5f5;' : '';
+const completeBtn = isDone ? `<div style="width:22px;height:22px;min-width:22px;border-radius:50%;background:#10b981;color:white;display:flex;align-items:center;justify-content:center;font-size:0.75rem;flex-shrink:0;margin-top:0.1rem;">✓</div>` : `<button onclick="event.stopPropagation();completeReminderInPlace('${e.id}','${cardId}',()=>{})" title="Mark complete" style="background:none;border:2px solid ${barColor};color:${barColor};border-radius:50%;width:22px;height:22px;min-width:22px;cursor:pointer;font-size:0.75rem;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:0.1rem;">✓</button>`;
+return `<div class="contact-entry" id="${cardId}" style="border-left-color:${barColor};${bgColor}display:flex;gap:0.5rem;align-items:flex-start;cursor:pointer;" onclick="openTaskDetailModal('${e.id}')">${completeBtn}<div style="flex:1;"><div style="font-size:0.7rem;color:#999;margin-bottom:0.2rem;">${new Date(e.contact_date+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'})}${e.author?' — '+e.author:''}</div><div style="font-size:0.75rem;font-weight:600;color:${isOverdue?'#dc2626':isDone?'#065f46':'#92400e'};margin-bottom:0.2rem;">${statusText}</div>${taskNote?`<div style="font-size:0.85rem;font-weight:600;color:#92400e;background:#fef3c7;padding:0.15rem 0.4rem;border-radius:4px;margin-bottom:0.2rem;">📋 ${taskNote}</div>`:''}<div style="font-size:0.85rem;color:#333;">${preview}</div><div style="display:flex;gap:0.5rem;margin-top:0.4rem;"><button class="icon-btn" onclick="event.stopPropagation();${editFn}" title="Edit task" style="font-size:0.8rem;">✏️ Edit</button><button class="icon-btn" onclick="event.stopPropagation();${delFn}" title="Delete" style="font-size:0.8rem;color:#dc2626;">🗑️</button></div></div></div>`;
+}
 function ci(icon,label,val){return val?`<div class="contact-item"><div class="contact-icon">${icon}</div><div class="contact-item-content"><div class="contact-item-label">${label}</div><div class="contact-item-value">${val}</div></div></div>`:''}
 function getPracticeName(practiceId){const p=practices.find(pr=>pr.id===practiceId);return p?p.name:'';}
 function getPrimaryLoc(physicianId) {
@@ -287,15 +305,13 @@ return locs.some(l=>[l.address,l.city,l.zip,l.phone,l.fax,l.practice_email,l.off
 function filterList() {
 const val = $('searchInput').value;
 $('searchClear').style.display = val ? 'flex' : 'none';
-if(currentView==='tasks') renderTasksView();
-else if(currentView==='activity') renderActivityView();
+if(currentView==='activity') renderActivityTabView();
 else renderList();
 }
 function clearSearch() {
 $('searchInput').value = '';
 $('searchClear').style.display = 'none';
-if(currentView==='tasks') renderTasksView();
-else if(currentView==='activity') renderActivityView();
+if(currentView==='activity') renderActivityTabView();
 else renderList();
 $('searchInput').focus();
 }
