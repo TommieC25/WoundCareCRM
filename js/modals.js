@@ -173,11 +173,11 @@ showToast('Deleted','success');updateSyncIndicators('synced');
 // --- Practice modal ---
 function openPracticeModal(){editingPracticeId=null;locationsToDelete=[];$('practiceModalTitle').textContent='Add Practice';$('practiceForm').reset();$('practiceEmail').value='';$('practiceAddressSection').style.display='';$('practiceLocationsEditSection').style.display='none';$('practiceSaveBtn').textContent='Save Practice';$('practiceSaveBtn').className='btn-primary';$('practiceModal').classList.add('active');}
 function closePracticeModal(){closeModal('practiceModal');}
-function editPractice(){editingPracticeId=currentPractice.id;locationsToDelete=[];$('practiceModalTitle').textContent='Edit Practice';const pLocs=practiceLocations.filter(l=>l.practice_id===currentPractice.id);const pEmail=pLocs.map(l=>l.practice_email).find(Boolean)||'';setFields({practiceName:currentPractice.name,practiceWebsite:currentPractice.website||'',practiceNotes:currentPractice.general_notes||'',practiceEmail:pEmail});$('practiceAddressSection').style.display='none';populateLocationEditCards(currentPractice.id);$('practiceLocationsEditSection').style.display='';$('practiceSaveBtn').textContent='Save Practice';$('practiceSaveBtn').className='btn-primary';$('practiceModal').classList.add('active');}
+function editPractice(){editingPracticeId=currentPractice.id;locationsToDelete=[];$('practiceModalTitle').textContent='Edit Practice';setFields({practiceName:currentPractice.name,practiceWebsite:currentPractice.website||'',practiceNotes:currentPractice.general_notes||'',practiceEmail:currentPractice.email||''});$('practiceAddressSection').style.display='none';populateLocationEditCards(currentPractice.id);$('practiceLocationsEditSection').style.display='';$('practiceSaveBtn').textContent='Save Practice';$('practiceSaveBtn').className='btn-primary';$('practiceModal').classList.add('active');}
 function editPracticeFromProfile(practiceId){
 const pr=practices.find(p=>p.id===practiceId);if(!pr)return;
 editingPracticeId=pr.id;locationsToDelete=[];$('practiceModalTitle').textContent='Edit Practice';
-const prLocs=practiceLocations.filter(l=>l.practice_id===pr.id);const prEmail=prLocs.map(l=>l.practice_email).find(Boolean)||'';setFields({practiceName:pr.name,practiceWebsite:pr.website||'',practiceNotes:pr.general_notes||'',practiceEmail:prEmail});
+setFields({practiceName:pr.name,practiceWebsite:pr.website||'',practiceNotes:pr.general_notes||'',practiceEmail:pr.email||''});
 $('practiceAddressSection').style.display='none';populateLocationEditCards(pr.id);$('practiceLocationsEditSection').style.display='';$('practiceSaveBtn').textContent='Save Practice';$('practiceSaveBtn').className='btn-primary';$('practiceModal').classList.add('active');
 }
 let locEditCounter = 0;
@@ -260,9 +260,10 @@ best_days: getData('best_days')
 };
 });
 }
+// NOTE: practices.email column requires: ALTER TABLE practices ADD COLUMN email VARCHAR(255);
 async function savePractice(e) {
 e.preventDefault();
-const data={name:$('practiceName').value,website:$('practiceWebsite').value||null,general_notes:$('practiceNotes').value||null};
+const data={name:$('practiceName').value,website:$('practiceWebsite').value||null,general_notes:$('practiceNotes').value||null,email:$('practiceEmail').value||null};
 await withSave('practiceSaveBtn','Save Practice',async()=>{
 if(editingPracticeId){
 const{error}=await db.from('practices').update(data).eq('id',editingPracticeId);if(error)throw error;
@@ -344,6 +345,8 @@ if (addr && city && cityLineIdx === -1) {
   const tailMatch = addr.match(new RegExp(',?\\s*' + city.replace(/[.*+?^${}()|[\]\\]/g,'\\$&') + '.*$', 'i'));
   if (tailMatch && tailMatch.index > 0) addr = addr.slice(0, tailMatch.index).trim().replace(/,\s*$/, '');
 }
+// Normalize address: convert "Suite 205" → "#205", directionals, strip nan tokens
+if (addr && typeof normalizeAddr === 'function') addr = normalizeAddr(addr);
 if (mode === 'quick') {
   if ($('quickPracticeAddr') && addr) $('quickPracticeAddr').value = addr;
   if ($('quickPracticeCity') && city) $('quickPracticeCity').value = city;
