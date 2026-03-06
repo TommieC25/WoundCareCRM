@@ -82,11 +82,11 @@ ${assign.is_primary
 <div class="section">
 <div class="section-header">
 <h3>Activity Log</h3>
-<button class="edit-btn" onclick="openContactModal()">+ Add Note</button>
+<button class="edit-btn" onclick="openContactModal()">+ Add Activity</button>
 </div>
 ${logs.length === 0 ?
-'<div class="empty-notice">No contact history yet. Click + Add Note to record your first call or visit.</div>' :
-'<div class="contact-entries">' + logs.map(e => renderLogEntry(e,{editable:true,showTimestamp:true,full:true})).join('') + '</div>'
+'<div class="empty-notice">No activity yet. Click + Add Activity to record your first call or visit.</div>' :
+'<div class="contact-entries">' + logs.map(e => renderProfileEntry(e)).join('') + '</div>'
 }
 </div>
 `;
@@ -131,7 +131,7 @@ ${mi('Locations',locations.length)}${mi('Providers',practicePhysicians.length)}$
 <button class="delete-btn" onclick="deletePractice()">Delete</button>
 </div>
 </div>
-<div class="contact-grid">${(()=>{const pLocs=practiceLocations.filter(l=>l.practice_id===p.id);const pEmail=pLocs.map(l=>l.practice_email).find(Boolean)||'';const pPhone=pLocs.map(l=>l.phone).find(Boolean)||'';const pFax=pLocs.map(l=>l.fax).find(Boolean)||'';const pHours=pLocs.map(l=>l.office_hours).find(Boolean)||'';const pStaff=pLocs.map(l=>l.office_staff).find(Boolean)||'';const pBestDays=pLocs.map(l=>l.best_days).find(Boolean)||'';const wSite=p.website?`<a href="${p.website.match(/^https?:\/\//)?p.website:'https://'+p.website}" target="_blank" style="color:#0a4d3c;">${p.website}</a>`:'';return (wSite?ci('🌐','Website',wSite):'')+ci('✉️','Email',pEmail?`<a href="mailto:${pEmail}">${pEmail}</a>`:'')+ci('📞','Phone',pPhone?`<a href="tel:${pPhone.replace(/\D/g,'')}">${fmtPhone(pPhone)}</a>`:'')+ci('📠','Fax',pFax?fmtPhone(pFax):'')+ci('🕐','Office Hours',pHours)+ci('👥','Office Staff',pStaff)+ci('📅','Best Days',pBestDays)+ci('📝','Notes',p.general_notes)||(!pEmail&&!p.general_notes&&!pPhone?'<div class="empty-notice">No details for this practice</div>':'');})()}</div>
+<div class="contact-grid">${(()=>{const pLocs=practiceLocations.filter(l=>l.practice_id===p.id);const pEmail=pLocs.map(l=>l.practice_email).find(Boolean)||'';const pPhone=pLocs.map(l=>l.phone).find(Boolean)||'';const pFax=pLocs.map(l=>l.fax).find(Boolean)||'';const pHours=pLocs.map(l=>l.office_hours).find(Boolean)||'';const pStaff=pLocs.map(l=>l.office_staff).find(Boolean)||'';const pBestDays=pLocs.map(l=>l.best_days).find(Boolean)||'';const wSite=p.website?`<a href="${p.website.match(/^https?:\/\//)?p.website:'https://'+p.website}" target="_blank" style="color:#0a4d3c;">${p.website}</a>`:'';const practiceEmail=p.email||'';return (wSite?ci('🌐','Website',wSite):'')+ci('✉️','Email',practiceEmail?`<a href="mailto:${practiceEmail}">${practiceEmail}</a>`:pEmail?`<a href="mailto:${pEmail}">${pEmail}</a>`:'')+ci('📞','Phone',pPhone?`<a href="tel:${pPhone.replace(/\D/g,'')}">${fmtPhone(pPhone)}</a>`:'')+ci('📠','Fax',pFax?fmtPhone(pFax):'')+ci('🕐','Office Hours',pHours)+ci('👥','Office Staff',pStaff)+ci('📅','Best Days',pBestDays)+ci('📝','Notes',p.general_notes)||(!pEmail&&!practiceEmail&&!p.general_notes&&!pPhone?'<div class="empty-notice">No details for this practice</div>':'');})()}</div>
 </div>
 <div class="section">
 <div class="section-header">
