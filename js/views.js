@@ -139,14 +139,15 @@ const completeFn = `event.stopPropagation();completeReminder('${r.id}').then(()=
 window._openedTaskRec = r;
 const editFn = `closeTaskDetailModal();openEditTaskModal()`;
 const delFn = r.provider_id ? `closeTaskDetailModal();deleteNoteFromActivity('${r.id}','${r.provider_id}').then(()=>renderTasksView())` : '';
-const profileFn = phys ? `closeTaskDetailModal();setView('physicians');viewPhysician('${phys.id}')` : '';
+const profileFn = phys ? `closeTaskDetailModal();setView('physicians');viewPhysician('${phys.id}')` : practice ? `closeTaskDetailModal();setView('practices');viewPractice('${practice.id}')` : '';
+const profileLabel = phys ? '👤 View Full Profile' : '🏢 View Practice Profile';
 html += `<div style="display:flex;flex-direction:column;gap:0.5rem;">
 <button onclick="${completeFn}" style="padding:0.75rem;background:#10b981;color:white;border:none;border-radius:8px;font-weight:700;font-size:0.95rem;cursor:pointer;-webkit-tap-highlight-color:transparent;">✓ Mark Complete</button>
 <div style="display:flex;gap:0.5rem;">
 <button onclick="${editFn}" style="flex:1;padding:0.7rem;background:#0a4d3c;color:white;border:none;border-radius:8px;font-weight:600;font-size:0.875rem;cursor:pointer;">✏️ Edit Note/Task</button>
 ${delFn?`<button onclick="${delFn}" style="flex:1;padding:0.7rem;background:#dc2626;color:white;border:none;border-radius:8px;font-weight:600;font-size:0.875rem;cursor:pointer;">🗑️ Delete</button>`:''}
 </div>
-${profileFn?`<button onclick="${profileFn}" style="padding:0.7rem;background:rgba(10,77,60,0.08);color:#0a4d3c;border:2px solid #0a4d3c;border-radius:8px;font-weight:600;font-size:0.875rem;cursor:pointer;">👤 View Full Profile</button>`:''}
+${profileFn?`<button onclick="${profileFn}" style="padding:0.7rem;background:rgba(10,77,60,0.08);color:#0a4d3c;border:2px solid #0a4d3c;border-radius:8px;font-weight:600;font-size:0.875rem;cursor:pointer;">${profileLabel}</button>`:''}
 ${(!isOpen && r.reminder_date)?`<div><div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.4rem;"><span style="font-size:0.82rem;color:#555;min-width:5.5rem;font-weight:500;">Visit time</span><input type="time" id="taskCalTime" style="flex:1;padding:0.4rem 0.6rem;border:1px solid #d1d5db;border-radius:6px;font-size:0.9rem;font-family:inherit;" aria-label="Calendar event time"><span style="font-size:0.72rem;color:#aaa;white-space:nowrap;">optional</span></div><div style="display:flex;gap:0.5rem;"><button onclick="openGoogleCalendar('${r.id}')" style="flex:1;padding:0.7rem;background:rgba(59,130,246,0.08);color:#1d4ed8;border:2px solid #3b82f6;border-radius:8px;font-weight:600;font-size:0.875rem;cursor:pointer;-webkit-tap-highlight-color:transparent;">📅 Google Calendar</button><button onclick="exportTaskToCalendar('${r.id}')" style="padding:0.7rem 0.85rem;background:rgba(59,130,246,0.08);color:#1d4ed8;border:2px solid #3b82f6;border-radius:8px;font-weight:600;font-size:0.875rem;cursor:pointer;-webkit-tap-highlight-color:transparent;" title="Add to Apple Calendar / Outlook">🍎 Apple Cal</button></div></div>`:''}
 </div>`;
 $('taskDetailTitle').textContent = phys ? fmtName(phys) : (practice?.name || loc?.label || 'Task');
@@ -230,7 +231,7 @@ $('physicianCount').textContent=filtered.length+' of '+pureNotes.length+' activi
 const addBtn=`<button onclick="openContactModal()" style="padding:0.4rem 0.9rem;background:#0a4d3c;color:white;border:none;border-radius:6px;font-size:0.85rem;font-weight:600;cursor:pointer;">+ Add Activity</button>`;
 $('mainContent').innerHTML=_activityTabsHtml()+`<div class="section"><div class="section-header"><h3>Activity Log</h3><div style="display:flex;align-items:center;gap:0.75rem;"><div style="font-size:0.8rem;color:#666;">${filtered.length} entries${search?' matching "'+search+'"':''}</div>${addBtn}</div></div>
 ${filtered.length===0?'<div class="empty-notice">No activity found.</div>':
-'<div class="contact-entries">'+filtered.map(e=>{const phys=e.provider_id?physMap[e.provider_id]:null;const editFn=e.provider_id?`editNoteFromActivity('${e.id}','${e.provider_id}')`:`editPracticeNote('${e.id}')`;const delFn=e.provider_id?`deleteNoteFromActivity('${e.id}','${e.provider_id}')`:`deletePracticeNote('${e.id}')`;return renderLogEntry(e,{physName:phys?fmtName(phys):null,editable:true,editFn,deleteFn:delFn,full:true,showTimestamp:true});}).join('')+'</div>'}
+'<div class="contact-entries">'+filtered.map(e=>{const phys=e.provider_id?physMap[e.provider_id]:null;const isTask=!!e.reminder_date;const editFn=isTask?`openTaskDetailModal('${e.id}')`:e.provider_id?`editNoteFromActivity('${e.id}','${e.provider_id}')`:`editPracticeNote('${e.id}')`;const delFn=e.provider_id?`deleteNoteFromActivity('${e.id}','${e.provider_id}')`:`deletePracticeNote('${e.id}')`;return renderLogEntry(e,{physName:phys?fmtName(phys):null,editable:true,editFn,deleteFn:delFn,full:true,showTimestamp:true});}).join('')+'</div>'}
 </div>`;
 }catch(e){console.error('Activity view error:',e);$('physicianList').innerHTML='<li class="loading">Error loading activity</li>';$('mainContent').innerHTML='<div class="empty-state"><h2>Activity</h2><p>Error loading. Try again.</p></div>';}
 }
