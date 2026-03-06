@@ -115,7 +115,7 @@ const total=1+alsoIds.length;
 showToast(`Note logged for ${total} provider${total>1?'s':''}`,'success');
 }
 await db.from('providers').update({last_contact:dateVal}).eq('id',currentPhysician.id);
-currentPhysician.last_contact=dateVal;await loadContactLogs(currentPhysician.id);if(currentView==='activity'){renderActivityView();}else{renderProfile();}
+currentPhysician.last_contact=dateVal;await loadContactLogs(currentPhysician.id);if(currentView==='activity'){renderActivityTabView();}else{renderProfile();}
 // If follow-up task requested, open separate task modal after closing activity modal
 if(!editingContactId&&reminderOn){
 setTimeout(()=>{closeContactModal();openAddTaskModal(currentPhysician.id,locVal);},400);
@@ -154,7 +154,7 @@ $('contactModal').classList.add('active');
 }
 
 async function deleteNote(logId) {
-await dbDel('contact_logs',logId,'Delete this note?',async()=>{if(!currentPhysician)return;await loadContactLogs(currentPhysician.id);if(currentView==='activity'){renderActivityView();}else if(currentView==='tasks'){renderTasksView();}else{renderProfile();}});
+await dbDel('contact_logs',logId,'Delete this note?',async()=>{if(!currentPhysician)return;await loadContactLogs(currentPhysician.id);if(currentView==='activity'){renderActivityTabView();}else{renderProfile();}});
 }
 
 async function completeReminder(logId) {
@@ -164,7 +164,7 @@ const {error} = await db.from('contact_logs').update({reminder_date: '2000-01-01
 if (error) throw error;
 showToast('Reminder marked complete ✓', 'success');
 updateSyncIndicators('synced');
-if (!currentPhysician && !currentPractice && currentView !== 'tasks') { renderEmptyState(); }
+if (!currentPhysician && !currentPractice && !(currentView === 'activity' && activitySubTab === 'tasks')) { renderEmptyState(); }
 } catch(e) { showToast('Error: ' + e.message, 'error'); updateSyncIndicators('error'); }
 }
 
@@ -174,7 +174,7 @@ currentPhysician = physicians.find(p => p.id === physicianId);
 currentPractice = null;
 if (!currentPhysician) return;
 await loadContactLogs(physicianId);
-if (currentView === 'activity') {
+if (currentView === 'activity' && activitySubTab !== 'tasks') {
 setTimeout(() => editNote(logId), 50);
 } else {
 renderList();
@@ -428,7 +428,7 @@ if (error) throw error;
 showToast(editId ? 'Task updated' : 'Task saved', 'success');
 closeAddTaskModal();
 if (physicianId && currentPhysician && currentPhysician.id === physicianId) { await loadContactLogs(physicianId); renderProfile(); }
-if (typeof renderTasksView === 'function') renderTasksView();
+if (currentView === 'activity') renderActivityTabView();
 if (!editId && _newRec && date && date !== '2099-12-31') {
 const _p=physicianId?physicians.find(p=>p.id===physicianId):null,_l=locationId?practiceLocations.find(l=>l.id===locationId):null,_pr=_l?practices.find(p=>p.id===_l.practice_id):null;
 const calUrl=buildGoogleCalendarUrl(_newRec,_p,_l,_pr);

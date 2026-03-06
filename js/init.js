@@ -35,7 +35,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 setToday();
 await loadAllData();
 setupRealtimeSubscription();
-setView('tasks'); // always start at task list on page load/refresh
+activitySubTab = 'history'; // start on combined history view
+setView('activity'); // default landing: Activity → History tab
 // Prevent background scroll when modals are open (iPad fix)
 document.querySelectorAll('.modal').forEach(modal => {
 modal.addEventListener('touchmove', function(e) {

@@ -1,5 +1,18 @@
 // === js/views.js === Activity view, Tasks view, Dashboard view, Map view
 let _taskDetailLogs = {};
+let activitySubTab = 'history'; // 'history' | 'activity' | 'tasks'
+
+// --- Activity sub-tab navigation HTML helper ---
+function _activityTabsHtml() {
+const tabs = [{id:'history',label:'HISTORY'},{id:'activity',label:'ACTIVITY'},{id:'tasks',label:'TASKS'}];
+return `<div style="display:flex;gap:0.5rem;margin-bottom:1rem;padding-bottom:0.75rem;border-bottom:2px solid #f0f0f0;">`+tabs.map(t=>`<button onclick="switchActivityTab('${t.id}')" style="padding:0.45rem 0.9rem;border:none;border-radius:6px;font-size:0.78rem;font-weight:700;cursor:pointer;letter-spacing:0.5px;transition:all 0.15s;-webkit-tap-highlight-color:transparent;${activitySubTab===t.id?'background:#0a4d3c;color:white;':'background:#e5e7eb;color:#374151;'}">${t.label}</button>`).join('')+`</div>`;
+}
+
+// --- Activity tab switcher (called from sub-tab buttons) ---
+window.switchActivityTab = async function(tab) {
+activitySubTab = tab;
+await renderActivityTabView();
+};
 function closeTaskDetailModal() { closeModal('taskDetailModal'); }
 
 // Opens the task edit modal directly from a task card (bypasses activity editor)
@@ -151,20 +164,56 @@ if (error) throw error;
 const label = newDate==='2099-12-31'?'Open':new Date(newDate+'T12:00:00').toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
 showToast('Rescheduled to '+label,'success');
 closeTaskDetailModal();
-renderTasksView();
+if(currentView==='activity') renderActivityTabView(); else renderTasksView();
 } catch(e){ showToast('Error: '+e.message,'error'); }
 }
 
-// --- Activity view ---
+// --- Activity tab view dispatcher (called by setView('activity') and switchActivityTab) ---
+async function renderActivityTabView(){
+if(activitySubTab==='tasks') await renderTasksView();
+else if(activitySubTab==='activity') await renderActivityView();
+else await renderHistoryView();
+}
+
+// --- History view: combined activities + tasks, reverse chronological ---
+async function renderHistoryView(){
+try{
+const{data:allLogs,error}=await db.from('contact_logs').select('*').order('contact_date',{ascending:false}).order('created_at',{ascending:false}).limit(200);
+if(error)throw error;
+const physMap={};physicians.forEach(p=>physMap[p.id]=p);
+const today=localDate();
+const search=($('searchInput').value||'').trim().toLowerCase();
+const filtered=search?allLogs.filter(l=>{const p=physMap[l.provider_id]||{};const fullName=((p.first_name||'')+' '+(p.last_name||'')).trim();return(l.notes||'').toLowerCase().includes(search)||(l.author||'').toLowerCase().includes(search)||fullName.toLowerCase().includes(search);}):allLogs;
+// Update sidebar
+$('physicianList').innerHTML=filtered.length===0?'<li class="loading">No entries found</li>':filtered.map(l=>{const p=l.provider_id?physMap[l.provider_id]:null;const isTask=l.reminder_date&&l.reminder_date!==null;const nameDisplay=p?`${p.first_name||''} ${p.last_name||''}`.trim():(l.practice_location_id?getLocationLabel(l.practice_location_id):'Location Note');let notes=l.notes||'';const tm=notes.match(/^\[(\d{1,2}:\d{2})\]\s*/);if(tm)notes=notes.slice(tm[0].length);const taskMatch=notes.match(/\s*\|\s*\[Task:\s*(.*?)\]$/);if(taskMatch)notes=notes.slice(0,taskMatch.index).trim();const preview=notes.length>80?notes.slice(0,80)+'...':notes;let barColor='#0a4d3c';if(isTask){if(l.reminder_date==='2000-01-01')barColor='#10b981';else if(l.reminder_date==='2099-12-31')barColor='#6b7280';else if(l.reminder_date<today)barColor='#dc2626';else barColor='#6b7280';}const clickFn=l.provider_id?`viewPhysician('${l.provider_id}')`:l.practice_location_id?`viewLocation('${l.practice_location_id}')`:''
+return`<li class="physician-item" style="border-left:3px solid ${barColor};" onclick="${clickFn}"><div class="name">${nameDisplay}</div><div class="practice">${l.contact_date}${l.author?' - '+l.author:''}</div><div style="font-size:0.75rem;color:rgba(255,255,255,0.75);margin-top:0.25rem;">${preview}</div></li>`;}).join('');
+$('physicianCount').textContent=filtered.length+' of '+allLogs.length+' entries';
+// Main content
+const addBtn=`<button onclick="openContactModal()" style="padding:0.4rem 0.9rem;background:#0a4d3c;color:white;border:none;border-radius:6px;font-size:0.85rem;font-weight:600;cursor:pointer;">+ Add Activity</button>`;
+let html=_activityTabsHtml()+`<div class="section"><div class="section-header"><h3>History</h3><div style="display:flex;align-items:center;gap:0.75rem;"><div style="font-size:0.8rem;color:#666;">${filtered.length} entries${search?' matching "'+search+'"':''}</div>${addBtn}</div></div>`;
+if(filtered.length===0){html+='<div class="empty-notice">No entries found.</div>';}else{
+html+='<div class="contact-entries">'+filtered.map(e=>{const phys=e.provider_id?physMap[e.provider_id]:null;const isTask=e.reminder_date&&e.reminder_date!==null;if(isTask){const physName=phys?fmtName(phys):(e.practice_location_id?getLocationLabel(e.practice_location_id):'Location Note');const{displayNotes,taskNote}=parseTaskRecord(e.notes);const preview=displayNotes.length>120?displayNotes.slice(0,120)+'...':displayNotes;let barColor='#6b7280';let bgColor='';if(e.reminder_date==='2000-01-01'){barColor='#10b981';bgColor='background:#f0fdf4;opacity:0.85;';}else if(e.reminder_date!=='2099-12-31'&&e.reminder_date<today){barColor='#dc2626';bgColor='background:#fff5f5;';}const editFn=e.provider_id?`editNoteFromActivity('${e.id}','${e.provider_id}')`:''
+const delFn=e.provider_id?`deleteNoteFromActivity('${e.id}','${e.provider_id}').then(()=>renderHistoryView())`:''
+const isDone=e.reminder_date==='2000-01-01';return`<div class="contact-entry" id="hlog-${e.id}" style="border-left-color:${barColor};${bgColor}display:flex;gap:0.5rem;align-items:flex-start;cursor:pointer;" onclick="openTaskDetailModal('${e.id}')">${isDone?`<div style="width:24px;height:24px;min-width:24px;border-radius:50%;background:#10b981;color:white;display:flex;align-items:center;justify-content:center;font-size:0.8rem;flex-shrink:0;margin-top:0.15rem;">✓</div>`:`<button onclick="event.stopPropagation();completeReminderInPlace('${e.id}','hlog-${e.id}',renderHistoryView)" title="Mark complete" style="background:none;border:2px solid ${barColor};color:${barColor};border-radius:50%;width:24px;height:24px;min-width:24px;cursor:pointer;font-size:0.8rem;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:0.15rem;">✓</button>`}<div style="flex:1;"><div style="font-weight:600;color:#0a4d3c;">${physName}</div>${taskNote?`<div style="font-size:0.85rem;font-weight:600;color:#92400e;background:#fef3c7;padding:0.2rem 0.5rem;border-radius:4px;margin-top:0.25rem;">📋 ${taskNote}</div>`:''}<div style="font-size:0.85rem;color:#333;margin-top:0.2rem;">${preview}</div><div style="font-size:0.7rem;color:#999;margin-top:0.2rem;">${e.contact_date}${e.author?' by '+e.author:''}${isDone?' · ✓ Completed':e.reminder_date==='2099-12-31'?' · 📌 Open':` · Task due ${fmtD(e.reminder_date)}`}</div>${editFn||delFn?`<div style="display:flex;gap:0.5rem;margin-top:0.4rem;">${editFn?`<button class="icon-btn" onclick="event.stopPropagation();${editFn}" style="font-size:0.85rem;">✏️ Edit</button>`:''}${delFn?`<button class="icon-btn" onclick="event.stopPropagation();${delFn}" style="font-size:0.85rem;color:#dc2626;">🗑️ Delete</button>`:''}</div>`:''}</div></div>`;}else{const editFn=e.provider_id?`editNoteFromActivity('${e.id}','${e.provider_id}')`:e.practice_location_id?`editPracticeNote('${e.id}')`:''
+const delFn=e.provider_id?`deleteNoteFromActivity('${e.id}','${e.provider_id}')`:e.practice_location_id?`deletePracticeNote('${e.id}')`:''
+return renderLogEntry(e,{physName:phys?fmtName(phys):null,editable:true,editFn,deleteFn:delFn,full:true,showTimestamp:true});}}).join('')+'</div>';}
+html+='</div>';
+$('mainContent').innerHTML=html;
+}catch(e){console.error('History view error:',e);$('mainContent').innerHTML='<div class="empty-state"><h2>History</h2><p>Error loading. Try again.</p></div>';}
+}
+
+// --- Activity view (pure notes only, no tasks) ---
 async function renderActivityView(){
 try{
 const{data:allLogs,error}=await db.from('contact_logs').select('*').order('contact_date',{ascending:false}).order('created_at',{ascending:false}).limit(200);
 if(error)throw error;
 const physMap={};physicians.forEach(p=>physMap[p.id]=p);
+// ACTIVITY tab shows only pure notes (no tasks — exclude records with reminder_date)
+const pureNotes=allLogs.filter(l=>!l.reminder_date);
 const search=$('searchInput').value.trim().toLowerCase();
-const filtered=search?allLogs.filter(l=>{const p=physMap[l.provider_id]||{};const fullName=((p.first_name||'')+' '+(p.last_name||'')).trim();
+const filtered=search?pureNotes.filter(l=>{const p=physMap[l.provider_id]||{};const fullName=((p.first_name||'')+' '+(p.last_name||'')).trim();
 return(l.notes||'').toLowerCase().includes(search)||(l.author||'').toLowerCase().includes(search)||fullName.toLowerCase().includes(search)||(p.first_name||'').toLowerCase().includes(search)||(p.last_name||'').toLowerCase().includes(search);
-}):allLogs;
+}):pureNotes;
 $('physicianList').innerHTML=filtered.length===0?'<li class="loading">No activity found</li>':
 filtered.map(l=>{const p=l.provider_id?physMap[l.provider_id]:null;
 let time=l.contact_time||'';let notes=l.notes||'';
@@ -177,8 +226,9 @@ return`<li class="physician-item" onclick="${clickFn}">
 <div class="practice">${l.contact_date}${time?' '+time:''}${l.author?' - '+l.author:''}</div>
 <div style="font-size:0.75rem;color:rgba(255,255,255,0.75);margin-top:0.25rem;">${preview}</div>
 </li>`;}).join('');
-$('physicianCount').textContent=filtered.length+' of '+allLogs.length+' activities';
-$('mainContent').innerHTML=`<div class="section"><div class="section-header"><h3>Activity Log</h3><div style="font-size:0.8rem;color:#666;">${filtered.length} entries${search?' matching "'+search+'"':''}</div></div>
+$('physicianCount').textContent=filtered.length+' of '+pureNotes.length+' activities';
+const addBtn=`<button onclick="openContactModal()" style="padding:0.4rem 0.9rem;background:#0a4d3c;color:white;border:none;border-radius:6px;font-size:0.85rem;font-weight:600;cursor:pointer;">+ Add Activity</button>`;
+$('mainContent').innerHTML=_activityTabsHtml()+`<div class="section"><div class="section-header"><h3>Activity Log</h3><div style="display:flex;align-items:center;gap:0.75rem;"><div style="font-size:0.8rem;color:#666;">${filtered.length} entries${search?' matching "'+search+'"':''}</div>${addBtn}</div></div>
 ${filtered.length===0?'<div class="empty-notice">No activity found.</div>':
 '<div class="contact-entries">'+filtered.map(e=>{const phys=e.provider_id?physMap[e.provider_id]:null;const editFn=e.provider_id?`editNoteFromActivity('${e.id}','${e.provider_id}')`:`editPracticeNote('${e.id}')`;const delFn=e.provider_id?`deleteNoteFromActivity('${e.id}','${e.provider_id}')`:`deletePracticeNote('${e.id}')`;return renderLogEntry(e,{physName:phys?fmtName(phys):null,editable:true,editFn,deleteFn:delFn,full:true,showTimestamp:true});}).join('')+'</div>'}
 </div>`;
@@ -197,19 +247,20 @@ if(error)throw error;
 const physMap={};physicians.forEach(p=>physMap[p.id]=p);
 _taskDetailLogs={};[...reminders,...completedTasks].forEach(r=>_taskDetailLogs[r.id]=r);
 const newTaskBtn=`<button onclick="openAddTaskModal(null,null)" style="padding:0.4rem 0.9rem;background:#0a4d3c;color:white;border:none;border-radius:6px;font-size:0.85rem;font-weight:600;cursor:pointer;">+ New Task</button>`;
+const tabsPrefix=currentView==='activity'?_activityTabsHtml():'';
 if(!reminders||reminders.length===0){
-if(completedTasks.length===0){$('mainContent').innerHTML=`<div class="section"><div class="section-header"><h3>Tasks &amp; Reminders</h3>${newTaskBtn}</div><div class="empty-notice">No tasks yet. Use the button above to create one.</div></div>`;return;}
+if(completedTasks.length===0){$('mainContent').innerHTML=tabsPrefix+`<div class="section"><div class="section-header"><h3>Tasks &amp; Reminders</h3>${newTaskBtn}</div><div class="empty-notice">No tasks yet. Use the button above to create one.</div></div>`;return;}
 // No active tasks but completed ones exist — fall through to show completed section
 }
 const search=$('searchInput').value.trim().toLowerCase();
 const filtered=search?reminders.filter(r=>{const ph=physMap[r.provider_id]||{};const fullName=((ph.first_name||'')+' '+(ph.last_name||'')).trim();return(r.notes||'').toLowerCase().includes(search)||(r.author||'').toLowerCase().includes(search)||fullName.toLowerCase().includes(search)||(ph.first_name||'').toLowerCase().includes(search)||(ph.last_name||'').toLowerCase().includes(search);}):reminders;
-if(search&&filtered.length===0){$('mainContent').innerHTML=`<div class="section"><div class="section-header"><h3>Tasks &amp; Reminders</h3>${newTaskBtn}</div><div class="empty-notice">No tasks matching "${search}".</div></div>`;return;}
+if(search&&filtered.length===0){$('mainContent').innerHTML=tabsPrefix+`<div class="section"><div class="section-header"><h3>Tasks &amp; Reminders</h3>${newTaskBtn}</div><div class="empty-notice">No tasks matching "${search}".</div></div>`;return;}
 const OPEN_DATE='2099-12-31';
 const openTasks=filtered.filter(r=>r.reminder_date===OPEN_DATE);
 const datedR=filtered.filter(r=>r.reminder_date!==OPEN_DATE);
 const overdue=datedR.filter(r=>r.reminder_date<today);
 const upcoming=datedR.filter(r=>r.reminder_date>=today);
-let html=`<div class="section"><div class="section-header"><h3>Tasks &amp; Reminders</h3><div style="display:flex;align-items:center;gap:0.75rem;"><div style="font-size:0.8rem;color:#666;">${reminders.length===0?'All caught up!':search?`${filtered.length} of ${reminders.length} matching "${search}"`:reminders.length+' active'}${overdue.length>0?` — <span style="color:#dc2626;font-weight:600;">${overdue.length} overdue</span>`:''}${openTasks.length>0?` — ${openTasks.length} open`:''}</div>${newTaskBtn}</div></div>`;
+let html=tabsPrefix+`<div class="section"><div class="section-header"><h3>Tasks &amp; Reminders</h3><div style="display:flex;align-items:center;gap:0.75rem;"><div style="font-size:0.8rem;color:#666;">${reminders.length===0?'All caught up!':search?`${filtered.length} of ${reminders.length} matching "${search}"`:reminders.length+' active'}${overdue.length>0?` — <span style="color:#dc2626;font-weight:600;">${overdue.length} overdue</span>`:''}${openTasks.length>0?` — ${openTasks.length} open`:''}</div>${newTaskBtn}</div></div>`;
 if(overdue.length>0){
 html+=`<div style="margin-bottom:1rem;"><div style="font-size:0.75rem;font-weight:700;color:#dc2626;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:0.5rem;padding-bottom:0.25rem;border-bottom:2px solid #fca5a5;">⚠️ Overdue (${overdue.length})</div><div class="contact-entries">`;
 overdue.forEach(r=>{
@@ -268,7 +319,29 @@ html+='</div></div>';
 }
 html+='</div>';
 $('mainContent').innerHTML=html;
-}catch(e){console.error('Tasks view error:',e);$('mainContent').innerHTML='<div class="section"><div class="section-header"><h3>Tasks</h3></div><div class="empty-notice">Error loading tasks</div></div>';}
+}catch(e){console.error('Tasks view error:',e);const tabsPrefix=currentView==='activity'?_activityTabsHtml():'';$('mainContent').innerHTML=tabsPrefix+'<div class="section"><div class="section-header"><h3>Tasks</h3></div><div class="empty-notice">Error loading tasks</div></div>';}
+}
+
+// --- Optimistic task completion: update card in place without full re-render ---
+async function completeReminderInPlace(logId, cardId, reloadFn) {
+try {
+updateSyncIndicators('syncing');
+const {error} = await db.from('contact_logs').update({reminder_date:'2000-01-01'}).eq('id',logId);
+if(error)throw error;
+showToast('Task marked complete ✓','success');
+updateSyncIndicators('synced');
+// Update the card visually in place
+const card=document.getElementById(cardId);
+if(card){
+card.style.borderLeftColor='#10b981';
+card.style.background='#f0fdf4';
+card.style.opacity='0.85';
+const btn=card.querySelector('button');
+if(btn){btn.outerHTML=`<div style="width:24px;height:24px;min-width:24px;border-radius:50%;background:#10b981;color:white;display:flex;align-items:center;justify-content:center;font-size:0.8rem;flex-shrink:0;margin-top:0.15rem;">✓</div>`;}
+const statusEl=card.querySelector('[data-status]');
+if(statusEl)statusEl.textContent='✓ Completed';
+}
+}catch(e){showToast('Error: '+e.message,'error');updateSyncIndicators('error');}
 }
 
 // --- Dashboard view ---
