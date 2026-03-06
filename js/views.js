@@ -199,7 +199,7 @@ const delFn=e.provider_id?`deleteNoteFromActivity('${e.id}','${e.provider_id}')`
 return renderLogEntry(e,{physName:phys?fmtName(phys):null,editable:true,editFn,deleteFn:delFn,full:true,showTimestamp:true});}}).join('')+'</div>';}
 html+='</div>';
 $('mainContent').innerHTML=html;
-}catch(e){console.error('History view error:',e);$('mainContent').innerHTML='<div class="empty-state"><h2>History</h2><p>Error loading. Try again.</p></div>';}
+}catch(e){console.error('History view error:',e);$('mainContent').innerHTML='<div class="empty-state"><h2>History</h2><p>Error: '+(e&&e.message?e.message:String(e))+'</p></div>';}
 }
 
 // --- Activity view (pure notes only, no tasks) ---
