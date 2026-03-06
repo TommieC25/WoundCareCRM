@@ -251,6 +251,7 @@ return ctx;
 }
 
 function openAddTaskModal(physicianId, locationId) {
+const _sb=$('addTaskSaveBtn');if(_sb){_sb.textContent='Save Task';_sb.className='btn-primary';}
 if($('addTaskEditId'))$('addTaskEditId').value = '';
 $('addTaskNote').value = '';
 if($('addTaskAuthor'))$('addTaskAuthor').value = '';
@@ -377,6 +378,7 @@ if(ctx){ctx.innerHTML=_buildTaskContext(physicianId,null);ctx.style.display='blo
 
 // Opens addTaskModal in edit mode for an existing task record (called from task detail modal)
 function openEditTaskModal() {
+const _sb=$('addTaskSaveBtn');if(_sb){_sb.textContent='Save Task';_sb.className='btn-primary';}
 const rec = window._openedTaskRec;
 if (!rec) return;
 // Extract task note: for old-style records with embedded [Task:], use that text; otherwise use the full notes
