@@ -64,6 +64,16 @@ button{border:none;border-radius:6px;padding:0.35rem 0.75rem;font-size:0.8rem;fo
 
 <div id="sections" style="display:none;">
 
+<!-- Section PHONE: Multi-number phone fields -->
+<div class="section">
+  <div class="section-header">
+    <span class="section-title">📞 Multi-Number Phone Fields</span>
+    <span class="count-badge" id="phoneBadge">—</span>
+  </div>
+  <p class="section-note">Locations where the phone or fax field contains multiple numbers separated by "/" or ",". Each number must be in its own field for one-tap dialing. Fix splits the first number into <strong>phone</strong> and the second into <strong>fax</strong> (only if fax is currently empty — won't overwrite existing fax data).</p>
+  <div id="phoneList" class="loading">Loading...</div>
+</div>
+
 <!-- Section -1: Provider-named solo practices — REVIEW ONLY -->
 <div class="section">
   <div class="section-header">
@@ -223,6 +233,66 @@ async function deleteProvider(providerId, name, btn) {
 }
 
 
+function splitNums(raw) {
+  if (!raw) return [];
+  return raw.split(/[\/,]/).map(s => s.trim()).filter(Boolean);
+}
+
+async function fixOnePhone(locId, btn) {
+  btn.disabled = true; btn.textContent = 'Fixing...';
+  const loc = (window._multiPhoneLocs||[]).find(l => l.id === locId);
+  if (!loc) { btn.textContent = 'Error'; return; }
+  const updates = {};
+  if (loc.phone && /[\/,]/.test(loc.phone)) {
+    const nums = splitNums(loc.phone);
+    updates.phone = nums[0];
+    if (nums[1]) {
+      if (!loc.fax) {
+        updates.fax = nums[1];
+      } else {
+        // fax already occupied — append extra number to notes
+        updates.notes = (loc.notes ? loc.notes + '\n' : '') + 'Alt phone: ' + nums[1];
+      }
+    }
+  }
+  if (loc.fax && /[\/,]/.test(loc.fax)) {
+    const nums = splitNums(loc.fax);
+    updates.fax = nums[0];
+    if (nums[1]) updates.notes = (updates.notes || loc.notes || '') + (updates.notes||loc.notes ? '\n' : '') + 'Alt fax: ' + nums[1];
+  }
+  const { error } = await db.from('practice_locations').update(updates).eq('id', locId);
+  if (error) { showToast('Error: ' + error.message, 'error'); btn.textContent = 'Fix'; btn.disabled = false; return; }
+  btn.textContent = '✓ Fixed'; btn.style.background = '#10b981';
+  showToast('Fixed!', 'success');
+}
+
+async function fixAllPhones() {
+  const locs = window._multiPhoneLocs||[];
+  if (!locs.length) return;
+  if (!confirm(`Fix ${locs.length} location(s)? Phone numbers will be split: first → phone field, second → fax field (or notes if fax already has data).`)) return;
+  let fixed = 0, errs = 0;
+  for (const loc of locs) {
+    const updates = {};
+    if (loc.phone && /[\/,]/.test(loc.phone)) {
+      const nums = splitNums(loc.phone);
+      updates.phone = nums[0];
+      if (nums[1]) {
+        if (!loc.fax) { updates.fax = nums[1]; }
+        else { updates.notes = (loc.notes ? loc.notes + '\n' : '') + 'Alt phone: ' + nums[1]; }
+      }
+    }
+    if (loc.fax && /[\/,]/.test(loc.fax)) {
+      const nums = splitNums(loc.fax);
+      updates.fax = nums[0];
+      if (nums[1]) updates.notes = (updates.notes || loc.notes || '') + (updates.notes||loc.notes ? '\n' : '') + 'Alt fax: ' + nums[1];
+    }
+    const { error } = await db.from('practice_locations').update(updates).eq('id', loc.id);
+    if (error) errs++; else fixed++;
+  }
+  showToast(`Fixed ${fixed} location(s)${errs ? ', '+errs+' errors' : ''}`, errs ? 'error' : 'success');
+  setTimeout(() => runAudit(), 1500);
+}
+
 async function runAudit() {
   const btn = document.getElementById('runBtn');
   btn.textContent = 'Running...'; btn.disabled = true;
@@ -239,7 +309,7 @@ async function runAudit() {
     ] = await Promise.all([
       db.from('providers').select('id,first_name,last_name,degree,title,specialty,general_notes,is_target,priority').order('last_name'),
       db.from('practices').select('id,name').order('name'),
-      db.from('practice_locations').select('id,practice_id,label,address,city,zip').order('city'),
+      db.from('practice_locations').select('id,practice_id,label,address,city,zip,phone,fax').order('city'),
       db.from('provider_location_assignments').select('provider_id,practice_location_id')
     ]);
 
@@ -482,8 +552,40 @@ async function runAudit() {
       }).join('');
     }
 
+    // Phone audit
+    const multiPhoneLocs = (locations||[]).filter(loc => {
+      const hasMultiPhone = loc.phone && /[\/,]/.test(loc.phone) && loc.phone.replace(/[^\/,]/g,'').length >= 1;
+      const hasMultiFax = loc.fax && /[\/,]/.test(loc.fax);
+      return hasMultiPhone || hasMultiFax;
+    });
+    document.getElementById('phoneBadge').textContent = multiPhoneLocs.length;
+    document.getElementById('phoneBadge').className = 'count-badge ' + (multiPhoneLocs.length > 0 ? '' : 'ok');
+    const phoneList = document.getElementById('phoneList');
+    if (multiPhoneLocs.length === 0) {
+      phoneList.innerHTML = '<p class="empty">✓ No multi-number phone fields found.</p>';
+    } else {
+      const practiceMap = {};
+      (practices||[]).forEach(p => practiceMap[p.id] = p.name);
+      phoneList.innerHTML = `<div style="margin-bottom:0.75rem;"><button class="btn-primary" onclick="fixAllPhones()">Fix All (${multiPhoneLocs.length} location${multiPhoneLocs.length>1?'s':''})</button></div>` +
+        multiPhoneLocs.map(loc => {
+          const pracName = practiceMap[loc.practice_id] || '(no practice)';
+          const parts = [];
+          if (loc.phone && /[\/,]/.test(loc.phone)) parts.push(`<strong>Phone:</strong> ${loc.phone}`);
+          if (loc.fax && /[\/,]/.test(loc.fax)) parts.push(`<strong>Fax:</strong> ${loc.fax}`);
+          return `<div class="row-card warn">
+            <div class="row-info">
+              <div class="row-name">${pracName} — ${loc.label||loc.city||'?'}</div>
+              <div class="row-detail">${parts.join(' &nbsp;|&nbsp; ')}</div>
+              ${loc.phone&&/[\/,]/.test(loc.phone)&&loc.fax?'<div class="row-detail" style="color:#b91c1c;">⚠️ Fax already has data — second number will be appended to notes</div>':''}
+            </div>
+            <div class="row-actions"><button class="btn-primary" onclick="fixOnePhone('${loc.id}',this)">Fix</button></div>
+          </div>`;
+        }).join('');
+      window._multiPhoneLocs = multiPhoneLocs;
+    }
+
     // Stats
-    const totalIssues = uniquePhantoms.length + nonMohsDerms.length + ootLocs.length + selfPracs.length + orphans.length;
+    const totalIssues = uniquePhantoms.length + nonMohsDerms.length + ootLocs.length + selfPracs.length + orphans.length + multiPhoneLocs.length;
     document.getElementById('statsGrid').style.display = 'grid';
     document.getElementById('statsGrid').innerHTML = `
       <div class="stat-card"><div class="stat-num">${(providers||[]).length}</div><div class="stat-label">Total Providers</div></div>
