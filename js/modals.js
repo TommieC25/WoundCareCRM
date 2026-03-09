@@ -173,11 +173,12 @@ showToast('Deleted','success');updateSyncIndicators('synced');
 // --- Practice modal ---
 function openPracticeModal(){editingPracticeId=null;locationsToDelete=[];$('practiceModalTitle').textContent='Add Practice';$('practiceForm').reset();$('practiceEmail').value='';$('practiceAddressSection').style.display='';$('practiceLocationsEditSection').style.display='none';$('practiceSaveBtn').textContent='Save Practice';$('practiceSaveBtn').className='btn-primary';$('practiceModal').classList.add('active');}
 function closePracticeModal(){closeModal('practiceModal');}
-function editPractice(){editingPracticeId=currentPractice.id;locationsToDelete=[];$('practiceModalTitle').textContent='Edit Practice';setFields({practiceName:currentPractice.name,practiceWebsite:currentPractice.website||'',practiceNotes:currentPractice.general_notes||'',practiceEmail:currentPractice.email||''});$('practiceAddressSection').style.display='none';populateLocationEditCards(currentPractice.id);$('practiceLocationsEditSection').style.display='';$('practiceSaveBtn').textContent='Save Practice';$('practiceSaveBtn').className='btn-primary';$('practiceModal').classList.add('active');}
+function editPractice(){editingPracticeId=currentPractice.id;locationsToDelete=[];$('practiceModalTitle').textContent='Edit Practice';const _locEmail=practiceLocations.filter(l=>l.practice_id===currentPractice.id).map(l=>l.practice_email).find(Boolean)||'';setFields({practiceName:currentPractice.name,practiceWebsite:currentPractice.website||'',practiceNotes:currentPractice.general_notes||'',practiceEmail:currentPractice.email||_locEmail});$('practiceAddressSection').style.display='none';populateLocationEditCards(currentPractice.id);$('practiceLocationsEditSection').style.display='';$('practiceSaveBtn').textContent='Save Practice';$('practiceSaveBtn').className='btn-primary';$('practiceModal').classList.add('active');}
 function editPracticeFromProfile(practiceId){
 const pr=practices.find(p=>p.id===practiceId);if(!pr)return;
 editingPracticeId=pr.id;locationsToDelete=[];$('practiceModalTitle').textContent='Edit Practice';
-setFields({practiceName:pr.name,practiceWebsite:pr.website||'',practiceNotes:pr.general_notes||'',practiceEmail:pr.email||''});
+const _locEmail=practiceLocations.filter(l=>l.practice_id===pr.id).map(l=>l.practice_email).find(Boolean)||'';
+setFields({practiceName:pr.name,practiceWebsite:pr.website||'',practiceNotes:pr.general_notes||'',practiceEmail:pr.email||_locEmail});
 $('practiceAddressSection').style.display='none';populateLocationEditCards(pr.id);$('practiceLocationsEditSection').style.display='';$('practiceSaveBtn').textContent='Save Practice';$('practiceSaveBtn').className='btn-primary';$('practiceModal').classList.add('active');
 }
 let locEditCounter = 0;

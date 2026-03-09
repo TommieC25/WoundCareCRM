@@ -1,7 +1,7 @@
 // === js/admin.js === CSV import, database clear, CSV export, field routing export
 
 // --- CSV Import ---
-function importCSVPaste(){const t=(document.getElementById('csvPasteArea')?.value||'').trim();if(!t){showToast('Paste CSV text first','error');return;}importCSV({text:()=>Promise.resolve(t)});}
+function importCSVPaste(){const el=document.getElementById('csvPasteArea');const t=(el?.value||'').trim();if(!t){showToast('Paste CSV text first','error');return;}if(el)el.value='';importCSV({text:()=>Promise.resolve(t)});}
 async function importCSVText(text){await importCSV({text:()=>Promise.resolve(text)});}
 function normalizeAddr(s){return(s||'').trim().replace(/\bnan\b/gi,'').replace(/\s+/g,' ').trim().replace(/(Suite|Ste\.?|Apt\.?|Unit)\.?\s*#?\s*(\d+)/gi,'#$2').replace(/\b(Southwest|Northwest|Northeast|Southeast|North|South|East|West)\b/gi,m=>{const d={southwest:'SW',northwest:'NW',northeast:'NE',southeast:'SE',north:'N',south:'S',east:'E',west:'W'};return d[m.toLowerCase()]||m.toUpperCase();}).replace(/\b(SW|NW|NE|SE)\b/gi,m=>m.toUpperCase()).replace(/\s+/g,' ').trim();}
 async function importCSV(file) {

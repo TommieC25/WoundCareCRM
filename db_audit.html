@@ -64,6 +64,26 @@ button{border:none;border-radius:6px;padding:0.35rem 0.75rem;font-size:0.8rem;fo
 
 <div id="sections" style="display:none;">
 
+<!-- Section SPECIALTY: Corrupted specialty values -->
+<div class="section">
+  <div class="section-header">
+    <span class="section-title">🏷️ Corrupted Specialty Values</span>
+    <span class="count-badge" id="specialtyBadge">—</span>
+  </div>
+  <p class="section-note">Valid specialties are exactly: <strong>Podiatry</strong>, <strong>Wound Care</strong>, <strong>Dermatology</strong> (Mohs surgeons only), <strong>Other</strong>, <strong>Administrative Staff</strong>. Anything else must be remapped. Select a target for each bad value and tap <strong>Fix All Mapped</strong>, or fix groups individually.</p>
+  <div id="specialtyList" class="loading">Loading...</div>
+</div>
+
+<!-- Section PHONE: Multi-number phone fields -->
+<div class="section">
+  <div class="section-header">
+    <span class="section-title">📞 Multi-Number Phone Fields</span>
+    <span class="count-badge" id="phoneBadge">—</span>
+  </div>
+  <p class="section-note">Locations where the phone or fax field contains multiple numbers separated by "/" or ",". Each number must be in its own field for one-tap dialing. Fix splits the first number into <strong>phone</strong> and the second into <strong>fax</strong> (only if fax is currently empty — won't overwrite existing fax data).</p>
+  <div id="phoneList" class="loading">Loading...</div>
+</div>
+
 <!-- Section -1: Provider-named solo practices — REVIEW ONLY -->
 <div class="section">
   <div class="section-header">
@@ -223,6 +243,103 @@ async function deleteProvider(providerId, name, btn) {
 }
 
 
+function splitNums(raw) {
+  if (!raw) return [];
+  return raw.split(/[\/,]/).map(s => s.trim()).filter(Boolean);
+}
+
+async function fixOnePhone(locId, btn) {
+  btn.disabled = true; btn.textContent = 'Fixing...';
+  const loc = (window._multiPhoneLocs||[]).find(l => l.id === locId);
+  if (!loc) { btn.textContent = 'Error'; return; }
+  const updates = {};
+  if (loc.phone && /[\/,]/.test(loc.phone)) {
+    const nums = splitNums(loc.phone);
+    updates.phone = nums[0];
+    if (nums[1]) {
+      if (!loc.fax) {
+        updates.fax = nums[1];
+      } else {
+        // fax already occupied — append extra number to notes
+        updates.notes = (loc.notes ? loc.notes + '\n' : '') + 'Alt phone: ' + nums[1];
+      }
+    }
+  }
+  if (loc.fax && /[\/,]/.test(loc.fax)) {
+    const nums = splitNums(loc.fax);
+    updates.fax = nums[0];
+    if (nums[1]) updates.notes = (updates.notes || loc.notes || '') + (updates.notes||loc.notes ? '\n' : '') + 'Alt fax: ' + nums[1];
+  }
+  const { error } = await db.from('practice_locations').update(updates).eq('id', locId);
+  if (error) { showToast('Error: ' + error.message, 'error'); btn.textContent = 'Fix'; btn.disabled = false; return; }
+  btn.textContent = '✓ Fixed'; btn.style.background = '#10b981';
+  showToast('Fixed!', 'success');
+}
+
+async function fixAllPhones() {
+  const locs = window._multiPhoneLocs||[];
+  if (!locs.length) return;
+  if (!confirm(`Fix ${locs.length} location(s)? Phone numbers will be split: first → phone field, second → fax field (or notes if fax already has data).`)) return;
+  let fixed = 0, errs = 0;
+  for (const loc of locs) {
+    const updates = {};
+    if (loc.phone && /[\/,]/.test(loc.phone)) {
+      const nums = splitNums(loc.phone);
+      updates.phone = nums[0];
+      if (nums[1]) {
+        if (!loc.fax) { updates.fax = nums[1]; }
+        else { updates.notes = (loc.notes ? loc.notes + '\n' : '') + 'Alt phone: ' + nums[1]; }
+      }
+    }
+    if (loc.fax && /[\/,]/.test(loc.fax)) {
+      const nums = splitNums(loc.fax);
+      updates.fax = nums[0];
+      if (nums[1]) updates.notes = (updates.notes || loc.notes || '') + (updates.notes||loc.notes ? '\n' : '') + 'Alt fax: ' + nums[1];
+    }
+    const { error } = await db.from('practice_locations').update(updates).eq('id', loc.id);
+    if (error) errs++; else fixed++;
+  }
+  showToast(`Fixed ${fixed} location(s)${errs ? ', '+errs+' errors' : ''}`, errs ? 'error' : 'success');
+  setTimeout(() => runAudit(), 1500);
+}
+
+async function fixOneSpecialty(oldVal, newVal, btn) {
+  if (!newVal) { showToast('Select a target specialty first', 'error'); return; }
+  btn.disabled = true; btn.textContent = 'Fixing...';
+  let error;
+  if (oldVal === '') {
+    const r1 = await db.from('providers').update({specialty: newVal}).is('specialty', null);
+    const r2 = await db.from('providers').update({specialty: newVal}).eq('specialty', '');
+    error = r1.error || r2.error;
+  } else {
+    const r = await db.from('providers').update({specialty: newVal}).eq('specialty', oldVal);
+    error = r.error;
+  }
+  if (error) { showToast('Error: ' + error.message, 'error'); btn.disabled = false; btn.textContent = 'Fix'; return; }
+  showToast(`Remapped "${oldVal || '(blank)'}" → "${newVal}"`, 'success');
+  setTimeout(() => runAudit(), 1500);
+}
+
+async function fixAllSpecialties() {
+  const selects = document.querySelectorAll('[id^="specmap_"]');
+  const mappings = [];
+  selects.forEach(sel => { if (sel.value) mappings.push({old: sel.dataset.old, new: sel.value, blank: sel.dataset.blank === '1'}); });
+  if (mappings.length === 0) { showToast('Select a target specialty for at least one group', 'error'); return; }
+  let fixed = 0, errs = 0;
+  for (const m of mappings) {
+    if (m.blank) {
+      const r1 = await db.from('providers').update({specialty: m.new}).is('specialty', null);
+      const r2 = await db.from('providers').update({specialty: m.new}).eq('specialty', '');
+      if (r1.error || r2.error) errs++; else fixed++;
+    } else {
+      const r = await db.from('providers').update({specialty: m.new}).eq('specialty', m.old);
+      if (r.error) errs++; else fixed++;
+    }
+  }
+  showToast(`Fixed ${fixed} group(s)${errs ? ', ' + errs + ' error(s)' : ''}`, errs ? 'error' : 'success');
+  setTimeout(() => runAudit(), 1500);
+}
+
 async function runAudit() {
   const btn = document.getElementById('runBtn');
   btn.textContent = 'Running...'; btn.disabled = true;
@@ -239,7 +356,7 @@ async function runAudit() {
     ] = await Promise.all([
       db.from('providers').select('id,first_name,last_name,degree,title,specialty,general_notes,is_target,priority').order('last_name'),
       db.from('practices').select('id,name').order('name'),
-      db.from('practice_locations').select('id,practice_id,label,address,city,zip').order('city'),
+      db.from('practice_locations').select('id,practice_id,label,address,city,zip,phone,fax').order('city'),
       db.from('provider_location_assignments').select('provider_id,practice_location_id')
     ]);
 
@@ -377,6 +494,46 @@ async function runAudit() {
       }).join('');
     }
 
+    // === SECTION SPECIALTY: Corrupted specialty values ===
+    const VALID_SPECIALTIES = new Set(['Dermatology','Podiatry','Wound Care','Other','Administrative Staff']);
+    const specialtyGroups = {};
+    (providers || []).forEach(p => {
+      const sp = (p.specialty || '').trim();
+      if (!VALID_SPECIALTIES.has(sp)) {
+        if (!specialtyGroups[sp]) specialtyGroups[sp] = [];
+        specialtyGroups[sp].push(p);
+      }
+    });
+    const badSpecialtyEntries = Object.entries(specialtyGroups).sort((a,b) => b[1].length - a[1].length);
+    const totalBadSpecialty = badSpecialtyEntries.reduce((n,[,arr]) => n + arr.length, 0);
+    const specialtyEl = document.getElementById('specialtyList');
+    const specialtyBadge = document.getElementById('specialtyBadge');
+    specialtyBadge.textContent = totalBadSpecialty + (totalBadSpecialty === 0 ? ' ✓' : ' bad value(s)');
+    specialtyBadge.className = 'count-badge ' + (totalBadSpecialty === 0 ? 'ok' : '');
+    if (badSpecialtyEntries.length === 0) {
+      specialtyEl.innerHTML = '<p class="empty">✓ All providers have valid specialty values.</p>';
+    } else {
+      const validOpts = ['','Podiatry','Wound Care','Dermatology','Other','Administrative Staff']
+        .map(v => `<option value="${v}">${v || '-- remap to --'}</option>`).join('');
+      specialtyEl.innerHTML = `<div style="margin-bottom:0.75rem;"><button class="btn-primary" onclick="fixAllSpecialties()">Fix All Mapped</button> <span style="font-size:0.8rem;color:#666;margin-left:0.5rem;">Select a target for each group, then Fix All Mapped</span></div>` +
+        badSpecialtyEntries.map(([val, provs]) => {
+          const isBlank = val === '';
+          const safeId = 'sp_' + val.replace(/[^a-zA-Z0-9]/g, '_').substring(0, 30) + '_' + provs.length;
+          const escapedVal = val.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+          const examples = provs.slice(0,4).map(p => [p.first_name, p.last_name, p.degree].filter(Boolean).join(' ')).join(', ');
+          return `<div class="row-card danger">
+            <div class="row-info">
+              <div class="row-name">"${val || '(blank / null)'}" <span style="font-weight:400;color:#666;font-size:0.8rem;">${provs.length} provider(s)</span></div>
+              <div class="row-detail">${examples}${provs.length > 4 ? ` + ${provs.length - 4} more` : ''}</div>
+            </div>
+            <div class="row-actions" style="align-items:center;">
+              <select id="${safeId}" data-old="${val.replace(/"/g,'&quot;')}" data-blank="${isBlank ? '1' : '0'}" style="padding:0.3rem 0.5rem;border:1px solid #d1d5db;border-radius:6px;font-size:0.8rem;">${validOpts}</select>
+              <button class="btn-primary" style="padding:0.3rem 0.75rem;font-size:0.8rem;" onclick="fixOneSpecialty('${escapedVal}', document.getElementById('${safeId}').value, this)">Fix</button>
+            </div>
+          </div>`;
+        }).join('');
+    }
+
     // === SECTION 1: Out-of-territory locations ===
     const ootLocs = (locations || []).filter(l => !guessCounty(l.city));
     const ootEl = document.getElementById('ootList');
@@ -482,13 +639,46 @@ async function runAudit() {
       }).join('');
     }
 
+    // Phone audit
+    const multiPhoneLocs = (locations||[]).filter(loc => {
+      const hasMultiPhone = loc.phone && /[\/,]/.test(loc.phone) && loc.phone.replace(/[^\/,]/g,'').length >= 1;
+      const hasMultiFax = loc.fax && /[\/,]/.test(loc.fax);
+      return hasMultiPhone || hasMultiFax;
+    });
+    document.getElementById('phoneBadge').textContent = multiPhoneLocs.length;
+    document.getElementById('phoneBadge').className = 'count-badge ' + (multiPhoneLocs.length > 0 ? '' : 'ok');
+    const phoneList = document.getElementById('phoneList');
+    if (multiPhoneLocs.length === 0) {
+      phoneList.innerHTML = '<p class="empty">✓ No multi-number phone fields found.</p>';
+    } else {
+      const practiceMap = {};
+      (practices||[]).forEach(p => practiceMap[p.id] = p.name);
+      phoneList.innerHTML = `<div style="margin-bottom:0.75rem;"><button class="btn-primary" onclick="fixAllPhones()">Fix All (${multiPhoneLocs.length} location${multiPhoneLocs.length>1?'s':''})</button></div>` +
+        multiPhoneLocs.map(loc => {
+          const pracName = practiceMap[loc.practice_id] || '(no practice)';
+          const parts = [];
+          if (loc.phone && /[\/,]/.test(loc.phone)) parts.push(`<strong>Phone:</strong> ${loc.phone}`);
+          if (loc.fax && /[\/,]/.test(loc.fax)) parts.push(`<strong>Fax:</strong> ${loc.fax}`);
+          return `<div class="row-card warn">
+            <div class="row-info">
+              <div class="row-name">${pracName} — ${loc.label||loc.city||'?'}</div>
+              <div class="row-detail">${parts.join(' &nbsp;|&nbsp; ')}</div>
+              ${loc.phone&&/[\/,]/.test(loc.phone)&&loc.fax?'<div class="row-detail" style="color:#b91c1c;">⚠️ Fax already has data — second number will be appended to notes</div>':''}
+            </div>
+            <div class="row-actions"><button class="btn-primary" onclick="fixOnePhone('${loc.id}',this)">Fix</button></div>
+          </div>`;
+        }).join('');
+      window._multiPhoneLocs = multiPhoneLocs;
+    }
+
     // Stats
-    const totalIssues = uniquePhantoms.length + nonMohsDerms.length + ootLocs.length + selfPracs.length + orphans.length;
+    const totalIssues = uniquePhantoms.length + nonMohsDerms.length + ootLocs.length + selfPracs.length + orphans.length + multiPhoneLocs.length + totalBadSpecialty;
     document.getElementById('statsGrid').style.display = 'grid';
     document.getElementById('statsGrid').innerHTML = `
       <div class="stat-card"><div class="stat-num">${(providers||[]).length}</div><div class="stat-label">Total Providers</div></div>
       <div class="stat-card"><div class="stat-num">${(practices||[]).length}</div><div class="stat-label">Total Practices</div></div>
       <div class="stat-card"><div class="stat-num">${(locations||[]).length}</div><div class="stat-label">Total Locations</div></div>
+      <div class="stat-card"><div class="stat-num ${totalBadSpecialty > 0 ? 'bad' : ''}">${totalBadSpecialty}</div><div class="stat-label">Bad Specialty Values</div></div>
       <div class="stat-card"><div class="stat-num ${uniquePhantoms.length > 0 ? 'bad' : ''}">${uniquePhantoms.length}</div><div class="stat-label">Phantom Locations</div></div>
       <div class="stat-card"><div class="stat-num ${nonMohsDerms.length > 0 ? 'bad' : ''}">${nonMohsDerms.length}</div><div class="stat-label">Non-Mohs Derms</div></div>
       <div class="stat-card"><div class="stat-num ${ootLocs.length > 0 ? 'bad' : ''}">${ootLocs.length}</div><div class="stat-label">OOT Locations</div></div>

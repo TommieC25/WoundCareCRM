@@ -89,6 +89,7 @@ currentPhysician=null;currentPractice=null;
 renderActivityTabView();
 return;
 }
+_activitySearchTerm = '';
 if(view==='map'){
 $('searchInput').parentElement.parentElement.style.display='none';
 $('addBtn').style.display='none';
@@ -200,7 +201,8 @@ function ld(val,icon,content){return val?`<div class="location-detail"><span cla
 function locAddr(loc){const a=(loc.address||'')+', '+(loc.city||'')+' '+(loc.zip||'');return`<a href="https://maps.apple.com/?q=${encodeURIComponent(a)}" target="_blank" style="color:#0a4d3c;text-decoration:underline;">${loc.address}${loc.city?', '+loc.city:''}${loc.zip?' '+loc.zip:''}</a>`}
 function fmtPhone(p){if(!p)return'';var d=(p+'').replace(/\D/g,'');if(d.length===11&&d[0]==='1')d=d.substring(1);if(d.length===10)return d.substring(0,3)+'-'+d.substring(3,6)+'-'+d.substring(6);return p;}
 function locPhone(p){var f=fmtPhone(p);return`<a href="tel:${(p||'').replace(/\D/g,'')}">${f||p}</a>`}
-function locDetails(loc){return ld(loc.address,'📍',locAddr(loc))+ld(loc.phone,'📞',locPhone(loc.phone))+ld(loc.fax,'📠',fmtPhone(loc.fax))+ld(loc.practice_email,'✉️',loc.practice_email?`<a href="mailto:${loc.practice_email}">${loc.practice_email}</a>`:'')+ld(loc.office_hours,'🕐')+ld(loc.office_staff,'👥')+ld(loc.receptionist_name,'👤')+ld(loc.best_days,'📅')+ld(loc.notes,'📝')}
+function locPhones(raw,icon){if(!raw)return'';return raw.split(/[\/,]/).map(s=>s.trim()).filter(Boolean).map(p=>ld(p,icon,locPhone(p))).join('');}
+function locDetails(loc){return ld(loc.address,'📍',locAddr(loc))+locPhones(loc.phone,'📞')+locPhones(loc.fax,'📠')+ld(loc.practice_email,'✉️',loc.practice_email?`<a href="mailto:${loc.practice_email}">${loc.practice_email}</a>`:'')+ld(loc.office_hours,'🕐')+ld(loc.office_staff,'👥')+ld(loc.receptionist_name,'👤')+ld(loc.best_days,'📅')+ld(loc.notes,'📝')}
 function mi(label,val){return `<div class="meta-item"><div class="meta-label">${label}</div><div class="meta-value">${val}</div></div>`}
 function parseNoteTime(notes){const tm=(notes||'').match(/^\[(\d{1,2}:\d{2}(?:\s*[APap][Mm])?)\]\s*/);return tm?{time:' '+tm[1],text:notes.replace(tm[0],'')}:{time:'',text:notes||''};}
 function parseTaskRecord(notes){const tm=(notes||'').match(/^\[(\d{1,2}:\d{2}(?:\s*[APap][Mm])?)\]\s*/);let dn=tm?notes.replace(tm[0],''):(notes||'');const txm=dn.match(/\s*\|\s*\[Task:\s*(.*?)\]$/);const taskNote=txm?txm[1].trim():'';if(txm)dn=dn.slice(0,txm.index).trim();return{noteTime:tm?tm[1]:'',displayNotes:dn,taskNote};}
@@ -214,8 +216,8 @@ const reminderLine=e.reminder_date?(e.reminder_date==='2000-01-01'?`<span style=
 const editFn=opts.editFn||`editNote('${e.id}')`;
 const delFn=opts.deleteFn||`deleteNote('${e.id}')`;
 const actions=opts.editable?`<div class="contact-entry-actions"><button class="icon-btn" onclick="event.stopPropagation();${editFn}" title="Edit">✏️</button><button class="icon-btn" onclick="event.stopPropagation();${delFn}" title="Delete">🗑️</button></div>`:'';
-const click=opts.onClick?` style="cursor:pointer" onclick="${opts.onClick}"`:'';
-return `<div class="contact-entry"${click}><div class="contact-entry-header"><div><span class="contact-entry-date">${headerLine1}</span>${reminderLine}${headerLine2}</div>${actions}</div><div class="contact-entry-notes">${preview}</div></div>`;}
+const today=localDate();const _isDone=e.reminder_date==='2000-01-01';const _isOD=e.reminder_date&&!_isDone&&e.reminder_date!=='2099-12-31'&&e.reminder_date<today;const barColor=e.reminder_date?(_isDone?'#10b981':_isOD?'#dc2626':'#6b7280'):null;if(barColor){if(!window._taskDetailLogs)window._taskDetailLogs={};window._taskDetailLogs[e.id]=e;}const bgColor=(_isOD&&barColor)?'background:#fff5f5;':'';const divStyle=(barColor?`border-left:4px solid ${barColor};${bgColor}`:'')+(opts.onClick?'cursor:pointer;':'');const clickAttr=opts.onClick?` onclick="${opts.onClick}"`:'';
+return `<div class="contact-entry"${divStyle?` style="${divStyle}"`:''}${clickAttr}><div class="contact-entry-header"><div><span class="contact-entry-date">${headerLine1}</span>${reminderLine}${headerLine2}</div>${actions}</div><div class="contact-entry-notes">${preview}</div></div>`;}
 // Renders a single entry in the provider profile log — handles both tasks (colored bars) and plain notes
 function renderProfileEntry(e) {
 if (!e.reminder_date) {

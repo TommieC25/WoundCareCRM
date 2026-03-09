@@ -291,7 +291,11 @@ return;
 }
 el.innerHTML = '<div class="contact-entries">' + logs.map(e => {
 const phys = e.provider_id ? physicians.find(p => p.id === e.provider_id) : null;
-return renderLogEntry(e, { physName: phys ? fmtName(phys) : null, editable: true, editFn: `editPracticeNote('${e.id}')`, deleteFn: `deletePracticeNote('${e.id}')`, onClick: phys ? `viewPhysician('${phys.id}')` : undefined, full: true, showTimestamp: true });
+const isTask = !!e.reminder_date;
+const editFn = isTask ? `openTaskDetailModal('${e.id}')` : `editPracticeNote('${e.id}')`;
+const deleteFn = e.provider_id ? `deleteNoteFromActivity('${e.id}','${e.provider_id}')` : `deletePracticeNote('${e.id}')`;
+const onClick = isTask ? `openTaskDetailModal('${e.id}')` : (phys ? `viewPhysician('${phys.id}')` : undefined);
+return renderLogEntry(e, { physName: phys ? fmtName(phys) : null, editable: true, editFn, deleteFn, onClick, full: true, showTimestamp: true });
 }).join('') + '</div>';
 } catch(e) {
 const el = $('practiceActivityContent');

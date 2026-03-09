@@ -1,18 +1,28 @@
 // === js/views.js === Activity view, Tasks view, Dashboard view, Map view
 let _taskDetailLogs = {};
 let activitySubTab = 'history'; // 'history' | 'activity' | 'tasks'
+let _activitySearchTerm = '';
 const fmtD = ds => { if(!ds)return''; const d=new Date(ds+'T12:00:00'); return d.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'}); };
 
 // --- Activity sub-tab navigation HTML helper ---
 function _activityTabsHtml() {
 const tabs = [{id:'history',label:'HISTORY'},{id:'activity',label:'ACTIVITY'},{id:'tasks',label:'TASKS'}];
-return `<div style="display:flex;gap:0.5rem;margin-bottom:1rem;padding-bottom:0.75rem;border-bottom:2px solid #f0f0f0;">`+tabs.map(t=>`<button onclick="switchActivityTab('${t.id}')" style="padding:0.45rem 0.9rem;border:none;border-radius:6px;font-size:0.78rem;font-weight:700;cursor:pointer;letter-spacing:0.5px;transition:all 0.15s;-webkit-tap-highlight-color:transparent;${activitySubTab===t.id?'background:#0a4d3c;color:white;':'background:#e5e7eb;color:#374151;'}">${t.label}</button>`).join('')+`</div>`;
+const esc = _activitySearchTerm.replace(/"/g,'&quot;');
+return `<div style="display:flex;gap:0.5rem;margin-bottom:0.75rem;padding-bottom:0.75rem;border-bottom:2px solid #f0f0f0;">`+tabs.map(t=>`<button onclick="switchActivityTab('${t.id}')" style="padding:0.45rem 0.9rem;border:none;border-radius:6px;font-size:0.78rem;font-weight:700;cursor:pointer;letter-spacing:0.5px;transition:all 0.15s;-webkit-tap-highlight-color:transparent;${activitySubTab===t.id?'background:#0a4d3c;color:white;':'background:#e5e7eb;color:#374151;'}">${t.label}</button>`).join('')+`</div><div style="margin-bottom:1rem;position:relative;display:flex;align-items:center;"><span style="position:absolute;left:0.65rem;font-size:0.95rem;pointer-events:none;">🔍</span><input type="search" id="activitySearchInput" value="${esc}" oninput="activitySearch(this.value)" placeholder="Search by name, practice, city, notes…" style="width:100%;padding:0.5rem 2rem 0.5rem 2.1rem;border:1px solid #d1d5db;border-radius:8px;font-size:0.9rem;font-family:inherit;background:#fff;" autocapitalize="none" autocorrect="off" spellcheck="false">${_activitySearchTerm?`<button onclick="activitySearch('')" style="position:absolute;right:0.6rem;background:none;border:none;font-size:1.2rem;cursor:pointer;color:#999;line-height:1;padding:0;">×</button>`:''}</div>`;
 }
 
 // --- Activity tab switcher (called from sub-tab buttons) ---
 window.switchActivityTab = async function(tab) {
 activitySubTab = tab;
 await renderActivityTabView();
+};
+window.activitySearch = function(val) {
+_activitySearchTerm = (val||'').trim().toLowerCase();
+let p;
+if(activitySubTab==='history') p=renderHistoryView();
+else if(activitySubTab==='activity') p=renderActivityView();
+else p=renderTasksView();
+Promise.resolve(p).then(()=>{const inp=document.getElementById('activitySearchInput');if(inp){inp.focus();inp.setSelectionRange(inp.value.length,inp.value.length);}});
 };
 function closeTaskDetailModal() { closeModal('taskDetailModal'); }
 
@@ -86,7 +96,7 @@ function openGoogleCalendar(logId) {
 }
 function openTaskDetailModal(logId) {
 const r = _taskDetailLogs[logId] || (window._taskDetailLogs||{})[logId];
-if (!r) return;
+if (!r) { db.from('contact_logs').select('*').eq('id',logId).single().then(({data})=>{if(data){_taskDetailLogs[logId]=data;if(!window._taskDetailLogs)window._taskDetailLogs={};window._taskDetailLogs[logId]=data;openTaskDetailModal(logId);}});return; }
 const phys = r.provider_id ? physicians.find(p => p.id === r.provider_id) : null;
 const loc = r.practice_location_id ? practiceLocations.find(l => l.id === r.practice_location_id) : null;
 const practice = loc ? practices.find(p => p.id === loc.practice_id) : null;
@@ -139,14 +149,15 @@ const completeFn = `event.stopPropagation();completeReminder('${r.id}').then(()=
 window._openedTaskRec = r;
 const editFn = `closeTaskDetailModal();openEditTaskModal()`;
 const delFn = r.provider_id ? `closeTaskDetailModal();deleteNoteFromActivity('${r.id}','${r.provider_id}').then(()=>renderTasksView())` : '';
-const profileFn = phys ? `closeTaskDetailModal();setView('physicians');viewPhysician('${phys.id}')` : '';
+const profileFn = phys ? `closeTaskDetailModal();setView('physicians');viewPhysician('${phys.id}')` : practice ? `closeTaskDetailModal();setView('practices');viewPractice('${practice.id}')` : '';
+const profileLabel = phys ? '👤 View Full Profile' : '🏢 View Practice Profile';
 html += `<div style="display:flex;flex-direction:column;gap:0.5rem;">
 <button onclick="${completeFn}" style="padding:0.75rem;background:#10b981;color:white;border:none;border-radius:8px;font-weight:700;font-size:0.95rem;cursor:pointer;-webkit-tap-highlight-color:transparent;">✓ Mark Complete</button>
 <div style="display:flex;gap:0.5rem;">
 <button onclick="${editFn}" style="flex:1;padding:0.7rem;background:#0a4d3c;color:white;border:none;border-radius:8px;font-weight:600;font-size:0.875rem;cursor:pointer;">✏️ Edit Note/Task</button>
 ${delFn?`<button onclick="${delFn}" style="flex:1;padding:0.7rem;background:#dc2626;color:white;border:none;border-radius:8px;font-weight:600;font-size:0.875rem;cursor:pointer;">🗑️ Delete</button>`:''}
 </div>
-${profileFn?`<button onclick="${profileFn}" style="padding:0.7rem;background:rgba(10,77,60,0.08);color:#0a4d3c;border:2px solid #0a4d3c;border-radius:8px;font-weight:600;font-size:0.875rem;cursor:pointer;">👤 View Full Profile</button>`:''}
+${profileFn?`<button onclick="${profileFn}" style="padding:0.7rem;background:rgba(10,77,60,0.08);color:#0a4d3c;border:2px solid #0a4d3c;border-radius:8px;font-weight:600;font-size:0.875rem;cursor:pointer;">${profileLabel}</button>`:''}
 ${(!isOpen && r.reminder_date)?`<div><div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.4rem;"><span style="font-size:0.82rem;color:#555;min-width:5.5rem;font-weight:500;">Visit time</span><input type="time" id="taskCalTime" style="flex:1;padding:0.4rem 0.6rem;border:1px solid #d1d5db;border-radius:6px;font-size:0.9rem;font-family:inherit;" aria-label="Calendar event time"><span style="font-size:0.72rem;color:#aaa;white-space:nowrap;">optional</span></div><div style="display:flex;gap:0.5rem;"><button onclick="openGoogleCalendar('${r.id}')" style="flex:1;padding:0.7rem;background:rgba(59,130,246,0.08);color:#1d4ed8;border:2px solid #3b82f6;border-radius:8px;font-weight:600;font-size:0.875rem;cursor:pointer;-webkit-tap-highlight-color:transparent;">📅 Google Calendar</button><button onclick="exportTaskToCalendar('${r.id}')" style="padding:0.7rem 0.85rem;background:rgba(59,130,246,0.08);color:#1d4ed8;border:2px solid #3b82f6;border-radius:8px;font-weight:600;font-size:0.875rem;cursor:pointer;-webkit-tap-highlight-color:transparent;" title="Add to Apple Calendar / Outlook">🍎 Apple Cal</button></div></div>`:''}
 </div>`;
 $('taskDetailTitle').textContent = phys ? fmtName(phys) : (practice?.name || loc?.label || 'Task');
@@ -182,8 +193,9 @@ const{data:allLogs,error}=await db.from('contact_logs').select('*').order('conta
 if(error)throw error;
 const physMap={};physicians.forEach(p=>physMap[p.id]=p);
 const today=localDate();
-const search=($('searchInput').value||'').trim().toLowerCase();
-const filtered=search?allLogs.filter(l=>{const p=physMap[l.provider_id]||{};const fullName=((p.first_name||'')+' '+(p.last_name||'')).trim();return(l.notes||'').toLowerCase().includes(search)||(l.author||'').toLowerCase().includes(search)||fullName.toLowerCase().includes(search);}):allLogs;
+const search=_activitySearchTerm;
+const _hLocMap={};practiceLocations.forEach(l=>_hLocMap[l.id]=l);const _hPracMap={};practices.forEach(p=>_hPracMap[p.id]=p);
+const filtered=search?allLogs.filter(l=>{const p=physMap[l.provider_id]||{};const fullName=((p.first_name||'')+' '+(p.last_name||'')).trim();const loc=l.practice_location_id?_hLocMap[l.practice_location_id]:null;const pracName=loc?(_hPracMap[(loc.practice_id||'')]||{}).name||'':'';return(l.notes||'').toLowerCase().includes(search)||(l.author||'').toLowerCase().includes(search)||(l.contact_date||'').includes(search)||fullName.toLowerCase().includes(search)||(loc&&(loc.city||'').toLowerCase().includes(search))||(loc&&(loc.address||'').toLowerCase().includes(search))||(loc&&(loc.label||'').toLowerCase().includes(search))||pracName.toLowerCase().includes(search);}):allLogs;
 // Update sidebar
 $('physicianList').innerHTML=filtered.length===0?'<li class="loading">No entries found</li>':filtered.map(l=>{const p=l.provider_id?physMap[l.provider_id]:null;const isTask=l.reminder_date&&l.reminder_date!==null;const nameDisplay=p?`${p.first_name||''} ${p.last_name||''}`.trim():(l.practice_location_id?getLocationLabel(l.practice_location_id):'Location Note');let notes=l.notes||'';const tm=notes.match(/^\[(\d{1,2}:\d{2})\]\s*/);if(tm)notes=notes.slice(tm[0].length);const taskMatch=notes.match(/\s*\|\s*\[Task:\s*(.*?)\]$/);if(taskMatch)notes=notes.slice(0,taskMatch.index).trim();const preview=notes.length>80?notes.slice(0,80)+'...':notes;let barColor='#0a4d3c';if(isTask){if(l.reminder_date==='2000-01-01')barColor='#10b981';else if(l.reminder_date==='2099-12-31')barColor='#6b7280';else if(l.reminder_date<today)barColor='#dc2626';else barColor='#6b7280';}const clickFn=l.provider_id?`viewPhysician('${l.provider_id}')`:l.practice_location_id?`viewLocation('${l.practice_location_id}')`:''
 return`<li class="physician-item" style="border-left:3px solid ${barColor};" onclick="${clickFn}"><div class="name">${nameDisplay}</div><div class="practice">${l.contact_date}${l.author?' - '+l.author:''}</div><div style="font-size:0.75rem;color:rgba(255,255,255,0.75);margin-top:0.25rem;">${preview}</div></li>`;}).join('');
@@ -196,7 +208,7 @@ html+='<div class="contact-entries">'+filtered.map(e=>{const phys=e.provider_id?
 const delFn=e.provider_id?`deleteNoteFromActivity('${e.id}','${e.provider_id}').then(()=>renderHistoryView())`:''
 const isDone=e.reminder_date==='2000-01-01';return`<div class="contact-entry" id="hlog-${e.id}" style="border-left-color:${barColor};${bgColor}display:flex;gap:0.5rem;align-items:flex-start;cursor:pointer;" onclick="openTaskDetailModal('${e.id}')">${isDone?`<div style="width:24px;height:24px;min-width:24px;border-radius:50%;background:#10b981;color:white;display:flex;align-items:center;justify-content:center;font-size:0.8rem;flex-shrink:0;margin-top:0.15rem;">✓</div>`:`<button onclick="event.stopPropagation();completeReminderInPlace('${e.id}','hlog-${e.id}',renderHistoryView)" title="Mark complete" style="background:none;border:2px solid ${barColor};color:${barColor};border-radius:50%;width:24px;height:24px;min-width:24px;cursor:pointer;font-size:0.8rem;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:0.15rem;">✓</button>`}<div style="flex:1;"><div style="font-weight:600;color:#0a4d3c;">${physName}</div>${taskNote?`<div style="font-size:0.85rem;font-weight:600;color:#92400e;background:#fef3c7;padding:0.2rem 0.5rem;border-radius:4px;margin-top:0.25rem;">📋 ${taskNote}</div>`:''}<div style="font-size:0.85rem;color:#333;margin-top:0.2rem;">${preview}</div><div style="font-size:0.7rem;color:#999;margin-top:0.2rem;">${e.contact_date}${e.author?' by '+e.author:''}${isDone?' · ✓ Completed':e.reminder_date==='2099-12-31'?' · 📌 Open':` · Task due ${fmtD(e.reminder_date)}`}</div>${editFn||delFn?`<div style="display:flex;gap:0.5rem;margin-top:0.4rem;">${editFn?`<button class="icon-btn" onclick="event.stopPropagation();${editFn}" style="font-size:0.85rem;">✏️ Edit</button>`:''}${delFn?`<button class="icon-btn" onclick="event.stopPropagation();${delFn}" style="font-size:0.85rem;color:#dc2626;">🗑️ Delete</button>`:''}</div>`:''}</div></div>`;}else{const editFn=e.provider_id?`editNoteFromActivity('${e.id}','${e.provider_id}')`:e.practice_location_id?`editPracticeNote('${e.id}')`:''
 const delFn=e.provider_id?`deleteNoteFromActivity('${e.id}','${e.provider_id}')`:e.practice_location_id?`deletePracticeNote('${e.id}')`:''
-return renderLogEntry(e,{physName:phys?fmtName(phys):null,editable:true,editFn,deleteFn:delFn,full:true,showTimestamp:true});}}).join('')+'</div>';}
+const onClick=e.provider_id?`viewPhysician('${e.provider_id}')`:e.practice_location_id?`viewLocation('${e.practice_location_id}')`:undefined;return renderLogEntry(e,{physName:phys?fmtName(phys):null,editable:true,editFn,deleteFn:delFn,full:true,showTimestamp:true,onClick});}}).join('')+'</div>';}
 html+='</div>';
 $('mainContent').innerHTML=html;
 }catch(e){console.error('History view error:',e);$('mainContent').innerHTML='<div class="empty-state"><h2>History</h2><p>Error loading. Try again.</p></div>';}
@@ -210,10 +222,9 @@ if(error)throw error;
 const physMap={};physicians.forEach(p=>physMap[p.id]=p);
 // ACTIVITY tab shows only pure notes (no tasks — exclude records with reminder_date)
 const pureNotes=allLogs.filter(l=>!l.reminder_date);
-const search=$('searchInput').value.trim().toLowerCase();
-const filtered=search?pureNotes.filter(l=>{const p=physMap[l.provider_id]||{};const fullName=((p.first_name||'')+' '+(p.last_name||'')).trim();
-return(l.notes||'').toLowerCase().includes(search)||(l.author||'').toLowerCase().includes(search)||fullName.toLowerCase().includes(search)||(p.first_name||'').toLowerCase().includes(search)||(p.last_name||'').toLowerCase().includes(search);
-}):pureNotes;
+const search=_activitySearchTerm;
+const _aLocMap={};practiceLocations.forEach(l=>_aLocMap[l.id]=l);const _aPracMap={};practices.forEach(p=>_aPracMap[p.id]=p);
+const filtered=search?pureNotes.filter(l=>{const p=physMap[l.provider_id]||{};const fullName=((p.first_name||'')+' '+(p.last_name||'')).trim();const loc=l.practice_location_id?_aLocMap[l.practice_location_id]:null;const pracName=loc?(_aPracMap[(loc.practice_id||'')]||{}).name||'':'';return(l.notes||'').toLowerCase().includes(search)||(l.author||'').toLowerCase().includes(search)||(l.contact_date||'').includes(search)||fullName.toLowerCase().includes(search)||(loc&&(loc.city||'').toLowerCase().includes(search))||(loc&&(loc.address||'').toLowerCase().includes(search))||(loc&&(loc.label||'').toLowerCase().includes(search))||pracName.toLowerCase().includes(search);}):pureNotes;
 $('physicianList').innerHTML=filtered.length===0?'<li class="loading">No activity found</li>':
 filtered.map(l=>{const p=l.provider_id?physMap[l.provider_id]:null;
 let time=l.contact_time||'';let notes=l.notes||'';
@@ -230,7 +241,7 @@ $('physicianCount').textContent=filtered.length+' of '+pureNotes.length+' activi
 const addBtn=`<button onclick="openContactModal()" style="padding:0.4rem 0.9rem;background:#0a4d3c;color:white;border:none;border-radius:6px;font-size:0.85rem;font-weight:600;cursor:pointer;">+ Add Activity</button>`;
 $('mainContent').innerHTML=_activityTabsHtml()+`<div class="section"><div class="section-header"><h3>Activity Log</h3><div style="display:flex;align-items:center;gap:0.75rem;"><div style="font-size:0.8rem;color:#666;">${filtered.length} entries${search?' matching "'+search+'"':''}</div>${addBtn}</div></div>
 ${filtered.length===0?'<div class="empty-notice">No activity found.</div>':
-'<div class="contact-entries">'+filtered.map(e=>{const phys=e.provider_id?physMap[e.provider_id]:null;const editFn=e.provider_id?`editNoteFromActivity('${e.id}','${e.provider_id}')`:`editPracticeNote('${e.id}')`;const delFn=e.provider_id?`deleteNoteFromActivity('${e.id}','${e.provider_id}')`:`deletePracticeNote('${e.id}')`;return renderLogEntry(e,{physName:phys?fmtName(phys):null,editable:true,editFn,deleteFn:delFn,full:true,showTimestamp:true});}).join('')+'</div>'}
+'<div class="contact-entries">'+filtered.map(e=>{const phys=e.provider_id?physMap[e.provider_id]:null;const isTask=!!e.reminder_date;const editFn=isTask?`openTaskDetailModal('${e.id}')`:e.provider_id?`editNoteFromActivity('${e.id}','${e.provider_id}')`:`editPracticeNote('${e.id}')`;const delFn=e.provider_id?`deleteNoteFromActivity('${e.id}','${e.provider_id}')`:`deletePracticeNote('${e.id}')`;const onClick=e.provider_id?`viewPhysician('${e.provider_id}')`:e.practice_location_id?`viewLocation('${e.practice_location_id}')`:undefined;return renderLogEntry(e,{physName:phys?fmtName(phys):null,editable:true,editFn,deleteFn:delFn,full:true,showTimestamp:true,onClick});}).join('')+'</div>'}
 </div>`;
 }catch(e){console.error('Activity view error:',e);$('physicianList').innerHTML='<li class="loading">Error loading activity</li>';$('mainContent').innerHTML='<div class="empty-state"><h2>Activity</h2><p>Error loading. Try again.</p></div>';}
 }
@@ -252,9 +263,11 @@ if(!reminders||reminders.length===0){
 if(completedTasks.length===0){$('mainContent').innerHTML=tabsPrefix+`<div class="section"><div class="section-header"><h3>Tasks &amp; Reminders</h3>${newTaskBtn}</div><div class="empty-notice">No tasks yet. Use the button above to create one.</div></div>`;return;}
 // No active tasks but completed ones exist — fall through to show completed section
 }
-const search=$('searchInput').value.trim().toLowerCase();
-const filtered=search?reminders.filter(r=>{const ph=physMap[r.provider_id]||{};const fullName=((ph.first_name||'')+' '+(ph.last_name||'')).trim();return(r.notes||'').toLowerCase().includes(search)||(r.author||'').toLowerCase().includes(search)||fullName.toLowerCase().includes(search)||(ph.first_name||'').toLowerCase().includes(search)||(ph.last_name||'').toLowerCase().includes(search);}):reminders;
-if(search&&filtered.length===0){$('mainContent').innerHTML=tabsPrefix+`<div class="section"><div class="section-header"><h3>Tasks &amp; Reminders</h3>${newTaskBtn}</div><div class="empty-notice">No tasks matching "${search}".</div></div>`;return;}
+const search=_activitySearchTerm||$('searchInput').value.trim().toLowerCase();
+function _taskMatches(r){const ph=physMap[r.provider_id]||{};const fullName=((ph.first_name||'')+' '+(ph.last_name||'')).trim();return(r.notes||'').toLowerCase().includes(search)||(r.author||'').toLowerCase().includes(search)||fullName.toLowerCase().includes(search)||(ph.first_name||'').toLowerCase().includes(search)||(ph.last_name||'').toLowerCase().includes(search);}
+const filtered=search?reminders.filter(_taskMatches):reminders;
+const filteredCompleted=search?completedTasks.filter(_taskMatches):completedTasks;
+if(search&&filtered.length===0&&filteredCompleted.length===0){$('mainContent').innerHTML=tabsPrefix+`<div class="section"><div class="section-header"><h3>Tasks &amp; Reminders</h3>${newTaskBtn}</div><div class="empty-notice">No tasks matching "${search}".</div></div>`;return;}
 const OPEN_DATE='2099-12-31';
 const openTasks=filtered.filter(r=>r.reminder_date===OPEN_DATE);
 const datedR=filtered.filter(r=>r.reminder_date!==OPEN_DATE);
@@ -287,7 +300,7 @@ const {displayNotes,taskNote}=parseTaskRecord(r.notes);
 const preview=displayNotes.length>120?displayNotes.substring(0,120)+'...':displayNotes;
 const editFn=`editTaskFromList('${r.id}')`
 const delFn=r.provider_id?`deleteNoteFromActivity('${r.id}','${r.provider_id}').then(()=>renderTasksView())`:''
-html+=`<div class="contact-entry" style="border-left-color:#f59e0b;display:flex;gap:0.5rem;align-items:flex-start;cursor:pointer;" onclick="openTaskDetailModal('${r.id}')"><button onclick="event.stopPropagation();completeReminder('${r.id}').then(()=>renderTasksView())" title="Mark complete" style="background:none;border:2px solid #f59e0b;color:#92400e;border-radius:50%;width:24px;height:24px;min-width:24px;cursor:pointer;font-size:0.8rem;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:0.15rem;">✓</button><div style="flex:1;"><div style="font-weight:600;color:#0a4d3c;">${physName}${emailLink}</div>${taskNote?`<div style="font-size:0.85rem;font-weight:600;color:#92400e;background:#fef3c7;padding:0.2rem 0.5rem;border-radius:4px;margin-top:0.25rem;">📋 ${taskNote}</div>`:''}<div style="font-size:0.85rem;color:#333;margin-top:0.2rem;">${preview}</div><div style="font-size:0.7rem;color:#999;margin-top:0.2rem;">Note from ${r.contact_date}${r.author?' by '+r.author:''}</div>${editFn||delFn?`<div style="display:flex;gap:0.5rem;margin-top:0.4rem;">${editFn?`<button class="icon-btn" onclick="event.stopPropagation();${editFn}" title="Edit note & reminder date" style="font-size:0.85rem;">✏️ Edit</button>`:''}${delFn?`<button class="icon-btn" onclick="event.stopPropagation();${delFn}" title="Delete" style="font-size:0.85rem;color:#dc2626;">🗑️ Delete</button>`:''}</div>`:''}</div></div>`;
+html+=`<div class="contact-entry" style="border-left-color:#6b7280;display:flex;gap:0.5rem;align-items:flex-start;cursor:pointer;" onclick="openTaskDetailModal('${r.id}')"><button onclick="event.stopPropagation();completeReminder('${r.id}').then(()=>renderTasksView())" title="Mark complete" style="background:none;border:2px solid #6b7280;color:#6b7280;border-radius:50%;width:24px;height:24px;min-width:24px;cursor:pointer;font-size:0.8rem;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:0.15rem;">✓</button><div style="flex:1;"><div style="font-weight:600;color:#0a4d3c;">${physName}${emailLink}</div>${taskNote?`<div style="font-size:0.85rem;font-weight:600;color:#92400e;background:#fef3c7;padding:0.2rem 0.5rem;border-radius:4px;margin-top:0.25rem;">📋 ${taskNote}</div>`:''}<div style="font-size:0.85rem;color:#333;margin-top:0.2rem;">${preview}</div><div style="font-size:0.7rem;color:#999;margin-top:0.2rem;">Note from ${r.contact_date}${r.author?' by '+r.author:''}</div>${editFn||delFn?`<div style="display:flex;gap:0.5rem;margin-top:0.4rem;">${editFn?`<button class="icon-btn" onclick="event.stopPropagation();${editFn}" title="Edit note & reminder date" style="font-size:0.85rem;">✏️ Edit</button>`:''}${delFn?`<button class="icon-btn" onclick="event.stopPropagation();${delFn}" title="Delete" style="font-size:0.85rem;color:#dc2626;">🗑️ Delete</button>`:''}</div>`:''}</div></div>`;
 });
 html+='</div></div>';
 });
@@ -305,9 +318,9 @@ html+=`<div class="contact-entry" style="border-left-color:#6b7280;display:flex;
 });
 html+='</div></div>';
 }
-if(completedTasks.length>0){
-const showCount=20;const shown=completedTasks.slice(0,showCount);
-html+=`<div style="margin-bottom:0.75rem;"><div style="font-size:0.75rem;font-weight:700;color:#10b981;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:0.5rem;padding-bottom:0.25rem;border-bottom:2px solid #a7f3d0;">✓ Recently Completed (${completedTasks.length}${completedTasks.length>showCount?' — showing '+showCount:''})</div><div class="contact-entries">`;
+if(filteredCompleted.length>0){
+const showCount=20;const shown=filteredCompleted.slice(0,showCount);
+html+=`<div style="margin-bottom:0.75rem;"><div style="font-size:0.75rem;font-weight:700;color:#10b981;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:0.5rem;padding-bottom:0.25rem;border-bottom:2px solid #a7f3d0;">✓ Recently Completed (${filteredCompleted.length}${filteredCompleted.length>showCount?' — showing '+showCount:''})</div><div class="contact-entries">`;
 shown.forEach(r=>{
 const phys=r.provider_id?physMap[r.provider_id]:null;const physName=phys?fmtName(phys):(r.practice_location_id?getLocationLabel(r.practice_location_id):'Note');
 const {displayNotes}=parseTaskRecord(r.notes);
