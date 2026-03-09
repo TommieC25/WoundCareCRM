@@ -18,9 +18,11 @@ await renderActivityTabView();
 };
 window.activitySearch = function(val) {
 _activitySearchTerm = (val||'').trim().toLowerCase();
-if(activitySubTab==='history') renderHistoryView();
-else if(activitySubTab==='activity') renderActivityView();
-else renderTasksView();
+let p;
+if(activitySubTab==='history') p=renderHistoryView();
+else if(activitySubTab==='activity') p=renderActivityView();
+else p=renderTasksView();
+Promise.resolve(p).then(()=>{const inp=document.getElementById('activitySearchInput');if(inp){inp.focus();inp.setSelectionRange(inp.value.length,inp.value.length);}});
 };
 function closeTaskDetailModal() { closeModal('taskDetailModal'); }
 
