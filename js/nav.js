@@ -307,13 +307,13 @@ return locs.some(l=>[l.address,l.city,l.zip,l.phone,l.fax,l.practice_email,l.off
 function filterList() {
 const val = $('searchInput').value;
 $('searchClear').style.display = val ? 'flex' : 'none';
-if(currentView==='activity') renderActivityTabView();
+if(currentView==='activity'){_activitySearchTerm=val.trim().toLowerCase();renderActivityTabView();}
 else renderList();
 }
 function clearSearch() {
 $('searchInput').value = '';
 $('searchClear').style.display = 'none';
-if(currentView==='activity') renderActivityTabView();
+if(currentView==='activity'){_activitySearchTerm='';renderActivityTabView();}
 else renderList();
 $('searchInput').focus();
 }
