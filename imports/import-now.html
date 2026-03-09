@@ -167,8 +167,7 @@ async function runImport() {
           specialty: r.specialty || null, degree: r.degree || null, title: r.title || null,
           proj_vol: r.proj_vol || r.patient_volume || null,
           ss_vol: r.ss_vol ? parseInt(r.ss_vol, 10) || null : null,
-          general_notes: r.general_notes || null,
-          is_target: r.is_target === 'Y' || r.is_target === 'y' || r.is_target === 'true' || r.is_target === '1'
+          general_notes: r.general_notes || null
         },
         practiceIds: new Set(), primaryLocKey: null
       });
