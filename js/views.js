@@ -263,9 +263,11 @@ if(!reminders||reminders.length===0){
 if(completedTasks.length===0){$('mainContent').innerHTML=tabsPrefix+`<div class="section"><div class="section-header"><h3>Tasks &amp; Reminders</h3>${newTaskBtn}</div><div class="empty-notice">No tasks yet. Use the button above to create one.</div></div>`;return;}
 // No active tasks but completed ones exist — fall through to show completed section
 }
-const search=$('searchInput').value.trim().toLowerCase();
-const filtered=search?reminders.filter(r=>{const ph=physMap[r.provider_id]||{};const fullName=((ph.first_name||'')+' '+(ph.last_name||'')).trim();return(r.notes||'').toLowerCase().includes(search)||(r.author||'').toLowerCase().includes(search)||fullName.toLowerCase().includes(search)||(ph.first_name||'').toLowerCase().includes(search)||(ph.last_name||'').toLowerCase().includes(search);}):reminders;
-if(search&&filtered.length===0){$('mainContent').innerHTML=tabsPrefix+`<div class="section"><div class="section-header"><h3>Tasks &amp; Reminders</h3>${newTaskBtn}</div><div class="empty-notice">No tasks matching "${search}".</div></div>`;return;}
+const search=_activitySearchTerm||$('searchInput').value.trim().toLowerCase();
+function _taskMatches(r){const ph=physMap[r.provider_id]||{};const fullName=((ph.first_name||'')+' '+(ph.last_name||'')).trim();return(r.notes||'').toLowerCase().includes(search)||(r.author||'').toLowerCase().includes(search)||fullName.toLowerCase().includes(search)||(ph.first_name||'').toLowerCase().includes(search)||(ph.last_name||'').toLowerCase().includes(search);}
+const filtered=search?reminders.filter(_taskMatches):reminders;
+const filteredCompleted=search?completedTasks.filter(_taskMatches):completedTasks;
+if(search&&filtered.length===0&&filteredCompleted.length===0){$('mainContent').innerHTML=tabsPrefix+`<div class="section"><div class="section-header"><h3>Tasks &amp; Reminders</h3>${newTaskBtn}</div><div class="empty-notice">No tasks matching "${search}".</div></div>`;return;}
 const OPEN_DATE='2099-12-31';
 const openTasks=filtered.filter(r=>r.reminder_date===OPEN_DATE);
 const datedR=filtered.filter(r=>r.reminder_date!==OPEN_DATE);
@@ -316,9 +318,9 @@ html+=`<div class="contact-entry" style="border-left-color:#6b7280;display:flex;
 });
 html+='</div></div>';
 }
-if(completedTasks.length>0){
-const showCount=20;const shown=completedTasks.slice(0,showCount);
-html+=`<div style="margin-bottom:0.75rem;"><div style="font-size:0.75rem;font-weight:700;color:#10b981;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:0.5rem;padding-bottom:0.25rem;border-bottom:2px solid #a7f3d0;">✓ Recently Completed (${completedTasks.length}${completedTasks.length>showCount?' — showing '+showCount:''})</div><div class="contact-entries">`;
+if(filteredCompleted.length>0){
+const showCount=20;const shown=filteredCompleted.slice(0,showCount);
+html+=`<div style="margin-bottom:0.75rem;"><div style="font-size:0.75rem;font-weight:700;color:#10b981;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:0.5rem;padding-bottom:0.25rem;border-bottom:2px solid #a7f3d0;">✓ Recently Completed (${filteredCompleted.length}${filteredCompleted.length>showCount?' — showing '+showCount:''})</div><div class="contact-entries">`;
 shown.forEach(r=>{
 const phys=r.provider_id?physMap[r.provider_id]:null;const physName=phys?fmtName(phys):(r.practice_location_id?getLocationLabel(r.practice_location_id):'Note');
 const {displayNotes}=parseTaskRecord(r.notes);
