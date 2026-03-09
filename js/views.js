@@ -8,7 +8,7 @@ const fmtD = ds => { if(!ds)return''; const d=new Date(ds+'T12:00:00'); return d
 function _activityTabsHtml() {
 const tabs = [{id:'history',label:'HISTORY'},{id:'activity',label:'ACTIVITY'},{id:'tasks',label:'TASKS'}];
 const esc = _activitySearchTerm.replace(/"/g,'&quot;');
-return `<div style="display:flex;gap:0.5rem;margin-bottom:0.75rem;padding-bottom:0.75rem;border-bottom:2px solid #f0f0f0;">`+tabs.map(t=>`<button onclick="switchActivityTab('${t.id}')" style="padding:0.45rem 0.9rem;border:none;border-radius:6px;font-size:0.78rem;font-weight:700;cursor:pointer;letter-spacing:0.5px;transition:all 0.15s;-webkit-tap-highlight-color:transparent;${activitySubTab===t.id?'background:#0a4d3c;color:white;':'background:#e5e7eb;color:#374151;'}">${t.label}</button>`).join('')+`</div><div style="margin-bottom:1rem;position:relative;display:flex;align-items:center;"><span style="position:absolute;left:0.65rem;font-size:0.95rem;pointer-events:none;">🔍</span><input type="search" id="activitySearchInput" value="${esc}" oninput="activitySearch(this.value)" placeholder="Search by name, practice, city, notes…" style="width:100%;padding:0.5rem 2rem 0.5rem 2.1rem;border:1px solid #d1d5db;border-radius:8px;font-size:0.9rem;font-family:inherit;background:#fff;" autocapitalize="none" autocorrect="off" spellcheck="false">${_activitySearchTerm?`<button onclick="activitySearch('')" style="position:absolute;right:0.6rem;background:none;border:none;font-size:1.2rem;cursor:pointer;color:#999;line-height:1;padding:0;">×</button>`:''}</div>`;
+return `<div style="display:flex;gap:0.5rem;margin-bottom:0.75rem;padding-bottom:0.75rem;border-bottom:2px solid #f0f0f0;">`+tabs.map(t=>`<button onclick="switchActivityTab('${t.id}')" style="padding:0.45rem 0.9rem;border:none;border-radius:6px;font-size:0.78rem;font-weight:700;cursor:pointer;letter-spacing:0.5px;transition:all 0.15s;-webkit-tap-highlight-color:transparent;${activitySubTab===t.id?'background:#0a4d3c;color:white;':'background:#e5e7eb;color:#374151;'}">${t.label}</button>`).join('')+`</div><div style="margin-bottom:1rem;position:relative;display:flex;align-items:center;"><span style="position:absolute;left:0.65rem;font-size:0.95rem;pointer-events:none;">🔍</span><input type="search" id="activitySearchInput" value="${esc}" oninput="activitySearch(this.value)" onchange="activitySearch(this.value)" onsearch="activitySearch(this.value)" placeholder="Search by name, practice, city, notes…" style="width:100%;padding:0.5rem 2rem 0.5rem 2.1rem;border:1px solid #d1d5db;border-radius:8px;font-size:0.9rem;font-family:inherit;background:#fff;" autocapitalize="none" autocorrect="off" spellcheck="false">${_activitySearchTerm?`<button onclick="activitySearch('')" style="position:absolute;right:0.6rem;background:none;border:none;font-size:1.2rem;cursor:pointer;color:#999;line-height:1;padding:0;">×</button>`:''}</div>`;
 }
 
 // --- Activity tab switcher (called from sub-tab buttons) ---
@@ -193,7 +193,7 @@ const{data:allLogs,error}=await db.from('contact_logs').select('*').order('conta
 if(error)throw error;
 const physMap={};physicians.forEach(p=>physMap[p.id]=p);
 const today=localDate();
-const search=_activitySearchTerm;
+const search=_activitySearchTerm||$('searchInput').value.trim().toLowerCase();
 const _hLocMap={};practiceLocations.forEach(l=>_hLocMap[l.id]=l);const _hPracMap={};practices.forEach(p=>_hPracMap[p.id]=p);
 const filtered=search?allLogs.filter(l=>{const p=physMap[l.provider_id]||{};const fullName=((p.first_name||'')+' '+(p.last_name||'')).trim();const loc=l.practice_location_id?_hLocMap[l.practice_location_id]:null;const pracName=loc?(_hPracMap[(loc.practice_id||'')]||{}).name||'':'';return(l.notes||'').toLowerCase().includes(search)||(l.author||'').toLowerCase().includes(search)||(l.contact_date||'').includes(search)||fullName.toLowerCase().includes(search)||(loc&&(loc.city||'').toLowerCase().includes(search))||(loc&&(loc.address||'').toLowerCase().includes(search))||(loc&&(loc.label||'').toLowerCase().includes(search))||pracName.toLowerCase().includes(search);}):allLogs;
 // Update sidebar
@@ -222,7 +222,7 @@ if(error)throw error;
 const physMap={};physicians.forEach(p=>physMap[p.id]=p);
 // ACTIVITY tab shows only pure notes (no tasks — exclude records with reminder_date)
 const pureNotes=allLogs.filter(l=>!l.reminder_date);
-const search=_activitySearchTerm;
+const search=_activitySearchTerm||$('searchInput').value.trim().toLowerCase();
 const _aLocMap={};practiceLocations.forEach(l=>_aLocMap[l.id]=l);const _aPracMap={};practices.forEach(p=>_aPracMap[p.id]=p);
 const filtered=search?pureNotes.filter(l=>{const p=physMap[l.provider_id]||{};const fullName=((p.first_name||'')+' '+(p.last_name||'')).trim();const loc=l.practice_location_id?_aLocMap[l.practice_location_id]:null;const pracName=loc?(_aPracMap[(loc.practice_id||'')]||{}).name||'':'';return(l.notes||'').toLowerCase().includes(search)||(l.author||'').toLowerCase().includes(search)||(l.contact_date||'').includes(search)||fullName.toLowerCase().includes(search)||(loc&&(loc.city||'').toLowerCase().includes(search))||(loc&&(loc.address||'').toLowerCase().includes(search))||(loc&&(loc.label||'').toLowerCase().includes(search))||pracName.toLowerCase().includes(search);}):pureNotes;
 $('physicianList').innerHTML=filtered.length===0?'<li class="loading">No activity found</li>':
