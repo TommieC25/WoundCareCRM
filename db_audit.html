@@ -64,6 +64,16 @@ button{border:none;border-radius:6px;padding:0.35rem 0.75rem;font-size:0.8rem;fo
 
 <div id="sections" style="display:none;">
 
+<!-- Section SPECIALTY: Corrupted specialty values -->
+<div class="section">
+  <div class="section-header">
+    <span class="section-title">🏷️ Corrupted Specialty Values</span>
+    <span class="count-badge" id="specialtyBadge">—</span>
+  </div>
+  <p class="section-note">Valid specialties are exactly: <strong>Podiatry</strong>, <strong>Wound Care</strong>, <strong>Dermatology</strong> (Mohs surgeons only), <strong>Other</strong>, <strong>Administrative Staff</strong>. Anything else must be remapped. Select a target for each bad value and tap <strong>Fix All Mapped</strong>, or fix groups individually.</p>
+  <div id="specialtyList" class="loading">Loading...</div>
+</div>
+
 <!-- Section PHONE: Multi-number phone fields -->
 <div class="section">
   <div class="section-header">
@@ -293,6 +303,43 @@ async function fixAllPhones() {
   setTimeout(() => runAudit(), 1500);
 }
 
+async function fixOneSpecialty(oldVal, newVal, btn) {
+  if (!newVal) { showToast('Select a target specialty first', 'error'); return; }
+  btn.disabled = true; btn.textContent = 'Fixing...';
+  let error;
+  if (oldVal === '') {
+    const r1 = await db.from('providers').update({specialty: newVal}).is('specialty', null);
+    const r2 = await db.from('providers').update({specialty: newVal}).eq('specialty', '');
+    error = r1.error || r2.error;
+  } else {
+    const r = await db.from('providers').update({specialty: newVal}).eq('specialty', oldVal);
+    error = r.error;
+  }
+  if (error) { showToast('Error: ' + error.message, 'error'); btn.disabled = false; btn.textContent = 'Fix'; return; }
+  showToast(`Remapped "${oldVal || '(blank)'}" → "${newVal}"`, 'success');
+  setTimeout(() => runAudit(), 1500);
+}
+
+async function fixAllSpecialties() {
+  const selects = document.querySelectorAll('[id^="specmap_"]');
+  const mappings = [];
+  selects.forEach(sel => { if (sel.value) mappings.push({old: sel.dataset.old, new: sel.value, blank: sel.dataset.blank === '1'}); });
+  if (mappings.length === 0) { showToast('Select a target specialty for at least one group', 'error'); return; }
+  let fixed = 0, errs = 0;
+  for (const m of mappings) {
+    if (m.blank) {
+      const r1 = await db.from('providers').update({specialty: m.new}).is('specialty', null);
+      const r2 = await db.from('providers').update({specialty: m.new}).eq('specialty', '');
+      if (r1.error || r2.error) errs++; else fixed++;
+    } else {
+      const r = await db.from('providers').update({specialty: m.new}).eq('specialty', m.old);
+      if (r.error) errs++; else fixed++;
+    }
+  }
+  showToast(`Fixed ${fixed} group(s)${errs ? ', ' + errs + ' error(s)' : ''}`, errs ? 'error' : 'success');
+  setTimeout(() => runAudit(), 1500);
+}
+
 async function runAudit() {
   const btn = document.getElementById('runBtn');
   btn.textContent = 'Running...'; btn.disabled = true;
@@ -447,6 +494,46 @@ async function runAudit() {
       }).join('');
     }
 
+    // === SECTION SPECIALTY: Corrupted specialty values ===
+    const VALID_SPECIALTIES = new Set(['Dermatology','Podiatry','Wound Care','Other','Administrative Staff']);
+    const specialtyGroups = {};
+    (providers || []).forEach(p => {
+      const sp = (p.specialty || '').trim();
+      if (!VALID_SPECIALTIES.has(sp)) {
+        if (!specialtyGroups[sp]) specialtyGroups[sp] = [];
+        specialtyGroups[sp].push(p);
+      }
+    });
+    const badSpecialtyEntries = Object.entries(specialtyGroups).sort((a,b) => b[1].length - a[1].length);
+    const totalBadSpecialty = badSpecialtyEntries.reduce((n,[,arr]) => n + arr.length, 0);
+    const specialtyEl = document.getElementById('specialtyList');
+    const specialtyBadge = document.getElementById('specialtyBadge');
+    specialtyBadge.textContent = totalBadSpecialty + (totalBadSpecialty === 0 ? ' ✓' : ' bad value(s)');
+    specialtyBadge.className = 'count-badge ' + (totalBadSpecialty === 0 ? 'ok' : '');
+    if (badSpecialtyEntries.length === 0) {
+      specialtyEl.innerHTML = '<p class="empty">✓ All providers have valid specialty values.</p>';
+    } else {
+      const validOpts = ['','Podiatry','Wound Care','Dermatology','Other','Administrative Staff']
+        .map(v => `<option value="${v}">${v || '-- remap to --'}</option>`).join('');
+      specialtyEl.innerHTML = `<div style="margin-bottom:0.75rem;"><button class="btn-primary" onclick="fixAllSpecialties()">Fix All Mapped</button> <span style="font-size:0.8rem;color:#666;margin-left:0.5rem;">Select a target for each group, then Fix All Mapped</span></div>` +
+        badSpecialtyEntries.map(([val, provs]) => {
+          const isBlank = val === '';
+          const safeId = 'sp_' + val.replace(/[^a-zA-Z0-9]/g, '_').substring(0, 30) + '_' + provs.length;
+          const escapedVal = val.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+          const examples = provs.slice(0,4).map(p => [p.first_name, p.last_name, p.degree].filter(Boolean).join(' ')).join(', ');
+          return `<div class="row-card danger">
+            <div class="row-info">
+              <div class="row-name">"${val || '(blank / null)'}" <span style="font-weight:400;color:#666;font-size:0.8rem;">${provs.length} provider(s)</span></div>
+              <div class="row-detail">${examples}${provs.length > 4 ? ` + ${provs.length - 4} more` : ''}</div>
+            </div>
+            <div class="row-actions" style="align-items:center;">
+              <select id="${safeId}" data-old="${val.replace(/"/g,'&quot;')}" data-blank="${isBlank ? '1' : '0'}" style="padding:0.3rem 0.5rem;border:1px solid #d1d5db;border-radius:6px;font-size:0.8rem;">${validOpts}</select>
+              <button class="btn-primary" style="padding:0.3rem 0.75rem;font-size:0.8rem;" onclick="fixOneSpecialty('${escapedVal}', document.getElementById('${safeId}').value, this)">Fix</button>
+            </div>
+          </div>`;
+        }).join('');
+    }
+
     // === SECTION 1: Out-of-territory locations ===
     const ootLocs = (locations || []).filter(l => !guessCounty(l.city));
     const ootEl = document.getElementById('ootList');
@@ -585,12 +672,13 @@ async function runAudit() {
     }
 
     // Stats
-    const totalIssues = uniquePhantoms.length + nonMohsDerms.length + ootLocs.length + selfPracs.length + orphans.length + multiPhoneLocs.length;
+    const totalIssues = uniquePhantoms.length + nonMohsDerms.length + ootLocs.length + selfPracs.length + orphans.length + multiPhoneLocs.length + totalBadSpecialty;
     document.getElementById('statsGrid').style.display = 'grid';
     document.getElementById('statsGrid').innerHTML = `
       <div class="stat-card"><div class="stat-num">${(providers||[]).length}</div><div class="stat-label">Total Providers</div></div>
       <div class="stat-card"><div class="stat-num">${(practices||[]).length}</div><div class="stat-label">Total Practices</div></div>
       <div class="stat-card"><div class="stat-num">${(locations||[]).length}</div><div class="stat-label">Total Locations</div></div>
+      <div class="stat-card"><div class="stat-num ${totalBadSpecialty > 0 ? 'bad' : ''}">${totalBadSpecialty}</div><div class="stat-label">Bad Specialty Values</div></div>
       <div class="stat-card"><div class="stat-num ${uniquePhantoms.length > 0 ? 'bad' : ''}">${uniquePhantoms.length}</div><div class="stat-label">Phantom Locations</div></div>
       <div class="stat-card"><div class="stat-num ${nonMohsDerms.length > 0 ? 'bad' : ''}">${nonMohsDerms.length}</div><div class="stat-label">Non-Mohs Derms</div></div>
       <div class="stat-card"><div class="stat-num ${ootLocs.length > 0 ? 'bad' : ''}">${ootLocs.length}</div><div class="stat-label">OOT Locations</div></div>
