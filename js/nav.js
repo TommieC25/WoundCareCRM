@@ -89,6 +89,7 @@ currentPhysician=null;currentPractice=null;
 renderActivityTabView();
 return;
 }
+_activitySearchTerm = '';
 if(view==='map'){
 $('searchInput').parentElement.parentElement.style.display='none';
 $('addBtn').style.display='none';
