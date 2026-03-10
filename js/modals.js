@@ -131,7 +131,7 @@ $('physicianSaveBtn').textContent='Save Provider';$('physicianSaveBtn').classNam
 async function savePhysician(e) {
 e.preventDefault();
 const data = {first_name:$('firstName').value,last_name:$('lastName').value,email:$('physicianEmail').value||null,mobile_phone:$('mobilePhone').value||null,priority:$('priority').value||null,specialty:$('specialty').value||null,academic_connection:$('umConnection').value||null,proj_vol:$('patientVolume').value||null,mohs_volume:null,general_notes:$('physicianGeneralNotes').value||null};
-const degreeVal=$('degree').value||null;const titleVal=$('staffTitle').value||null;
+const degreeVal=normDegree($('degree').value)||null;const titleVal=$('staffTitle').value||null;
 data.degree=degreeVal;data.title=titleVal;data.is_target=!!$('isTarget').checked;
 await withSave('physicianSaveBtn','Save Provider',async()=>{
 if(editMode){if(!currentPhysician){showToast('Error: provider context lost. Close and try again.','error');return;}const{error}=await db.from('providers').update(data).eq('id',currentPhysician.id);if(error)throw error;Object.assign(currentPhysician,data);renderProfile();showToast('Provider updated','success');
@@ -599,7 +599,7 @@ const locId = $('assignPhysLocationSelect').value;
 if (!locId) { showQuickErr('Please select a location at the top of this form.'); return; }
 try {
 updateSyncIndicators('syncing');
-const data = {first_name:first,last_name:last,degree:$('quickPhysDegree').value||null,specialty:$('quickPhysSpecialty').value||null,priority:$('quickPhysPriority').value||null};
+const data = {first_name:first,last_name:last,degree:normDegree($('quickPhysDegree').value)||null,specialty:$('quickPhysSpecialty').value||null,priority:$('quickPhysPriority').value||null};
 const {data:newPhys,error} = await db.from('providers').insert(data).select().single();
 if (error) throw error;
 const {error:assignErr} = await db.from('provider_location_assignments').insert({provider_id:newPhys.id,practice_location_id:locId,is_primary:true});
