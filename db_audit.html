@@ -395,6 +395,31 @@ ${lines}`;
   navigator.clipboard.writeText(prompt).then(() => showToast(`Copied ${derms.length} derm(s) to clipboard`, 'success')).catch(() => { window._aiPrompt = prompt; showToast('Copy failed — check console', 'error'); console.log(prompt); });
 }
 
+function copySelfPracsForAI() {
+  const pracs = window._selfPracs || [];
+  if (!pracs.length) { showToast('No self-named practices to copy', 'error'); return; }
+  const locsByPrac = window._auditLocsByPractice || {};
+  const lines = pracs.map((prac, i) => {
+    const locs = locsByPrac[prac.id] || [];
+    const addrs = locs.map(l => [l.address, l.city, l.zip].filter(Boolean).join(', ')).filter(Boolean).join(' / ');
+    const parts = [`${i+1}. ${prac.name}`];
+    if (addrs) parts.push(`   Address: ${addrs}`);
+    if (prac.website) parts.push(`   Website: ${prac.website}`);
+    if (prac.notes) parts.push(`   Notes: ${prac.notes}`);
+    return parts.join('\n');
+  }).join('\n\n');
+  const prompt = `I maintain a wound care CRM for Miami-area sales. The following practices appear to be named after individual providers (e.g. "Adam Plotkin DPM LLC"). I need to determine whether each is a legitimate solo practice OR an import artifact that should be deleted and the provider linked to an existing group practice instead.
+
+For each, please check the NPI registry to determine:
+- Is this provider's NPI address registered to this practice name, or to a different group practice?
+- Are they affiliated with any larger wound care group or hospital system in South Florida?
+- Verdict: KEEP as solo practice, MERGE into a group (name it if known), or UNCLEAR
+
+---
+${lines}`;
+  navigator.clipboard.writeText(prompt).then(() => showToast(`Copied ${pracs.length} practice(s) to clipboard`, 'success')).catch(() => { console.log(prompt); showToast('Copy failed — check console', 'error'); });
+}
+
 function copyOrphansForAI() {
   const provs = window._orphanProviders || [];
   if (!provs.length) { showToast('No unassigned providers to copy', 'error'); return; }
@@ -724,10 +749,12 @@ async function runAudit() {
     const selfBadge = document.getElementById('selfBadge');
     selfBadge.textContent = selfPracs.length + (selfPracs.length === 0 ? ' ✓' : ' issues');
     selfBadge.className = 'count-badge ' + (selfPracs.length === 0 ? 'ok' : '');
+    window._selfPracs = selfPracs;
     if (selfPracs.length === 0) {
       selfEl.innerHTML = '<p class="empty">No self-named practices detected.</p>';
     } else {
-      selfEl.innerHTML = selfPracs.map(prac => {
+      selfEl.innerHTML = `<div style="margin-bottom:0.75rem;"><button class="btn-primary" onclick="copySelfPracsForAI()">📋 Copy for AI Vetting</button> <span style="font-size:0.8rem;color:#666;margin-left:0.5rem;">Ask AI whether these are real solo practices or import duplicates</span></div>` +
+        selfPracs.map(prac => {
         const locs = locsByPractice[prac.id] || [];
         const totalProviders = new Set();
         locs.forEach(l => (assignedProvidersByLoc[l.id] || new Set()).forEach(pid => totalProviders.add(pid)));
