@@ -52,6 +52,14 @@ button{border:none;border-radius:6px;padding:0.35rem 0.75rem;font-size:0.8rem;fo
 .section-note{font-size:0.78rem;color:#666;margin-bottom:0.75rem;line-height:1.4;}
 .confirm-bar{background:#fef3c7;border:1px solid #fcd34d;border-radius:8px;padding:0.75rem 1rem;margin-bottom:0.75rem;font-size:0.85rem;display:none;}
 .confirm-bar.show{display:flex;gap:0.75rem;align-items:center;}
+.workflow-steps{display:flex;flex-wrap:wrap;gap:0.6rem;align-items:center;margin-bottom:1rem;}
+.workflow-step{font-size:0.8rem;color:#666;}
+#reviewTable th,#reviewTable td{text-align:left;padding:0.4rem 0.5rem;border-bottom:1px solid #f0f0f0;}
+#reviewTable thead tr{background:#f5f5f5;}
+#reviewTable thead th{border-bottom:2px solid #e5e5e5;font-size:0.78rem;}
+#reviewTable tbody td{font-size:0.8rem;}
+#reviewTable tr.remove-row{background:#fff5f5;}
+#reviewTable select{border:1px solid #d1d5db;border-radius:4px;padding:0.2rem 0.3rem;font-size:0.78rem;}
 </style>
 </head>
 <body>
@@ -59,6 +67,23 @@ button{border:none;border-radius:6px;padding:0.35rem 0.75rem;font-size:0.8rem;fo
 <p class="subtitle">Finds non-Mohs dermatologists, self-named practices, out-of-territory locations, and orphaned providers</p>
 
 <button class="btn-primary" id="runBtn" onclick="runAudit()">Run Audit</button>
+
+<div id="aiWorkflow" class="section" style="display:none;margin-bottom:1.5rem;">
+  <div class="section-header" style="margin-bottom:0.5rem;">
+    <span class="section-title">🤖 AI Review Workflow</span>
+  </div>
+  <p class="section-note">Vet flagged items with ChatGPT or Claude in bulk, then import their verdicts here to execute removals — no manual one-by-one deleting.</p>
+  <div class="workflow-steps">
+    <button class="btn-primary" onclick="downloadReviewCSV()">① Download Review CSV</button>
+    <span class="workflow-step">→ Paste into ChatGPT/Claude with one prompt →</span>
+    <button class="btn-primary" onclick="document.getElementById('aiImportArea').style.display='block';document.getElementById('aiCsvInput').focus()">② Paste AI Response</button>
+  </div>
+  <div id="aiImportArea" style="display:none;">
+    <textarea id="aiCsvInput" placeholder="Paste the AI's CSV response here (must include type, id, name, verdict columns)..." style="width:100%;height:110px;border:1px solid #d1d5db;border-radius:6px;padding:0.5rem;font-size:0.78rem;font-family:monospace;margin-bottom:0.5rem;resize:vertical;"></textarea>
+    <button class="btn-primary" onclick="parseAIResponse()">Parse &amp; Preview</button>
+  </div>
+  <div id="aiReviewTable" style="display:none;margin-top:1rem;overflow-x:auto;"></div>
+</div>
 
 <div id="statsGrid" class="stats-grid" style="display:none;"></div>
 
@@ -360,6 +385,200 @@ async function fixAllSpecialties() {
   setTimeout(() => runAudit(), 1500);
 }
 
+// ==========================================
+// AI REVIEW WORKFLOW
+// ==========================================
+
+function downloadReviewCSV() {
+  const locsByProv = window._auditLocsByProvider || {};
+  const locMap = window._auditLocations || {};
+  const practMap = window._auditPracticeMap || {};
+  const locsByPrac = window._auditLocsByPractice || {};
+
+  const rows = [['section','type','id','name','specialty','practice','city','notes','verdict','reason']];
+
+  // Mohs unconfirmed derms
+  (window._nonMohsDerms || []).forEach(p => {
+    const locIds = [...(locsByProv[p.id] || new Set())];
+    const prac = locIds.map(lid => (practMap[(locMap[lid]||{}).practice_id]||{}).name).filter(Boolean)[0] || '';
+    const city = locIds.map(lid => (locMap[lid]||{}).city).filter(Boolean)[0] || '';
+    rows.push(['Mohs Unconfirmed','provider',p.id,[p.first_name,p.last_name,p.degree].filter(Boolean).join(' '),p.specialty||'',prac,city,(p.general_notes||'').replace(/\n/g,' '),'UNCLEAR','']);
+  });
+
+  // Self-named practices
+  (window._selfPracs || []).forEach(prac => {
+    const locs = locsByPrac[prac.id] || [];
+    const city = locs.map(l=>l.city).filter(Boolean)[0] || '';
+    rows.push(['Self-Named Practice','practice',prac.id,prac.name,'practice','',city,(prac.notes||'').replace(/\n/g,' '),'UNCLEAR','']);
+  });
+
+  // Orphaned providers (no location)
+  (window._orphanProviders || []).forEach(p => {
+    rows.push(['No Location Assigned','provider',p.id,[p.first_name,p.last_name,p.degree].filter(Boolean).join(' '),p.specialty||'','','',(p.general_notes||'').replace(/\n/g,' '),'UNCLEAR','']);
+  });
+
+  // Empty practices (no providers)
+  (window._emptyPracs || []).forEach(prac => {
+    const locs = locsByPrac[prac.id] || [];
+    const city = locs.map(l=>l.city).filter(Boolean)[0] || '';
+    const addr = locs.map(l=>[l.address,l.city].filter(Boolean).join(', ')).filter(Boolean)[0] || '';
+    rows.push(['No Providers','practice',prac.id,prac.name,'practice','',city,(prac.notes||addr).replace(/\n/g,' '),'UNCLEAR','']);
+  });
+
+  if (rows.length === 1) { showToast('Run audit first — no flagged items yet', 'error'); return; }
+
+  const csvContent = rows.map(r => r.map(v => `"${String(v).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob = new Blob([csvContent], {type:'text/csv'});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `audit_review_${new Date().toISOString().slice(0,10)}.csv`;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  showToast(`Downloaded ${rows.length-1} flagged items`, 'success');
+
+  // Also show the import area so Tom knows what to do next
+  document.getElementById('aiImportArea').style.display = 'block';
+}
+
+function parseAIResponse() {
+  const text = document.getElementById('aiCsvInput').value.trim();
+  if (!text) { showToast('Paste AI results first', 'error'); return; }
+
+  // Parse CSV respecting quoted fields
+  function parseLine(line) {
+    const fields = []; let cur = '', inQ = false;
+    for (const ch of line + ',') {
+      if (ch === '"') { inQ = !inQ; }
+      else if (ch === ',' && !inQ) { fields.push(cur.replace(/^"|"$/g,'').trim()); cur = ''; }
+      else { cur += ch; }
+    }
+    return fields;
+  }
+
+  const lines = text.split('\n').map(l=>l.trim()).filter(Boolean);
+  const headerIdx = lines.findIndex(l => /verdict/i.test(l));
+  if (headerIdx < 0) { showToast('No verdict column found — paste the full CSV including header', 'error'); return; }
+
+  const header = parseLine(lines[headerIdx]).map(h=>h.toLowerCase());
+  const col = k => header.findIndex(h=>h.includes(k));
+  const iType = col('type'), iId = col('id'), iName = col('name');
+  const iSection = col('section'), iVerdict = col('verdict'), iReason = col('reason');
+
+  if (iId < 0 || iVerdict < 0) { showToast('CSV must have id and verdict columns', 'error'); return; }
+
+  const items = [];
+  for (let i = headerIdx+1; i < lines.length; i++) {
+    const c = parseLine(lines[i]);
+    const id = (c[iId]||'').trim();
+    if (!id || id.length < 8) continue; // skip non-ID rows
+    const verdict = ((c[iVerdict]||'UNCLEAR').toUpperCase().trim());
+    items.push({
+      section: iSection>=0 ? c[iSection] : '',
+      type: iType>=0 ? c[iType] : 'provider',
+      id,
+      name: iName>=0 ? c[iName] : '',
+      verdict: ['KEEP','REMOVE','UNCLEAR'].includes(verdict) ? verdict : 'UNCLEAR',
+      reason: iReason>=0 ? (c[iReason]||'') : ''
+    });
+  }
+
+  if (!items.length) { showToast('No valid rows parsed — check CSV format', 'error'); return; }
+  window._aiReviewItems = items;
+
+  const removeCount = items.filter(r=>r.verdict==='REMOVE').length;
+  const keepCount = items.filter(r=>r.verdict==='KEEP').length;
+  const unclearCount = items.filter(r=>r.verdict==='UNCLEAR').length;
+
+  const verdictColor = v => v==='REMOVE'?'#fee2e2':v==='KEEP'?'#dcfce7':'#f9fafb';
+  const verdictBg = v => v==='REMOVE'?'background:#fff5f5;':'';
+
+  const tableEl = document.getElementById('aiReviewTable');
+  tableEl.style.display = 'block';
+  tableEl.innerHTML = `
+    <div style="margin-bottom:0.75rem;font-size:0.85rem;">
+      <strong>${items.length} items</strong> &nbsp;·&nbsp;
+      <span style="color:#dc2626;font-weight:700;">${removeCount} REMOVE</span> &nbsp;·&nbsp;
+      <span style="color:#166534;font-weight:700;">${keepCount} KEEP</span> &nbsp;·&nbsp;
+      <span style="color:#92400e;">${unclearCount} UNCLEAR</span>
+      &nbsp;— adjust any verdict below, then execute.
+    </div>
+    <table id="reviewTable" style="width:100%;border-collapse:collapse;">
+      <thead>
+        <tr>
+          <th>Name</th><th>Section</th><th>Type</th><th>Verdict</th><th>Reason</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${items.map((item,i) => `<tr data-id="${item.id}" data-type="${item.type}" style="${verdictBg(item.verdict)}">
+          <td style="font-weight:600;">${item.name}</td>
+          <td style="color:#666;">${item.section}</td>
+          <td style="color:#666;">${item.type}</td>
+          <td><select data-idx="${i}" onchange="updateVerdict(this)" style="background:${verdictColor(item.verdict)};">
+            <option value="KEEP" ${item.verdict==='KEEP'?'selected':''}>KEEP</option>
+            <option value="REMOVE" ${item.verdict==='REMOVE'?'selected':''}>REMOVE</option>
+            <option value="UNCLEAR" ${item.verdict==='UNCLEAR'?'selected':''}>UNCLEAR</option>
+          </select></td>
+          <td style="color:#666;font-size:0.75rem;">${item.reason}</td>
+        </tr>`).join('')}
+      </tbody>
+    </table>
+    <div style="margin-top:1rem;display:flex;gap:0.75rem;align-items:center;flex-wrap:wrap;">
+      <button class="btn-del" id="executeBtn" onclick="executeRemovals()" style="padding:0.5rem 1.25rem;font-size:0.9rem;">🗑️ Execute Removals</button>
+      <span id="executeStatus" style="font-size:0.82rem;color:#666;"></span>
+    </div>`;
+}
+
+function updateVerdict(select) {
+  const idx = parseInt(select.dataset.idx);
+  const verdict = select.value;
+  window._aiReviewItems[idx].verdict = verdict;
+  select.style.background = verdict==='REMOVE'?'#fee2e2':verdict==='KEEP'?'#dcfce7':'#f9fafb';
+  const row = select.closest('tr');
+  row.style.background = verdict==='REMOVE'?'#fff5f5':'';
+}
+
+async function executeRemovals() {
+  const items = (window._aiReviewItems||[]).filter(i=>i.verdict==='REMOVE');
+  if (!items.length) { showToast('No items marked REMOVE', 'error'); return; }
+  if (!confirm(`Delete ${items.length} item(s) marked REMOVE?\n\nProviders: their location assignments and contact logs are also deleted.\nPractices: all locations and assignments are deleted.\n\nThis cannot be undone.`)) return;
+
+  const btn = document.getElementById('executeBtn');
+  const status = document.getElementById('executeStatus');
+  btn.disabled = true;
+  let done = 0, errors = 0;
+
+  for (const item of items) {
+    status.textContent = `Deleting ${done+errors+1}/${items.length}…`;
+    try {
+      if (item.type === 'provider') {
+        await db.from('provider_location_assignments').delete().eq('provider_id', item.id);
+        await db.from('contact_logs').delete().eq('provider_id', item.id);
+        const { error } = await db.from('providers').delete().eq('id', item.id);
+        if (error) throw error;
+      } else {
+        const { data: locs } = await db.from('practice_locations').select('id').eq('practice_id', item.id);
+        for (const loc of (locs||[])) {
+          await db.from('provider_location_assignments').delete().eq('practice_location_id', loc.id);
+        }
+        await db.from('practice_locations').delete().eq('practice_id', item.id);
+        const { error } = await db.from('practices').delete().eq('id', item.id);
+        if (error) throw error;
+      }
+      document.querySelector(`tr[data-id="${item.id}"]`)?.remove();
+      done++;
+    } catch(e) {
+      console.error('Delete error for', item.name, e);
+      errors++;
+      status.textContent = `Error on ${item.name} — continuing…`;
+    }
+  }
+
+  btn.disabled = false;
+  const msg = `Done — ${done} deleted${errors ? `, ${errors} errors (see console)` : ''}.`;
+  status.textContent = msg;
+  showToast(`Deleted ${done} item(s)`, done > 0 ? 'success' : 'error');
+  if (done > 0) showToast('Re-run audit to refresh counts', 'success');
+}
+
 function copyDermsForAI() {
   const derms = window._nonMohsDerms || [];
   if (!derms.length) { showToast('No unconfirmed derms to copy', 'error'); return; }
@@ -497,6 +716,8 @@ async function runAudit() {
   btn.textContent = 'Running...'; btn.disabled = true;
   document.getElementById('sections').style.display = 'none';
   document.getElementById('statsGrid').style.display = 'none';
+  document.getElementById('aiWorkflow').style.display = 'none';
+  document.getElementById('aiReviewTable').style.display = 'none';
 
   try {
     // Load everything
@@ -864,6 +1085,7 @@ async function runAudit() {
 
     // Stats
     const totalIssues = uniquePhantoms.length + nonMohsDerms.length + ootLocs.length + selfPracs.length + orphans.length + multiPhoneLocs.length + totalBadSpecialty;
+    document.getElementById('aiWorkflow').style.display = 'block';
     document.getElementById('statsGrid').style.display = 'grid';
     document.getElementById('statsGrid').innerHTML = `
       <div class="stat-card"><div class="stat-num">${(providers||[]).length}</div><div class="stat-label">Total Providers</div></div>
