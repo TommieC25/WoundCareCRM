@@ -360,6 +360,41 @@ async function fixAllSpecialties() {
   setTimeout(() => runAudit(), 1500);
 }
 
+function copyDermsForAI() {
+  const derms = window._nonMohsDerms || [];
+  if (!derms.length) { showToast('No unconfirmed derms to copy', 'error'); return; }
+  const locMap = window._auditLocations || {};
+  const locsByProv = window._auditLocsByProvider || {};
+  const practMap = window._auditPracticeMap || {};
+  const lines = derms.map((p, i) => {
+    const name = [p.first_name, p.last_name, p.degree].filter(Boolean).join(' ');
+    const locIds = [...(locsByProv[p.id] || new Set())];
+    const practices = [...new Set(locIds.map(lid => {
+      const loc = locMap[lid];
+      if (!loc) return null;
+      const prac = practMap[loc.practice_id];
+      return [prac?.name, loc.city].filter(Boolean).join(', ');
+    }).filter(Boolean))].join(' / ');
+    const parts = [`${i+1}. ${name}`];
+    if (p.title) parts.push(`   Title: ${p.title}`);
+    if (practices) parts.push(`   Practice: ${practices}`);
+    if (p.general_notes) parts.push(`   Notes: ${p.general_notes}`);
+    return parts.join('\n');
+  }).join('\n\n');
+  const prompt = `I maintain a wound care CRM for Miami-area sales reps. The CRM only includes dermatologists who perform Mohs surgery (a wound-creating procedure requiring wound care follow-up). General dermatologists are NOT relevant.
+
+Please review each provider below. For each one, use your knowledge or NPI registry data to determine:
+- Do they perform Mohs surgery?
+- Do they have Mohs-related board certifications, fellowship training, or NPI taxonomy codes?
+- Are they listed as a Mohs surgeon at their practice?
+
+Respond with a simple verdict for each: KEEP (confirmed Mohs), REMOVE (general derm / no Mohs), or UNCLEAR (not enough info).
+
+---
+${lines}`;
+  navigator.clipboard.writeText(prompt).then(() => showToast(`Copied ${derms.length} derm(s) to clipboard`, 'success')).catch(() => { window._aiPrompt = prompt; showToast('Copy failed — check console', 'error'); console.log(prompt); });
+}
+
 async function fixDpmMismatches() {
   const btn = document.getElementById('fixDpmBtn');
   btn.disabled = true; btn.textContent = 'Fixing...';
@@ -407,6 +442,7 @@ async function runAudit() {
     // Build lookup maps
     const practiceMap = {};
     (practices || []).forEach(p => practiceMap[p.id] = p);
+    window._auditPracticeMap = practiceMap;
     const locsByPractice = {};
     (locations || []).forEach(l => {
       if (!locsByPractice[l.practice_id]) locsByPractice[l.practice_id] = [];
@@ -420,6 +456,9 @@ async function runAudit() {
       if (!assignedLocsByProvider[a.provider_id]) assignedLocsByProvider[a.provider_id] = new Set();
       assignedLocsByProvider[a.provider_id].add(a.practice_location_id);
     });
+    window._auditLocsByProvider = assignedLocsByProvider;
+    window._auditLocations = {};
+    (locations || []).forEach(l => window._auditLocations[l.id] = l);
 
     // === SECTION -1: Phantom provider-named locations ===
     // A "phantom" location is one where:
@@ -518,10 +557,12 @@ async function runAudit() {
     const mohsBadge = document.getElementById('mohsBadge');
     mohsBadge.textContent = nonMohsDerms.length + (nonMohsDerms.length === 0 ? ' ✓' : ' to review');
     mohsBadge.className = 'count-badge ' + (nonMohsDerms.length === 0 ? 'ok' : '');
+    window._nonMohsDerms = nonMohsDerms;
     if (nonMohsDerms.length === 0) {
       mohsEl.innerHTML = '<p class="empty">All dermatology providers have a Mohs indicator.</p>';
     } else {
-      mohsEl.innerHTML = nonMohsDerms.map(p => {
+      mohsEl.innerHTML = `<div style="margin-bottom:0.75rem;"><button class="btn-primary" onclick="copyDermsForAI()">📋 Copy for AI Vetting</button> <span style="font-size:0.8rem;color:#666;margin-left:0.5rem;">Paste into ChatGPT or Claude to check Mohs credentials before deleting</span></div>` +
+        nonMohsDerms.map(p => {
         const name = [p.first_name, p.last_name, p.degree].filter(Boolean).join(' ');
         const detail = [p.title, p.priority ? 'Tier ' + p.priority : '', p.is_target ? 'TARGET' : 'not target'].filter(Boolean).join(' · ');
         const noteSnip = (p.general_notes || '').substring(0, 120);
