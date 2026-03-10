@@ -74,6 +74,16 @@ button{border:none;border-radius:6px;padding:0.35rem 0.75rem;font-size:0.8rem;fo
   <div id="specialtyList" class="loading">Loading...</div>
 </div>
 
+<!-- Section DPM MISMATCH: DPM degree but wrong specialty -->
+<div class="section">
+  <div class="section-header">
+    <span class="section-title">🦶 DPM Degree / Specialty Mismatch</span>
+    <span class="count-badge" id="dpmBadge">—</span>
+  </div>
+  <p class="section-note">Providers with degree <strong>DPM</strong> (Doctor of Podiatric Medicine) who do not have specialty = <strong>Podiatry</strong>. These are always podiatrists — one-click fix updates them all.</p>
+  <div id="dpmList" class="loading">Loading...</div>
+</div>
+
 <!-- Section PHONE: Multi-number phone fields -->
 <div class="section">
   <div class="section-header">
@@ -321,7 +331,7 @@ async function fixOneSpecialty(oldVal, newVal, btn) {
 }
 
 async function fixAllSpecialties() {
-  const selects = document.querySelectorAll('[id^="specmap_"]');
+  const selects = document.querySelectorAll('[id^="sp_"]');
   const mappings = [];
   selects.forEach(sel => { if (sel.value) mappings.push({old: sel.dataset.old, new: sel.value, blank: sel.dataset.blank === '1'}); });
   if (mappings.length === 0) { showToast('Select a target specialty for at least one group', 'error'); return; }
@@ -337,6 +347,15 @@ async function fixAllSpecialties() {
     }
   }
   showToast(`Fixed ${fixed} group(s)${errs ? ', ' + errs + ' error(s)' : ''}`, errs ? 'error' : 'success');
+  setTimeout(() => runAudit(), 1500);
+}
+
+async function fixDpmMismatches() {
+  const btn = document.getElementById('fixDpmBtn');
+  btn.disabled = true; btn.textContent = 'Fixing...';
+  const { error } = await db.from('providers').update({specialty: 'Podiatry'}).eq('degree', 'DPM').neq('specialty', 'Podiatry');
+  if (error) { showToast('Error: ' + error.message, 'error'); btn.disabled = false; btn.textContent = 'Fix All DPM → Podiatry'; return; }
+  showToast('All DPM providers updated to Podiatry', 'success');
   setTimeout(() => runAudit(), 1500);
 }
 
@@ -532,6 +551,19 @@ async function runAudit() {
             </div>
           </div>`;
         }).join('');
+    }
+
+    // === SECTION DPM MISMATCH ===
+    const dpmMismatches = (providers || []).filter(p => p.degree === 'DPM' && p.specialty !== 'Podiatry');
+    const dpmEl = document.getElementById('dpmList');
+    const dpmBadge = document.getElementById('dpmBadge');
+    dpmBadge.textContent = dpmMismatches.length + (dpmMismatches.length === 0 ? ' ✓' : ' to fix');
+    dpmBadge.className = 'count-badge ' + (dpmMismatches.length === 0 ? 'ok' : '');
+    if (dpmMismatches.length === 0) {
+      dpmEl.innerHTML = '<p class="empty">✓ All DPM providers have specialty = Podiatry.</p>';
+    } else {
+      const dpmNames = dpmMismatches.slice(0, 6).map(p => [p.first_name, p.last_name, p.specialty || '(no specialty)'].filter(Boolean).join(' — ')).join('<br>');
+      dpmEl.innerHTML = `<div style="margin-bottom:0.75rem;"><button class="btn-primary" id="fixDpmBtn" onclick="fixDpmMismatches()">Fix All DPM → Podiatry</button></div><div class="row-card danger"><div class="row-info"><div class="row-detail">${dpmNames}${dpmMismatches.length > 6 ? `<br>+ ${dpmMismatches.length - 6} more` : ''}</div></div></div>`;
     }
 
     // === SECTION 1: Out-of-territory locations ===
