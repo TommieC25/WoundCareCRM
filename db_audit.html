@@ -84,6 +84,16 @@ button{border:none;border-radius:6px;padding:0.35rem 0.75rem;font-size:0.8rem;fo
   <div id="dpmList" class="loading">Loading...</div>
 </div>
 
+<!-- Section DEGREE PERIODS: Degrees with periods (M.D. → MD) -->
+<div class="section">
+  <div class="section-header">
+    <span class="section-title">🎓 Degree Periods (M.D. → MD)</span>
+    <span class="count-badge" id="degreePeriodBadge">—</span>
+  </div>
+  <p class="section-note">Providers whose degree field contains periods (e.g. M.D., D.P.M.). Tap Fix All to strip all periods from every affected degree.</p>
+  <div id="degreePeriodList" class="loading">Loading...</div>
+</div>
+
 <!-- Section PHONE: Multi-number phone fields -->
 <div class="section">
   <div class="section-header">
@@ -359,6 +369,21 @@ async function fixDpmMismatches() {
   setTimeout(() => runAudit(), 1500);
 }
 
+async function fixDegreePeriods() {
+  const btn = document.getElementById('fixDegreePeriodBtn');
+  btn.disabled = true; btn.textContent = 'Fixing...';
+  const { data: provs, error: fetchErr } = await db.from('providers').select('id,degree').ilike('degree', '%.%');
+  if (fetchErr) { showToast('Error: ' + fetchErr.message, 'error'); btn.disabled = false; btn.textContent = 'Fix All'; return; }
+  let fixed = 0, errs = 0;
+  for (const p of (provs || [])) {
+    const clean = p.degree.replace(/\./g, '').trim();
+    const { error } = await db.from('providers').update({degree: clean}).eq('id', p.id);
+    if (error) errs++; else fixed++;
+  }
+  showToast(`Fixed ${fixed} degree(s)${errs ? ', ' + errs + ' error(s)' : ''}`, errs ? 'error' : 'success');
+  setTimeout(() => runAudit(), 1500);
+}
+
 async function runAudit() {
   const btn = document.getElementById('runBtn');
   btn.textContent = 'Running...'; btn.disabled = true;
@@ -564,6 +589,19 @@ async function runAudit() {
     } else {
       const dpmNames = dpmMismatches.slice(0, 6).map(p => [p.first_name, p.last_name, p.specialty || '(no specialty)'].filter(Boolean).join(' — ')).join('<br>');
       dpmEl.innerHTML = `<div style="margin-bottom:0.75rem;"><button class="btn-primary" id="fixDpmBtn" onclick="fixDpmMismatches()">Fix All DPM → Podiatry</button></div><div class="row-card danger"><div class="row-info"><div class="row-detail">${dpmNames}${dpmMismatches.length > 6 ? `<br>+ ${dpmMismatches.length - 6} more` : ''}</div></div></div>`;
+    }
+
+    // === SECTION DEGREE PERIODS ===
+    const degreePerProvs = (providers || []).filter(p => p.degree && p.degree.includes('.'));
+    const dpEl = document.getElementById('degreePeriodList');
+    const dpBadge = document.getElementById('degreePeriodBadge');
+    dpBadge.textContent = degreePerProvs.length + (degreePerProvs.length === 0 ? ' ✓' : ' to fix');
+    dpBadge.className = 'count-badge ' + (degreePerProvs.length === 0 ? 'ok' : '');
+    if (degreePerProvs.length === 0) {
+      dpEl.innerHTML = '<p class="empty">✓ No degrees with periods found.</p>';
+    } else {
+      const dpNames = degreePerProvs.slice(0, 6).map(p => [p.first_name, p.last_name, `(${p.degree})`].filter(Boolean).join(' ')).join('<br>');
+      dpEl.innerHTML = `<div style="margin-bottom:0.75rem;"><button class="btn-primary" id="fixDegreePeriodBtn" onclick="fixDegreePeriods()">Fix All</button></div><div class="row-card danger"><div class="row-info"><div class="row-detail">${dpNames}${degreePerProvs.length > 6 ? `<br>+ ${degreePerProvs.length - 6} more` : ''}</div></div></div>`;
     }
 
     // === SECTION 1: Out-of-territory locations ===

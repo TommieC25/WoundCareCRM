@@ -56,7 +56,7 @@ const physMap=new Map();
 rows.forEach(r=>{
 if(!(r.first_name||'').trim()&&!(r.last_name||'').trim())return;
 const key=`${(r.first_name||'').trim().toLowerCase().replace(/\s+[a-z]\.\s*$/,'')}|${(r.last_name||'').trim().toLowerCase()}`;
-if(!physMap.has(key))physMap.set(key,{phys:{first_name:(r.first_name||'').trim(),last_name:(r.last_name||'').trim(),email:r.email||null,mobile_phone:r.mobile_phone||null,priority:r.priority||null,academic_connection:r.academic_connection||r.um_connection||null,specialty:r.specialty||null,degree:r.degree||null,title:r.title||null,proj_vol:r.proj_vol||r.patient_volume||r.vol||null,ss_vol:r.ss_vol?parseInt(r.ss_vol,10)||null:null,general_notes:r.general_notes||null},practiceIds:new Set(),primaryLocKey:null});
+if(!physMap.has(key))physMap.set(key,{phys:{first_name:(r.first_name||'').trim(),last_name:(r.last_name||'').trim(),email:r.email||null,mobile_phone:r.mobile_phone||null,priority:r.priority||null,academic_connection:r.academic_connection||r.um_connection||null,specialty:r.specialty||null,degree:normDegree(r.degree)||null,title:r.title||null,proj_vol:r.proj_vol||r.patient_volume||r.vol||null,ss_vol:r.ss_vol?parseInt(r.ss_vol,10)||null:null,general_notes:r.general_notes||null},practiceIds:new Set(),primaryLocKey:null});
 const e=physMap.get(key);
 const practId=getPractId(r.practice_name);
 if(practId)e.practiceIds.add(practId);
