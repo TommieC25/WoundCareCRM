@@ -261,23 +261,25 @@ async function loadAndPreview() {
   const status = document.getElementById('previewStatus');
   btn.disabled = true; status.textContent = 'Loading data…';
 
-  const [pr, pc, lc, as] = await Promise.all([
-    db.from('providers').select('id,first_name,last_name,degree,specialty,general_notes'),
-    db.from('practices').select('id,name,notes'),
-    db.from('practice_locations').select('id,practice_id,label,address,city,zip'),
-    db.from('provider_location_assignments').select('provider_id,practice_location_id')
+  const [pr, pc, lc, asgn] = await Promise.all([
+    db.from('providers').select('id,first_name,last_name,degree,specialty,general_notes').limit(5000),
+    db.from('practices').select('id,name,notes').limit(5000),
+    db.from('practice_locations').select('id,practice_id,label,address,city,zip').limit(5000),
+    db.from('provider_location_assignments').select('provider_id,practice_location_id').limit(10000)
   ]);
 
-  if (pr.error||pc.error||lc.error||as.error) {
-    status.textContent = 'DB load error — check console';
-    console.error(pr.error, pc.error, lc.error, as.error);
+  const errs = [['providers',pr],['practices',pc],['practice_locations',lc],['assignments',asgn]].filter(([,r])=>r.error);
+  if (errs.length) {
+    const msg = errs.map(([t,r])=>`${t}: ${r.error.message}`).join(' | ');
+    status.textContent = 'DB load error: ' + msg;
+    status.style.color = '#dc2626';
     btn.disabled = false; return;
   }
 
   allProviders = pr.data || [];
   allPractices = pc.data || [];
   allLocations = lc.data || [];
-  allAssignments = as.data || [];
+  allAssignments = asgn.data || [];
 
   // Build lookup maps
   const locsByPractice = {};
