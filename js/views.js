@@ -104,7 +104,7 @@ const {noteTime,displayNotes,taskNote}=parseTaskRecord(r.notes);
 const today = localDate();
 const isOverdue = r.reminder_date && r.reminder_date !== '2099-12-31' && r.reminder_date < today;
 const isOpen = r.reminder_date === '2099-12-31';
-const isStaff = phys?.specialty === 'Administrative Staff';
+const isStaff = phys?.specialty === 'Staff';
 const np = phys ? normPriority(phys.priority) : null;
 const tierColors = {'1':'#ef4444','2':'#f97316','3':'#3b82f6','4':'#8b5cf6','5':'#64748b'};
 let html = '';

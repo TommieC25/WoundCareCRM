@@ -70,7 +70,7 @@ button{border:none;border-radius:6px;padding:0.35rem 0.75rem;font-size:0.8rem;fo
     <span class="section-title">🏷️ Corrupted Specialty Values</span>
     <span class="count-badge" id="specialtyBadge">—</span>
   </div>
-  <p class="section-note">Valid specialties are exactly: <strong>Podiatry</strong>, <strong>Wound Care</strong>, <strong>Dermatology</strong> (Mohs surgeons only), <strong>Other</strong>, <strong>Administrative Staff</strong>. Anything else must be remapped. Select a target for each bad value and tap <strong>Fix All Mapped</strong>, or fix groups individually.</p>
+  <p class="section-note">Valid specialties are exactly: <strong>Podiatry</strong>, <strong>Wound Care</strong>, <strong>Dermatology</strong> (Mohs surgeons only), <strong>Other</strong>, <strong>Staff</strong>. Anything else must be remapped. Select a target for each bad value and tap <strong>Fix All Mapped</strong>, or fix groups individually.</p>
   <div id="specialtyList" class="loading">Loading...</div>
 </div>
 
@@ -514,7 +514,7 @@ async function runAudit() {
     }
 
     // === SECTION SPECIALTY: Corrupted specialty values ===
-    const VALID_SPECIALTIES = new Set(['Dermatology','Podiatry','Wound Care','Other','Administrative Staff']);
+    const VALID_SPECIALTIES = new Set(['Dermatology','Podiatry','Wound Care','Other','Staff']);
     const specialtyGroups = {};
     (providers || []).forEach(p => {
       const sp = (p.specialty || '').trim();
@@ -532,7 +532,7 @@ async function runAudit() {
     if (badSpecialtyEntries.length === 0) {
       specialtyEl.innerHTML = '<p class="empty">✓ All providers have valid specialty values.</p>';
     } else {
-      const validOpts = ['','Podiatry','Wound Care','Dermatology','Other','Administrative Staff']
+      const validOpts = ['','Podiatry','Wound Care','Dermatology','Other','Staff']
         .map(v => `<option value="${v}">${v || '-- remap to --'}</option>`).join('');
       specialtyEl.innerHTML = `<div style="margin-bottom:0.75rem;"><button class="btn-primary" onclick="fixAllSpecialties()">Fix All Mapped</button> <span style="font-size:0.8rem;color:#666;margin-left:0.5rem;">Select a target for each group, then Fix All Mapped</span></div>` +
         badSpecialtyEntries.map(([val, provs]) => {
