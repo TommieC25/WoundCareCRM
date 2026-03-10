@@ -1,0 +1,312 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mohs / Provider Audit Executor</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f5f5f5;color:#222;padding:1rem;}
+h1{font-size:1.3rem;font-weight:700;color:#0a4d3c;margin-bottom:0.25rem;}
+.subtitle{font-size:0.82rem;color:#666;margin-bottom:1.25rem;}
+.card{background:#fff;border-radius:10px;padding:1.25rem;margin-bottom:1rem;box-shadow:0 1px 4px rgba(0,0,0,0.08);}
+button{border:none;border-radius:6px;padding:0.45rem 1rem;font-size:0.85rem;font-weight:600;cursor:pointer;font-family:inherit;}
+.btn-primary{background:#0a4d3c;color:#fff;}
+.btn-exec{background:#dc2626;color:#fff;padding:0.6rem 1.5rem;font-size:0.95rem;}
+.btn-exec:disabled{background:#aaa;cursor:not-allowed;}
+table{width:100%;border-collapse:collapse;font-size:0.78rem;margin-top:0.75rem;}
+th{text-align:left;padding:0.4rem 0.5rem;border-bottom:2px solid #e5e5e5;background:#f9fafb;font-size:0.75rem;}
+td{padding:0.35rem 0.5rem;border-bottom:1px solid #f0f0f0;vertical-align:top;}
+tr.delete-row{background:#fff5f5;}
+tr.keep-row{background:#f0fdf4;}
+tr.warn-row td{color:#92400e;background:#fffbeb;}
+tr.done-row td{color:#999;text-decoration:line-through;}
+tr.error-row{background:#fee2e2;}
+.badge{display:inline-block;font-size:0.68rem;font-weight:700;padding:0.1rem 0.5rem;border-radius:999px;}
+.badge-del{background:#fee2e2;color:#991b1b;}
+.badge-keep{background:#dcfce7;color:#166534;}
+.badge-warn{background:#fef3c7;color:#92400e;}
+.log{font-family:monospace;font-size:0.75rem;background:#1e1e1e;color:#d4d4d4;border-radius:6px;padding:0.75rem;max-height:300px;overflow-y:auto;margin-top:0.75rem;white-space:pre-wrap;}
+.summary{display:flex;gap:1rem;flex-wrap:wrap;margin-bottom:0.75rem;font-size:0.82rem;}
+.summary-item{padding:0.4rem 0.75rem;border-radius:6px;font-weight:600;}
+.toast{position:fixed;bottom:1rem;left:50%;transform:translateX(-50%);background:#222;color:#fff;padding:0.6rem 1.25rem;border-radius:8px;font-size:0.85rem;z-index:9999;display:none;}
+.toast.show{display:block;}
+.toast.success{background:#166534;}
+.toast.error{background:#991b1b;}
+</style>
+</head>
+<body>
+<h1>🔪 Mohs / Provider Audit Executor</h1>
+<p class="subtitle">Executes DELETE and KEEP+note decisions from the combined Mohs/provider audit. Preview matches first, then execute.</p>
+
+<div class="card">
+  <button class="btn-primary" id="previewBtn" onclick="loadAndPreview()">① Load &amp; Preview</button>
+  <span id="previewStatus" style="margin-left:0.75rem;font-size:0.82rem;color:#666;"></span>
+</div>
+
+<div id="previewSection" style="display:none;">
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:0.5rem;margin-bottom:0.5rem;">
+      <strong>Preview — review matches before executing</strong>
+      <button class="btn-exec" id="execBtn" onclick="executeAll()">② Execute All</button>
+    </div>
+    <div class="summary">
+      <span class="summary-item" style="background:#fee2e2;color:#991b1b;" id="sumDel">— DELETE</span>
+      <span class="summary-item" style="background:#dcfce7;color:#166534;" id="sumKeep">— KEEP+note</span>
+      <span class="summary-item" style="background:#fef3c7;color:#92400e;" id="sumNoMatch">— No match</span>
+    </div>
+    <table>
+      <thead><tr><th>Action</th><th>Name (decision)</th><th>DB Match</th><th>Note preview</th><th>Status</th></tr></thead>
+      <tbody id="previewBody"></tbody>
+    </table>
+  </div>
+  <div class="card" id="logCard" style="display:none;">
+    <strong style="font-size:0.85rem;">Execution Log</strong>
+    <div class="log" id="execLog"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const SUPABASE_URL = 'https://xhdjywibdjzbczfjmctp.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhoZGp5d2liZGp6YmN6ZmptY3RwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk3NzE4MTYsImV4cCI6MjA4NTM0NzgxNn0.vHAfeYTVbu2Isu5AoFONvzrtJ2sS3YwF00QRe3LNrbU';
+const { createClient } = window.supabase;
+const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// ── DECISION DATA ──────────────────────────────────────────────────────────
+// action: 'DELETE' = remove provider + assignments + logs
+//         'KEEP'   = append note to general_notes, no deletion
+// first/last used for DB matching (case-insensitive)
+
+const DECISIONS = [
+  // ── DELETES ──
+  { action:'DELETE', first:'Lisa',      last:'Chen',           note:'Removed 2026-03: Likely identity mismatch with Lucy Chen (Mohs); not confirmed as Mohs surgeon.' },
+  { action:'DELETE', first:'Sarah',     last:'Cohen',          note:'Removed 2026-03: No reliable Mohs confirmation found.' },
+  { action:'DELETE', first:'Darron',    last:'DiGiulio',       note:'Removed 2026-03: Dermatology but no confirmed Mohs credential.' },
+  { action:'DELETE', first:'Julie',     last:'Forero',         note:'Removed 2026-03: No confirmed Mohs credential.' },
+  { action:'DELETE', first:'Laura',     last:'Greyling',       note:'Removed 2026-03: No explicit Mohs credential found.' },
+  { action:'DELETE', first:'Carlos',    last:'Gutierrez',      note:'Removed 2026-03: Vein specialist, not Mohs dermatology.' },
+  { action:'DELETE', first:'Joely',     last:'Kaufman',        note:'Removed 2026-03: Cosmetic dermatology; no confirmed Mohs.' },
+  { action:'DELETE', first:'Francesca', last:'Lewis',          note:'Removed 2026-03: No explicit Mohs evidence found.' },
+  { action:'DELETE', first:'Deborah',   last:'Longwill',       note:'Removed 2026-03: General/cosmetic derm; Mohs at this practice tied to Joshua Fox.' },
+  { action:'DELETE', first:'David',     last:'Martin',         note:'Removed 2026-03: Insufficient reliable Mohs evidence.' },
+  { action:'DELETE', first:'James',     last:'Martin',         note:'Removed 2026-03: Bad match / non-Mohs result.' },
+  { action:'DELETE', first:'Megan',     last:'Monroe',         note:'Removed 2026-03: Likely identity mismatch; not a verified Mohs physician.' },
+  { action:'DELETE', first:'Julian',    last:'Moore',          note:'Removed 2026-03: Insufficient evidence of Mohs credential.' },
+  { action:'DELETE', first:'Mark',      last:'Nestor',         note:'Removed 2026-03: No explicit Mohs proof confirmed.' },
+  { action:'DELETE', first:'Keith',     last:'Nichols',        note:'Removed 2026-03: Vein / lymphatic medicine, not Mohs dermatology.' },
+  { action:'DELETE', first:'Adam',      last:'Plotkin',        note:'Removed 2026-03: Medical dermatology; no explicit Mohs proof.' },
+  { action:'DELETE', first:'Barry',     last:'Resnik',         note:'Removed 2026-03: Cutaneous/cosmetic surgery; no explicit Mohs credential confirmed.' },
+  { action:'DELETE', first:'Sarah',     last:'Taylor',         note:'Removed 2026-03: Best match found outside South Florida territory.' },
+  { action:'DELETE', first:'William',   last:'Thompson',       note:'Removed 2026-03: Bad specialty match (ophthalmology).' },
+  { action:'DELETE', first:'Jennifer',  last:'Rosen',          note:'Removed 2026-03: Likely identity mismatch; not enough certainty.' },
+  { action:'DELETE', first:'Michael',   last:'White',          note:'Removed 2026-03: Insufficient Mohs evidence.' },
+  { action:'DELETE', first:'Kelli',     last:'Bryant',         note:'Removed 2026-03: Practice found but no confirmed Mohs credential.' },
+  { action:'DELETE', first:'Jonathan',  last:'Carp',           note:'Removed 2026-03: Public profile supports general clinical dermatology, not Mohs.' },
+  { action:'DELETE', first:'Preston',   last:'Gardner',        note:'Removed 2026-03: Not a core Mohs dermatology target.' },
+  { action:'DELETE', first:'Charles',   last:'Griff',          note:'Removed 2026-03: No confirmed Mohs credential.' },
+  { action:'DELETE', first:'David',     last:'Herold',         note:'Removed 2026-03: Not a Mohs dermatologist.' },
+  { action:'DELETE', first:'Dana',      last:'Holl',           note:'Removed 2026-03: No confirmed Mohs credential.' },
+  { action:'DELETE', first:'Rem',       last:'Jackson',        note:'Removed 2026-03: Not a practicing clinical target.' },
+  { action:'DELETE', first:'Robert',    last:'Jimenez',        note:'Removed 2026-03: Vascular/vein; verify South Florida office before re-adding.' },
+  { action:'DELETE', first:'Rachelle',  last:'Lacey',          note:'Removed 2026-03: No confirmed Mohs credential.' },
+  { action:'DELETE', first:'Emmanuel',  last:'Loucas',         note:'Removed 2026-03: No confirmed Mohs credential.' },
+  { action:'DELETE', first:'Amarilys',  last:'Montalvo',       note:'Removed 2026-03: Appears trainee/resident-level; not an established outpatient target.' },
+  { action:'DELETE', first:'Kellie',    last:'Mosley',         note:'Removed 2026-03: No confirmed Mohs credential.' },
+  { action:'DELETE', first:'Cynthia',   last:'Losito',         note:'Removed 2026-03: No verified current South Florida practice assignment.' },
+
+  // ── KEEPS — add note to general_notes ──
+  { action:'KEEP', first:'Michael',   last:'Borenstein',   note:'Verified 2026-03: Explicit Mohs / micrographic surgery evidence found.' },
+  { action:'KEEP', first:'Juan',      last:'Bravo',        note:'Verified 2026-03: Wound care / hyperbaric specialist. Kept as wound care target.' },
+  { action:'KEEP', first:'James',     last:'Devoursney',   note:'Verified 2026-03: Publicly listed as Mohs micrographic surgeon.' },
+  { action:'KEEP', first:'Harib',     last:'Ezaldein',     note:'Verified 2026-03: Explicit fellowship-trained Mohs surgeon.' },
+  { action:'KEEP', first:'Brian',     last:'Feinstein',    note:'Verified 2026-03: Explicit Mohs / micrographic surgery evidence found.' },
+  { action:'KEEP', first:'Samantha',  last:'Fisher',       note:'Verified 2026-03: Explicit Mohs credentials found.' },
+  { action:'KEEP', first:'Joshua',    last:'Fox',          note:'Verified 2026-03: Explicit certified Mohs surgeon.' },
+  { action:'KEEP', first:'Jeremy',    last:'Freedman',     note:'Verified 2026-03: Fellowship-trained / board-certified Mohs surgeon.' },
+  { action:'KEEP', first:'T',         last:'Giuffrida',    note:'Verified 2026-03: Fellowship-trained Mohs surgeon (T.J. Giuffrida).' },
+  { action:'KEEP', first:'Akhil',     last:'Gupta',        note:'Verified 2026-03: Public evidence of Mohs credentials.' },
+  { action:'KEEP', first:'Alysa',     last:'Herman',       note:'Verified 2026-03: Private Mohs practice confirmed.' },
+  { action:'KEEP', first:'Francisco', last:'Kerdel',       note:'Verified 2026-03: Academic / medical dermatology. Kept as wound care academic target.' },
+  { action:'KEEP', first:'Robert',    last:'Kirsner',      note:'Verified 2026-03: Wound / academic dermatology. Kept as wound/academic target.' },
+  { action:'KEEP', first:'Tamara',    last:'Lior',         note:'Verified 2026-03: Explicit Mohs / micrographic surgeon.' },
+  { action:'KEEP', first:'Keyvan',    last:'Nouri',        note:'Verified 2026-03: Director of Mohs Micrographic Surgery at University of Miami.' },
+  { action:'KEEP', first:'Scott',     last:'Podnos',       note:'Verified 2026-03: Explicit Mohs / micrographic surgery evidence found.' },
+  { action:'KEEP', first:'Willie',    last:'Richardson',   note:'Verified 2026-03: Practice explicitly references Mohs surgery.' },
+  { action:'KEEP', first:'Daniel',    last:'Rivlin',       note:'Verified 2026-03: Fellowship-trained Mohs surgeon.' },
+  { action:'KEEP', first:'Paulo',     last:'Romanelli',    note:'Verified 2026-03: Academic dermatology. Kept per Tom.' },
+  { action:'KEEP', first:'Justin',    last:'Rubin',        note:'Verified 2026-03: Explicit fellowship-trained Mohs surgeon.' },
+  { action:'KEEP', first:'Jon',       last:'Ward',         note:'Verified 2026-03: Explicit Mohs surgeon evidence found.' },
+  { action:'KEEP', first:'Eduardo',   last:'Weiss',        note:'Verified 2026-03: No explicit Mohs proof confirmed; kept per Tom.' },
+  { action:'KEEP', first:'William',   last:'Jones',        note:'Verified 2026-03: Unclear — insufficient reliable Mohs evidence. Evaluate at next visit.' },
+  { action:'KEEP', first:'Enrique',   last:'Aloma',        note:'Verified 2026-03: Active South Florida podiatry faculty/clinician; legitimate wound target.' },
+  { action:'KEEP', first:'Ivory',     last:'Christen',     note:'Verified 2026-03: High CMS skin-sub utilization per field intel; independent wound care practitioner.' },
+  { action:'KEEP', first:'Yohandy',   last:'Fuentes',      note:'Verified 2026-03: Active podiatry / surgical foot practice.' },
+  { action:'KEEP', first:'Riquel',    last:'Gonzalez',     note:'Verified 2026-03: Active solo podiatrist; legitimate wound target.' },
+  { action:'KEEP', first:'Ismael',    last:'Grau',         note:'Verified 2026-03: Evaluate — likely active, but outpatient practice assignment unclear. Confirm location.' },
+  { action:'KEEP', first:'Laurence',  last:'Leder',        note:'Verified 2026-03: Active Miami podiatrist; legitimate wound target.' },
+  { action:'KEEP', first:'James',     last:'Losito',       note:'Verified 2026-03: Legitimate podiatry wound target.' },
+  { action:'KEEP', first:'Luis',      last:'Rodriguez',    note:'Verified 2026-03: Legitimate podiatry target.' },
+  { action:'KEEP', first:'Masiel',    last:'Romero',       note:'Verified 2026-03: Legitimate wound-care target; involved in ordering/referrals.' },
+  { action:'KEEP', first:'Daniel',    last:'Stewart',      note:'Verified 2026-03: Legitimate podiatry target.' },
+  { action:'KEEP', first:'Edgar',     last:'Sy',           note:'Verified 2026-03: Legitimate podiatry target.' },
+  { action:'KEEP', first:'Stephen',   last:'Wigley',       note:'Verified 2026-03: Legitimate podiatry target.' },
+  { action:'KEEP', first:'Justin',    last:'Platzer',      note:'Verified 2026-03: Explicit Mohs surgeon; confirmed retain.' },
+];
+
+// ── STATE ──────────────────────────────────────────────────────────────────
+let allProviders = [];
+let resolved = [];
+
+function showToast(msg, type='info') {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.className = 'toast show ' + type;
+  setTimeout(()=>t.className='toast', 3500);
+}
+function log(msg) {
+  const el = document.getElementById('execLog');
+  el.textContent += msg + '\n';
+  el.scrollTop = el.scrollHeight;
+}
+
+// ── NAME MATCHING ──────────────────────────────────────────────────────────
+function norm(s) { return (s||'').toLowerCase().replace(/[^a-z]/g,''); }
+
+function findProviders(first, last) {
+  // Match all providers with this last name (normalized), then filter by first initial or full first name
+  const lastN = norm(last);
+  const firstN = norm(first);
+  const byLast = allProviders.filter(p => norm(p.last_name) === lastN);
+  if (!byLast.length) return [];
+  if (byLast.length === 1) return byLast;
+  // Multiple last-name matches — narrow by first name
+  const byBoth = byLast.filter(p => norm(p.first_name).startsWith(firstN) || firstN.startsWith(norm(p.first_name).charAt(0)));
+  return byBoth.length ? byBoth : byLast;
+}
+
+// ── LOAD & PREVIEW ─────────────────────────────────────────────────────────
+async function loadAndPreview() {
+  const btn = document.getElementById('previewBtn');
+  const status = document.getElementById('previewStatus');
+  btn.disabled = true; status.textContent = 'Loading…';
+
+  const { data, error } = await db.from('providers')
+    .select('id,first_name,last_name,degree,specialty,general_notes').limit(5000);
+  if (error) {
+    status.textContent = 'DB error: ' + error.message;
+    status.style.color = '#dc2626';
+    btn.disabled = false; return;
+  }
+  allProviders = data || [];
+
+  resolved = DECISIONS.map((d, i) => {
+    const matches = findProviders(d.first, d.last);
+    return { ...d, idx: i, matches, issue: matches.length === 0 ? 'No match' : matches.length > 1 ? `${matches.length} matches — all will be acted on` : null };
+  });
+
+  const delCount  = resolved.filter(r=>r.action==='DELETE'&&r.matches.length>0).length;
+  const keepCount = resolved.filter(r=>r.action==='KEEP'&&r.matches.length>0).length;
+  const noMatch   = resolved.filter(r=>r.matches.length===0).length;
+
+  document.getElementById('sumDel').textContent  = `${delCount} DELETE`;
+  document.getElementById('sumKeep').textContent = `${keepCount} KEEP+note`;
+  document.getElementById('sumNoMatch').textContent = `${noMatch} No match`;
+
+  const tbody = document.getElementById('previewBody');
+  tbody.innerHTML = resolved.map((r, i) => {
+    const badge = r.action==='DELETE'
+      ? '<span class="badge badge-del">DELETE</span>'
+      : '<span class="badge badge-keep">KEEP</span>';
+    const rowClass = r.matches.length===0 ? 'warn-row' : r.action==='DELETE' ? 'delete-row' : 'keep-row';
+    const matchText = r.matches.length===0
+      ? '⚠ Not found in DB'
+      : r.matches.map(p=>`${p.first_name} ${p.last_name} ${p.degree||''} (${p.specialty||'—'})`).join('<br>');
+    const notePreview = r.note.substring(0,60) + (r.note.length>60?'…':'');
+    return `<tr class="${rowClass}" id="row-${i}">
+      <td>${badge}</td>
+      <td><strong>${r.first} ${r.last}</strong>${r.issue?`<br><span style="font-size:0.7rem;color:#d97706;">${r.issue}</span>`:''}</td>
+      <td style="font-size:0.75rem;">${matchText}</td>
+      <td style="font-size:0.72rem;color:#555;font-style:italic;">${r.action==='DELETE'?'—':notePreview}</td>
+      <td class="status-col" id="status-${i}" style="font-size:0.75rem;color:#666;">Pending</td>
+    </tr>`;
+  }).join('');
+
+  status.textContent = `Loaded ${allProviders.length} providers · ${resolved.length} decisions · ${noMatch} unmatched`;
+  document.getElementById('previewSection').style.display = 'block';
+  btn.disabled = false;
+  showToast('Preview ready — review matches then execute', 'success');
+}
+
+// ── EXECUTE ────────────────────────────────────────────────────────────────
+async function executeAll() {
+  const toDelete = resolved.filter(r=>r.action==='DELETE'&&r.matches.length>0);
+  const toNote   = resolved.filter(r=>r.action==='KEEP'&&r.matches.length>0);
+  const noMatch  = resolved.filter(r=>r.matches.length===0);
+
+  const msg = `Execute ${resolved.length} decisions?\n\n` +
+    `DELETE: ${toDelete.length} providers (removes assignments + contact logs)\n` +
+    `KEEP+note: ${toNote.length} providers (appends verification note)\n` +
+    `Skipped (no DB match): ${noMatch.length}\n\nThis cannot be undone.`;
+  if (!confirm(msg)) return;
+
+  const btn = document.getElementById('execBtn');
+  btn.disabled = true;
+  document.getElementById('logCard').style.display = 'block';
+  log('=== Execution started ' + new Date().toLocaleString() + ' ===\n');
+
+  let done=0, skipped=0, errors=0;
+
+  for (const r of resolved) {
+    const statusEl = document.getElementById(`status-${r.idx}`);
+    const rowEl    = document.getElementById(`row-${r.idx}`);
+
+    if (!r.matches.length) {
+      log(`SKIP "${r.first} ${r.last}" — not found in DB`);
+      statusEl.textContent = '— not found';
+      skipped++;
+      continue;
+    }
+
+    try {
+      if (r.action === 'DELETE') {
+        for (const prov of r.matches) {
+          log(`DELETE ${prov.first_name} ${prov.last_name} (${prov.id}) — ${r.note.substring(0,60)}`);
+          await db.from('provider_location_assignments').delete().eq('provider_id', prov.id);
+          await db.from('contact_logs').delete().eq('provider_id', prov.id);
+          const { error } = await db.from('providers').delete().eq('id', prov.id);
+          if (error) throw error;
+          log(`  ✓ Deleted`);
+        }
+        statusEl.textContent = `✓ Deleted (${r.matches.length})`;
+        rowEl.className = 'done-row';
+        done++;
+      } else {
+        for (const prov of r.matches) {
+          const existing = prov.general_notes || '';
+          const newNote = existing ? existing + '\n' + r.note : r.note;
+          const { error } = await db.from('providers').update({ general_notes: newNote }).eq('id', prov.id);
+          if (error) throw error;
+          log(`KEEP note → ${prov.first_name} ${prov.last_name}: "${r.note.substring(0,70)}"`);
+        }
+        statusEl.textContent = '✓ Note added';
+        rowEl.className = 'done-row';
+        done++;
+      }
+    } catch(e) {
+      log(`ERROR on "${r.first} ${r.last}": ${e.message}`);
+      statusEl.textContent = '✗ Error';
+      rowEl.className = 'error-row';
+      errors++;
+    }
+  }
+
+  log(`\n=== Done: ${done} succeeded, ${skipped} skipped (no match), ${errors} errors ===`);
+  btn.disabled = false;
+  btn.textContent = `Done (${done}✓ ${skipped}skip ${errors}err)`;
+  showToast(`${done} executed, ${skipped} skipped, ${errors} errors`, errors ? 'error' : 'success');
+}
+</script>
+</body>
+</html>
