@@ -1,0 +1,466 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Audit Merge Executor</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f5f5f5;color:#222;padding:1rem;}
+h1{font-size:1.3rem;font-weight:700;color:#0a4d3c;margin-bottom:0.25rem;}
+.subtitle{font-size:0.82rem;color:#666;margin-bottom:1.25rem;}
+.card{background:#fff;border-radius:10px;padding:1.25rem;margin-bottom:1rem;box-shadow:0 1px 4px rgba(0,0,0,0.08);}
+button{border:none;border-radius:6px;padding:0.45rem 1rem;font-size:0.85rem;font-weight:600;cursor:pointer;font-family:inherit;}
+.btn-primary{background:#0a4d3c;color:#fff;}
+.btn-primary:hover{background:#064030;}
+.btn-primary:disabled{background:#aaa;cursor:not-allowed;}
+.btn-exec{background:#dc2626;color:#fff;padding:0.6rem 1.5rem;font-size:0.95rem;}
+.btn-exec:hover{background:#b91c1c;}
+.btn-exec:disabled{background:#aaa;cursor:not-allowed;}
+table{width:100%;border-collapse:collapse;font-size:0.78rem;margin-top:0.75rem;}
+th{text-align:left;padding:0.4rem 0.5rem;border-bottom:2px solid #e5e5e5;background:#f9fafb;font-size:0.75rem;}
+td{padding:0.4rem 0.5rem;border-bottom:1px solid #f0f0f0;vertical-align:top;}
+tr.merge-row{background:#fff5f5;}
+tr.keep-row{background:#f0fdf4;}
+tr.warn-row{background:#fffbeb;}
+tr.done-row td{color:#999;text-decoration:line-through;}
+tr.error-row{background:#fee2e2;}
+.badge{display:inline-block;font-size:0.68rem;font-weight:700;padding:0.1rem 0.5rem;border-radius:999px;}
+.badge-merge{background:#fee2e2;color:#991b1b;}
+.badge-keep{background:#dcfce7;color:#166534;}
+.badge-warn{background:#fef3c7;color:#92400e;}
+.status-col{font-style:italic;color:#666;}
+.log{font-family:monospace;font-size:0.75rem;background:#1e1e1e;color:#d4d4d4;border-radius:6px;padding:0.75rem;max-height:250px;overflow-y:auto;margin-top:0.75rem;white-space:pre-wrap;}
+.toast{position:fixed;bottom:1rem;left:50%;transform:translateX(-50%);background:#222;color:#fff;padding:0.6rem 1.25rem;border-radius:8px;font-size:0.85rem;z-index:9999;display:none;}
+.toast.show{display:block;}
+.toast.success{background:#166534;}
+.toast.error{background:#991b1b;}
+</style>
+</head>
+<body>
+<h1>🔀 Audit Merge Executor</h1>
+<p class="subtitle">Executes MERGE and KEEP decisions from the Self-Named Practices audit. Preview first, then execute.</p>
+
+<div class="card">
+  <button class="btn-primary" id="previewBtn" onclick="loadAndPreview()">① Load &amp; Preview</button>
+  <span id="previewStatus" style="margin-left:0.75rem;font-size:0.82rem;color:#666;"></span>
+</div>
+
+<div id="previewSection" style="display:none;">
+  <div class="card">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.5rem;">
+      <strong style="font-size:0.95rem;">Preview — Review before executing</strong>
+      <button class="btn-exec" id="execBtn" onclick="executeAll()">② Execute All</button>
+    </div>
+    <p style="font-size:0.78rem;color:#666;margin-bottom:0.5rem;">
+      <span style="background:#fff5f5;padding:0.1rem 0.4rem;border-radius:3px;">MERGE rows</span> move the location to the target practice and delete the self-named record. &nbsp;
+      <span style="background:#f0fdf4;padding:0.1rem 0.4rem;border-radius:3px;">KEEP rows</span> append a note to the provider's profile.
+    </p>
+    <table>
+      <thead>
+        <tr><th>Action</th><th>Source / Provider</th><th>Target / Note</th><th>DB Match</th><th>Status</th></tr>
+      </thead>
+      <tbody id="previewBody"></tbody>
+    </table>
+  </div>
+  <div class="card" id="logCard" style="display:none;">
+    <strong style="font-size:0.85rem;">Execution Log</strong>
+    <div class="log" id="execLog"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const SUPABASE_URL = 'https://xhdjywibdjzbczfjmctp.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhoZGp5d2liZGp6YmN6ZmptY3RwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk3NzE4MTYsImV4cCI6MjA4NTM0NzgxNn0.vHAfeYTVbu2Isu5AoFONvzrtJ2sS3YwF00QRe3LNrbU';
+const { createClient } = window.supabase;
+const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// ── DECISIONS ──────────────────────────────────────────────────────────────
+// type: 'MERGE' = move locations to target practice, add note to providers, delete source
+//       'KEEP'  = append note to provider general_notes (matched by first+last name)
+//       'KEEP_PRACTICE' = append note to practice.notes (for entity-named practices)
+
+const DECISIONS = [
+  // ── MERGES ──
+  {
+    type: 'MERGE',
+    sourceName: 'Adam Plotkin',
+    sourceAddr: '5210 Linton Blvd',
+    targetName: 'Palm Beach Dermatology Group',
+    note: 'Verified 2026-03: Practices under Palm Beach Dermatology Group, not a standalone solo office.'
+  },
+  {
+    type: 'MERGE',
+    sourceName: 'Caren Block',
+    sourceAddr: '6901 Okeechobee Blvd',
+    targetName: 'Ankle & Foot Associates of the Palm Beaches',
+    note: 'Verified 2026-03: Office under Ankle & Foot Associates of the Palm Beaches, not a solo practice.'
+  },
+  {
+    type: 'MERGE',
+    sourceName: 'Carlos A Rojas DPM',
+    sourceAddr: '8740 N Kendall Dr',
+    targetName: 'Miami Foot and Ankle',
+    note: 'Verified 2026-03: Group practice under Miami Foot and Ankle, not self-named solo entity.'
+  },
+  {
+    type: 'MERGE',
+    sourceName: 'James Devoursney',
+    sourceAddr: '7740 Boynton Beach Blvd',
+    targetName: 'Boynton Beach Skin',
+    note: 'Verified 2026-03: Practices within Boynton Beach Skin, a larger derm group.'
+  },
+  {
+    type: 'MERGE',
+    sourceName: 'Justin Rubin',
+    sourceAddr: '1460 N University Dr',
+    targetName: 'Skin & Cancer Associates',
+    targetNameAlt: 'Dermatology Consultants',
+    note: 'Verified 2026-03: Office under Skin & Cancer Associates / Dermatology Consultants group.'
+  },
+  {
+    type: 'MERGE',
+    sourceName: 'Michael Borenstein',
+    sourceAddr: '11030 RCA Center Dr',
+    targetName: 'Gardens Dermatology & Cosmetic Surgery Center',
+    note: 'Verified 2026-03: Office under Gardens Dermatology & Cosmetic Surgery Center.'
+  },
+  {
+    type: 'MERGE',
+    sourceName: 'Michael R Cook DPM',
+    sourceAddr: '8955 SW 87th Ct',
+    targetName: 'Florida Foot & Ankle',
+    note: 'Verified 2026-03: Office under Florida Foot & Ankle, a larger podiatry group.'
+  },
+  {
+    type: 'MERGE',
+    sourceName: 'Scott Podnos',
+    sourceAddr: '290 Indian Trce',
+    targetName: 'Advanced Dermatology & Cosmetic Surgery',
+    note: 'Verified 2026-03: Office under Advanced Dermatology & Cosmetic Surgery group.'
+  },
+  {
+    type: 'MERGE',
+    sourceName: 'Willie Richardson',
+    sourceAddr: '1120 Bayview Dr',
+    targetName: 'Natura Dermatology & Cosmetics',
+    note: 'Verified 2026-03: Provider is founder; practice brand is Natura Dermatology & Cosmetics.'
+  },
+
+  // ── KEEP — individual provider notes (matched by last name) ──
+  {
+    type: 'KEEP',
+    providerLast: 'Abrebaya',
+    displayName: 'Alberto Abrebaya',
+    note: 'Verified 2026-03: Legitimate provider-controlled podiatry practice.'
+  },
+  {
+    type: 'KEEP',
+    providerLast: 'Herman',
+    displayName: 'Alysa Herman',
+    note: 'Verified 2026-03: Verified private Mohs practice — self-named practice is legitimate.'
+  },
+  {
+    type: 'KEEP',
+    providerLast: 'Resnik',
+    displayName: 'Barry Resnik',
+    note: 'Verified 2026-03: Resnik Skin Institute is a legitimate self-branded Mohs practice.'
+  },
+  {
+    type: 'KEEP',
+    providerLast: 'Feinstein',
+    displayName: 'Brian Feinstein',
+    note: 'Verified 2026-03: Feinstein Dermatology is a legitimate provider-controlled Mohs practice.'
+  },
+  {
+    type: 'KEEP',
+    providerLast: 'Brandwein',
+    displayName: 'Daniel Brandwein',
+    note: 'Verified 2026-03: Legitimate self-named podiatry practice (Dr. Daniel Brandwein DPM, PA).'
+  },
+  {
+    type: 'KEEP',
+    providerLast: 'Green',
+    displayName: 'James A. Green',
+    note: 'Verified 2026-03: Legitimate self-named podiatry practice (James A. Green Podiatry).'
+  },
+  {
+    type: 'KEEP',
+    providerLast: 'François',
+    providerLastAlt: 'Francois',
+    displayName: 'Jim François',
+    note: 'Verified 2026-03: Legitimate self-named podiatry practice (Jim François DPM PT PA).'
+  },
+  {
+    type: 'KEEP',
+    providerLast: 'Levine',
+    displayName: 'Stephen M. Levine',
+    note: 'Verified 2026-03: Legitimate self-named podiatry practice (Stephen M Levine DPM).'
+  },
+
+  // ── KEEP — practice-entity notes (no single provider) ──
+  {
+    type: 'KEEP_PRACTICE',
+    practiceName: 'Flores Dermatology MD PA',
+    displayName: 'Flores Dermatology MD PA',
+    note: 'Verified 2026-03: Legitimate multi-location self-named practice entity.'
+  },
+  {
+    type: 'KEEP_PRACTICE',
+    practiceName: 'Garnet & Carbonell DPM LLC',
+    practicePart: 'Garnet',
+    displayName: 'Garnet & Carbonell DPM LLC',
+    note: 'Verified 2026-03: Legitimate group practice entity — not an import artifact.'
+  }
+];
+
+// ── STATE ──────────────────────────────────────────────────────────────────
+let allProviders = [], allPractices = [], allLocations = [], allAssignments = [];
+let resolvedDecisions = []; // enriched decisions after matching
+
+function showToast(msg, type='info') {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.className = 'toast show ' + type;
+  setTimeout(()=>t.className='toast', 3000);
+}
+
+function log(msg) {
+  const el = document.getElementById('execLog');
+  el.textContent += msg + '\n';
+  el.scrollTop = el.scrollHeight;
+}
+
+// ── FUZZY MATCHERS ─────────────────────────────────────────────────────────
+function normalize(s) { return (s||'').toLowerCase().replace(/[^a-z0-9]/g,' ').replace(/\s+/g,' ').trim(); }
+
+function findPracticeByName(name, altName) {
+  const n = normalize(name);
+  let match = allPractices.find(p => normalize(p.name) === n);
+  if (!match && altName) match = allPractices.find(p => normalize(p.name) === normalize(altName));
+  if (!match) match = allPractices.find(p => normalize(p.name).includes(n) || n.includes(normalize(p.name)));
+  if (!match && altName) {
+    const a = normalize(altName);
+    match = allPractices.find(p => normalize(p.name).includes(a) || a.includes(normalize(p.name)));
+  }
+  return match || null;
+}
+
+function findProviderByLastName(last, altLast) {
+  const n = normalize(last);
+  let match = allProviders.find(p => normalize(p.last_name) === n);
+  if (!match && altLast) match = allProviders.find(p => normalize(p.last_name) === normalize(altLast));
+  return match || null;
+}
+
+// ── LOAD & PREVIEW ─────────────────────────────────────────────────────────
+async function loadAndPreview() {
+  const btn = document.getElementById('previewBtn');
+  const status = document.getElementById('previewStatus');
+  btn.disabled = true; status.textContent = 'Loading data…';
+
+  const [pr, pc, lc, as] = await Promise.all([
+    db.from('providers').select('id,first_name,last_name,degree,specialty,general_notes'),
+    db.from('practices').select('id,name,notes'),
+    db.from('practice_locations').select('id,practice_id,label,address,city,zip'),
+    db.from('provider_location_assignments').select('provider_id,practice_location_id')
+  ]);
+
+  if (pr.error||pc.error||lc.error||as.error) {
+    status.textContent = 'DB load error — check console';
+    console.error(pr.error, pc.error, lc.error, as.error);
+    btn.disabled = false; return;
+  }
+
+  allProviders = pr.data || [];
+  allPractices = pc.data || [];
+  allLocations = lc.data || [];
+  allAssignments = as.data || [];
+
+  // Build lookup maps
+  const locsByPractice = {};
+  allLocations.forEach(l => {
+    if (!locsByPractice[l.practice_id]) locsByPractice[l.practice_id] = [];
+    locsByPractice[l.practice_id].push(l);
+  });
+  const providersByLoc = {};
+  allAssignments.forEach(a => {
+    if (!providersByLoc[a.practice_location_id]) providersByLoc[a.practice_location_id] = [];
+    providersByLoc[a.practice_location_id].push(a.provider_id);
+  });
+
+  // Resolve each decision
+  resolvedDecisions = DECISIONS.map(d => {
+    const r = { ...d, srcPractice: null, tgtPractice: null, tgtNew: false, provider: null, srcLocs: [], srcProviders: [], issues: [] };
+
+    if (d.type === 'MERGE') {
+      r.srcPractice = findPracticeByName(d.sourceName);
+      if (!r.srcPractice) r.issues.push('Source practice not found in DB');
+      else {
+        r.srcLocs = locsByPractice[r.srcPractice.id] || [];
+        const provIds = new Set();
+        r.srcLocs.forEach(loc => (providersByLoc[loc.id]||[]).forEach(pid => provIds.add(pid)));
+        r.srcProviders = [...provIds].map(pid => allProviders.find(p=>p.id===pid)).filter(Boolean);
+      }
+      r.tgtPractice = findPracticeByName(d.targetName, d.targetNameAlt);
+      if (!r.tgtPractice) { r.tgtNew = true; }
+    }
+
+    if (d.type === 'KEEP') {
+      r.provider = findProviderByLastName(d.providerLast, d.providerLastAlt);
+      if (!r.provider) r.issues.push('Provider not found by last name');
+    }
+
+    if (d.type === 'KEEP_PRACTICE') {
+      r.srcPractice = findPracticeByName(d.practiceName, d.practicePart);
+      if (!r.srcPractice) r.issues.push('Practice not found in DB');
+    }
+
+    return r;
+  });
+
+  // Render preview table
+  const tbody = document.getElementById('previewBody');
+  tbody.innerHTML = resolvedDecisions.map((r, i) => {
+    const rowClass = r.type === 'MERGE' ? 'merge-row' : 'keep-row';
+    const badge = r.type === 'MERGE' ? '<span class="badge badge-merge">MERGE</span>'
+                : r.type === 'KEEP' ? '<span class="badge badge-keep">KEEP</span>'
+                : '<span class="badge badge-keep">KEEP (practice)</span>';
+    const issues = r.issues.length ? `<br><span style="color:#dc2626;font-size:0.72rem;">⚠ ${r.issues.join('; ')}</span>` : '';
+
+    let matchCol = '', targetCol = '';
+    if (r.type === 'MERGE') {
+      matchCol = r.srcPractice
+        ? `✓ Practice: <em>${r.srcPractice.name}</em><br>${r.srcLocs.length} loc(s) · ${r.srcProviders.length} provider(s)`
+        : `<span style="color:#dc2626;">✗ Not found</span>`;
+      targetCol = r.tgtPractice
+        ? `→ <em>${r.tgtPractice.name}</em> (existing)`
+        : `→ <em>${r.targetName}</em> <span style="color:#d97706;">(will create)</span>`;
+    } else if (r.type === 'KEEP') {
+      matchCol = r.provider
+        ? `✓ ${r.provider.first_name} ${r.provider.last_name} ${r.provider.degree||''}`
+        : `<span style="color:#dc2626;">✗ Not found</span>`;
+      targetCol = `<span style="font-style:italic;color:#555;">${r.note.substring(0,60)}…</span>`;
+    } else {
+      matchCol = r.srcPractice ? `✓ Practice: <em>${r.srcPractice.name}</em>` : `<span style="color:#dc2626;">✗ Not found</span>`;
+      targetCol = `<span style="font-style:italic;color:#555;">${r.note.substring(0,60)}…</span>`;
+    }
+
+    return `<tr class="${rowClass}" id="row-${i}">
+      <td>${badge}${issues}</td>
+      <td><strong>${r.displayName || r.sourceName || r.providerLast}</strong></td>
+      <td>${targetCol}</td>
+      <td>${matchCol}</td>
+      <td class="status-col" id="status-${i}">Pending</td>
+    </tr>`;
+  }).join('');
+
+  const issues = resolvedDecisions.filter(r=>r.issues.length).length;
+  status.textContent = `Loaded. ${resolvedDecisions.length} decisions · ${issues} with warnings.`;
+  if (issues) status.style.color = '#d97706';
+  document.getElementById('previewSection').style.display = 'block';
+  btn.disabled = false;
+  showToast('Preview ready — review then execute', 'success');
+}
+
+// ── EXECUTE ────────────────────────────────────────────────────────────────
+async function executeAll() {
+  const btn = document.getElementById('execBtn');
+  if (!confirm(`Execute all ${resolvedDecisions.length} decisions?\n\nMERGE: moves locations to target practice, adds notes to providers, deletes source practice.\nKEEP: appends verification note to provider/practice record.\n\nThis cannot be undone.`)) return;
+
+  btn.disabled = true;
+  document.getElementById('logCard').style.display = 'block';
+  log('=== Execution started ' + new Date().toLocaleString() + ' ===\n');
+
+  let done = 0, skipped = 0, errors = 0;
+
+  for (let i = 0; i < resolvedDecisions.length; i++) {
+    const r = resolvedDecisions[i];
+    const statusEl = document.getElementById(`status-${i}`);
+    const rowEl = document.getElementById(`row-${i}`);
+    statusEl.textContent = 'Running…';
+
+    try {
+      if (r.type === 'MERGE') {
+        if (!r.srcPractice) { log(`SKIP MERGE "${r.displayName||r.sourceName}" — source practice not found`); statusEl.textContent = 'Skipped (no match)'; skipped++; continue; }
+
+        // 1. Find or create target practice
+        let tgtId = r.tgtPractice?.id;
+        if (!tgtId) {
+          log(`CREATE practice: "${r.targetName}"`);
+          const { data: newPrac, error: cErr } = await db.from('practices').insert({ name: r.targetName }).select('id').single();
+          if (cErr) throw new Error('Create target practice: ' + cErr.message);
+          tgtId = newPrac.id;
+          log(`  → Created with id ${tgtId}`);
+        } else {
+          log(`MERGE "${r.srcPractice.name}" → "${r.tgtPractice.name}" (${tgtId})`);
+        }
+
+        // 2. Move all source locations to target practice
+        if (r.srcLocs.length) {
+          const locIds = r.srcLocs.map(l=>l.id);
+          const { error: mvErr } = await db.from('practice_locations').update({ practice_id: tgtId }).in('id', locIds);
+          if (mvErr) throw new Error('Move locations: ' + mvErr.message);
+          log(`  → Moved ${locIds.length} location(s) to target`);
+        }
+
+        // 3. Add note to all linked providers
+        for (const prov of r.srcProviders) {
+          const existing = prov.general_notes || '';
+          const newNote = existing ? existing + '\n' + r.note : r.note;
+          const { error: nErr } = await db.from('providers').update({ general_notes: newNote }).eq('id', prov.id);
+          if (nErr) log(`  ⚠ Note update failed for provider ${prov.last_name}: ${nErr.message}`);
+          else log(`  → Note added to ${prov.first_name} ${prov.last_name}`);
+        }
+
+        // 4. Delete source practice (now has no locations)
+        const { error: dErr } = await db.from('practices').delete().eq('id', r.srcPractice.id);
+        if (dErr) throw new Error('Delete source practice: ' + dErr.message);
+        log(`  → Deleted source practice "${r.srcPractice.name}"`);
+
+        statusEl.textContent = '✓ Done';
+        rowEl.className = 'done-row';
+        done++;
+      }
+
+      else if (r.type === 'KEEP') {
+        if (!r.provider) { log(`SKIP KEEP "${r.displayName}" — provider not found`); statusEl.textContent = 'Skipped (no match)'; skipped++; continue; }
+        const existing = r.provider.general_notes || '';
+        const newNote = existing ? existing + '\n' + r.note : r.note;
+        const { error: nErr } = await db.from('providers').update({ general_notes: newNote }).eq('id', r.provider.id);
+        if (nErr) throw new Error('Update notes: ' + nErr.message);
+        log(`KEEP note → ${r.provider.first_name} ${r.provider.last_name}: "${r.note}"`);
+        statusEl.textContent = '✓ Note added';
+        rowEl.className = 'done-row';
+        done++;
+      }
+
+      else if (r.type === 'KEEP_PRACTICE') {
+        if (!r.srcPractice) { log(`SKIP KEEP_PRACTICE "${r.displayName}" — practice not found`); statusEl.textContent = 'Skipped (no match)'; skipped++; continue; }
+        const existing = r.srcPractice.notes || '';
+        const newNote = existing ? existing + '\n' + r.note : r.note;
+        const { error: nErr } = await db.from('practices').update({ notes: newNote }).eq('id', r.srcPractice.id);
+        if (nErr) throw new Error('Update practice notes: ' + nErr.message);
+        log(`KEEP_PRACTICE note → "${r.srcPractice.name}": "${r.note}"`);
+        statusEl.textContent = '✓ Note added';
+        rowEl.className = 'done-row';
+        done++;
+      }
+
+    } catch(e) {
+      log(`ERROR on "${r.displayName||r.sourceName}": ${e.message}`);
+      statusEl.textContent = '✗ Error';
+      rowEl.className = 'error-row';
+      errors++;
+    }
+  }
+
+  log(`\n=== Done: ${done} succeeded, ${skipped} skipped, ${errors} errors ===`);
+  btn.textContent = `Done (${done}✓ ${skipped}skip ${errors}err)`;
+  showToast(`Executed: ${done} done, ${skipped} skipped, ${errors} errors`, errors ? 'error' : 'success');
+}
+</script>
+</body>
+</html>
