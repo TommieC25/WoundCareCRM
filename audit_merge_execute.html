@@ -263,7 +263,7 @@ async function loadAndPreview() {
 
   const [pr, pc, lc, asgn] = await Promise.all([
     db.from('providers').select('id,first_name,last_name,degree,specialty,general_notes').limit(5000),
-    db.from('practices').select('id,name,notes').limit(5000),
+    db.from('practices').select('id,name').limit(5000),
     db.from('practice_locations').select('id,practice_id,label,address,city,zip').limit(5000),
     db.from('provider_location_assignments').select('provider_id,practice_location_id').limit(10000)
   ]);
@@ -441,12 +441,22 @@ async function executeAll() {
 
       else if (r.type === 'KEEP_PRACTICE') {
         if (!r.srcPractice) { log(`SKIP KEEP_PRACTICE "${r.displayName}" — practice not found`); statusEl.textContent = 'Skipped (no match)'; skipped++; continue; }
-        const existing = r.srcPractice.notes || '';
-        const newNote = existing ? existing + '\n' + r.note : r.note;
-        const { error: nErr } = await db.from('practices').update({ notes: newNote }).eq('id', r.srcPractice.id);
-        if (nErr) throw new Error('Update practice notes: ' + nErr.message);
-        log(`KEEP_PRACTICE note → "${r.srcPractice.name}": "${r.note}"`);
-        statusEl.textContent = '✓ Note added';
+        // practices table has no notes column — write to all linked providers' general_notes instead
+        const locsByPrac = {};
+        allLocations.forEach(l => { if (!locsByPrac[l.practice_id]) locsByPrac[l.practice_id] = []; locsByPrac[l.practice_id].push(l); });
+        const provByLoc = {};
+        allAssignments.forEach(a => { if (!provByLoc[a.practice_location_id]) provByLoc[a.practice_location_id] = []; provByLoc[a.practice_location_id].push(a.provider_id); });
+        const provIds = new Set((locsByPrac[r.srcPractice.id]||[]).flatMap(l => provByLoc[l.id]||[]));
+        if (!provIds.size) { log(`KEEP_PRACTICE "${r.srcPractice.name}" — no linked providers found, skipping note`); statusEl.textContent = 'Skipped (no providers)'; skipped++; continue; }
+        for (const pid of provIds) {
+          const prov = allProviders.find(p=>p.id===pid);
+          if (!prov) continue;
+          const newNote = prov.general_notes ? prov.general_notes + '\n' + r.note : r.note;
+          const { error: nErr } = await db.from('providers').update({ general_notes: newNote }).eq('id', pid);
+          if (nErr) log(`  ⚠ Note update failed for provider ${pid}: ${nErr.message}`);
+          else log(`KEEP_PRACTICE note → provider at "${r.srcPractice.name}" (${prov.last_name}): "${r.note}"`);
+        }
+        statusEl.textContent = `✓ Note added to ${provIds.size} provider(s)`;
         rowEl.className = 'done-row';
         done++;
       }
