@@ -46,7 +46,7 @@ for (let i = 0; i < 5; i++) {
 buttons.push({ label: '2 weeks', date: addDays(today, 14) });
 buttons.push({ label: 'Open', date: '2099-12-31' });
 container.innerHTML = buttons.map(b =>
-  `<button type="button" class="reminder-date-btn" data-prefix="${prefix}" onclick="selectReminderDate('${b.date}','${b.label}','${prefix}')" data-date="${b.date}" style="padding:0.3rem 0.55rem;font-size:0.78rem;border:1px solid #fcd34d;border-radius:6px;background:#fffbeb;color:#92400e;cursor:pointer;white-space:nowrap;transition:background 0.1s;">${b.label}</button>`
+  `<button type="button" class="reminder-date-btn" data-prefix="${prefix}" onclick="selectReminderDate('${b.date}','${b.label}','${prefix}')" data-date="${b.date}" style="padding:0.3rem 0.55rem;font-size:0.78rem;border:1px solid #fcd34d;border-radius:6px;background:#fffbeb;color:#92400e;cursor:pointer;white-space:nowrap;transition:background 0.1s;touch-action:manipulation;-webkit-tap-highlight-color:transparent;">${b.label}</button>`
 ).join('');
 // Default: tomorrow
 selectReminderDate(buttons[1].date, buttons[1].label, prefix);
