@@ -395,6 +395,54 @@ ${lines}`;
   navigator.clipboard.writeText(prompt).then(() => showToast(`Copied ${derms.length} derm(s) to clipboard`, 'success')).catch(() => { window._aiPrompt = prompt; showToast('Copy failed — check console', 'error'); console.log(prompt); });
 }
 
+function copyOrphansForAI() {
+  const provs = window._orphanProviders || [];
+  if (!provs.length) { showToast('No unassigned providers to copy', 'error'); return; }
+  const lines = provs.map((p, i) => {
+    const name = [p.first_name, p.last_name, p.degree].filter(Boolean).join(' ');
+    const parts = [`${i+1}. ${name}`];
+    if (p.specialty) parts.push(`   Specialty: ${p.specialty}`);
+    if (p.title) parts.push(`   Title: ${p.title}`);
+    if (p.email) parts.push(`   Email: ${p.email}`);
+    if (p.general_notes) parts.push(`   Notes: ${p.general_notes}`);
+    return parts.join('\n');
+  }).join('\n\n');
+  const prompt = `I maintain a wound care CRM for Miami-area sales. The following providers are in the database with NO practice location assigned. I need to know where each one practices so I can link them to the right office.
+
+For each provider, please use your knowledge or NPI registry data to identify:
+- Their current practice name and address (Miami-Dade, Broward, or Palm Beach county)
+- Any group practice affiliation
+- Whether they are still actively practicing in South Florida
+
+---
+${lines}`;
+  navigator.clipboard.writeText(prompt).then(() => showToast(`Copied ${provs.length} provider(s) to clipboard`, 'success')).catch(() => { console.log(prompt); showToast('Copy failed — check console', 'error'); });
+}
+
+function copyEmptyPracsForAI() {
+  const pracs = window._emptyPracs || [];
+  if (!pracs.length) { showToast('No empty practices to copy', 'error'); return; }
+  const locsByPrac = window._auditLocsByPractice || {};
+  const lines = pracs.map((prac, i) => {
+    const locs = locsByPrac[prac.id] || [];
+    const addrs = locs.map(l => [l.address, l.city, l.zip].filter(Boolean).join(', ')).filter(Boolean).join(' / ');
+    const parts = [`${i+1}. ${prac.name}`];
+    if (addrs) parts.push(`   Address: ${addrs}`);
+    if (prac.website) parts.push(`   Website: ${prac.website}`);
+    if (prac.notes) parts.push(`   Notes: ${prac.notes}`);
+    return parts.join('\n');
+  }).join('\n\n');
+  const prompt = `I maintain a wound care CRM for Miami-area sales. The following practices have no providers linked to them. I need to identify which wound care providers (podiatrists, Mohs surgeons, wound care specialists) work at each location so I can add them to the database.
+
+For each practice, please use your knowledge or NPI registry data to identify:
+- Providers at that location who treat chronic wounds (podiatry, Mohs surgery, wound care)
+- Their names, degrees, and NPI numbers if possible
+
+---
+${lines}`;
+  navigator.clipboard.writeText(prompt).then(() => showToast(`Copied ${pracs.length} practice(s) to clipboard`, 'success')).catch(() => { console.log(prompt); showToast('Copy failed — check console', 'error'); });
+}
+
 async function fixDpmMismatches() {
   const btn = document.getElementById('fixDpmBtn');
   btn.disabled = true; btn.textContent = 'Fixing...';
@@ -702,10 +750,12 @@ async function runAudit() {
     const orphanBadge = document.getElementById('orphanBadge');
     orphanBadge.textContent = orphans.length + (orphans.length === 0 ? ' ✓' : ' issues');
     orphanBadge.className = 'count-badge ' + (orphans.length === 0 ? 'ok' : orphans.length < 5 ? 'warn' : '');
+    window._orphanProviders = orphans;
     if (orphans.length === 0) {
       orphanEl.innerHTML = '<p class="empty">All providers have at least one location assigned.</p>';
     } else {
-      orphanEl.innerHTML = orphans.map(p => {
+      orphanEl.innerHTML = `<div style="margin-bottom:0.75rem;"><button class="btn-primary" onclick="copyOrphansForAI()">📋 Copy for AI Vetting</button> <span style="font-size:0.8rem;color:#666;margin-left:0.5rem;">Ask AI to help identify where these providers practice</span></div>` +
+        orphans.map(p => {
         const name = [p.first_name, p.last_name, p.degree].filter(Boolean).join(' ');
         const detail = [p.specialty, p.priority ? 'Tier ' + p.priority : '', p.is_target ? 'TARGET' : ''].filter(Boolean).join(' · ');
         const noteSnip = (p.general_notes || '').substring(0, 100);
@@ -728,6 +778,8 @@ async function runAudit() {
       const total = locs.reduce((n, l) => n + (assignedProvidersByLoc[l.id]?.size || 0), 0);
       return total === 0;
     });
+    window._emptyPracs = emptyPracs;
+    window._auditLocsByPractice = locsByPractice;
     const emptyPracEl = document.getElementById('emptyPracList');
     const emptyPracBadge = document.getElementById('emptyPracBadge');
     emptyPracBadge.textContent = emptyPracs.length + (emptyPracs.length === 0 ? ' ✓' : ' items');
@@ -735,7 +787,8 @@ async function runAudit() {
     if (emptyPracs.length === 0) {
       emptyPracEl.innerHTML = '<p class="empty">All practices have at least one provider assigned.</p>';
     } else {
-      emptyPracEl.innerHTML = emptyPracs.map(prac => {
+      emptyPracEl.innerHTML = `<div style="margin-bottom:0.75rem;"><button class="btn-primary" onclick="copyEmptyPracsForAI()">📋 Copy for AI Vetting</button> <span style="font-size:0.8rem;color:#666;margin-left:0.5rem;">Ask AI to identify who works at these practices</span></div>` +
+        emptyPracs.map(prac => {
         const locs = locsByPractice[prac.id] || [];
         const cities = [...new Set(locs.map(l => l.city).filter(Boolean))].join(', ');
         return `<div class="row-card neutral" id="eprac-${prac.id}">
