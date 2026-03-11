@@ -2,6 +2,14 @@
 let _taskDetailLogs = {};
 let activitySubTab = 'history'; // 'history' | 'activity' | 'tasks'
 let _activitySearchTerm = '';
+let _taskSectionsState = {}; // tracks which sections are collapsed by id
+function toggleTaskSection(id){
+  _taskSectionsState[id]=!_taskSectionsState[id];
+  const content=document.getElementById('tsc-'+id);
+  const caret=document.getElementById('tsc-caret-'+id);
+  if(content){content.style.display=_taskSectionsState[id]?'none':'block';}
+  if(caret){caret.textContent=_taskSectionsState[id]?'▶':'▼';}
+}
 const fmtD = ds => { if(!ds)return''; const d=new Date(ds+'T12:00:00'); return d.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'}); };
 
 // --- Activity sub-tab navigation HTML helper ---
@@ -264,7 +272,7 @@ if(completedTasks.length===0){$('mainContent').innerHTML=tabsPrefix+`<div class=
 // No active tasks but completed ones exist — fall through to show completed section
 }
 const search=_activitySearchTerm||$('searchInput').value.trim().toLowerCase();
-function _taskMatches(r){const ph=physMap[r.provider_id]||{};const fullName=((ph.first_name||'')+' '+(ph.last_name||'')).trim();return(r.notes||'').toLowerCase().includes(search)||(r.author||'').toLowerCase().includes(search)||fullName.toLowerCase().includes(search)||(ph.first_name||'').toLowerCase().includes(search)||(ph.last_name||'').toLowerCase().includes(search);}
+function _taskMatches(r){const ph=physMap[r.provider_id]||{};const fullName=((ph.first_name||'')+' '+(ph.last_name||'')).trim();const locLabel=r.practice_location_id?getLocationLabel(r.practice_location_id).toLowerCase():'';return(r.notes||'').toLowerCase().includes(search)||(r.author||'').toLowerCase().includes(search)||fullName.toLowerCase().includes(search)||(ph.first_name||'').toLowerCase().includes(search)||(ph.last_name||'').toLowerCase().includes(search)||locLabel.includes(search);}
 const filtered=search?reminders.filter(_taskMatches):reminders;
 const filteredCompleted=search?completedTasks.filter(_taskMatches):completedTasks;
 if(search&&filtered.length===0&&filteredCompleted.length===0){$('mainContent').innerHTML=tabsPrefix+`<div class="section"><div class="section-header"><h3>Tasks &amp; Reminders</h3>${newTaskBtn}</div><div class="empty-notice">No tasks matching "${search}".</div></div>`;return;}
@@ -275,7 +283,7 @@ const overdue=datedR.filter(r=>r.reminder_date<today);
 const upcoming=datedR.filter(r=>r.reminder_date>=today);
 let html=tabsPrefix+`<div class="section"><div class="section-header"><h3>Tasks &amp; Reminders</h3><div style="display:flex;align-items:center;gap:0.75rem;"><div style="font-size:0.8rem;color:#666;">${reminders.length===0?'All caught up!':search?`${filtered.length} of ${reminders.length} matching "${search}"`:reminders.length+' active'}${overdue.length>0?` — <span style="color:#dc2626;font-weight:600;">${overdue.length} overdue</span>`:''}${openTasks.length>0?` — ${openTasks.length} open`:''}</div>${newTaskBtn}</div></div>`;
 if(overdue.length>0){
-html+=`<div style="margin-bottom:1rem;"><div style="font-size:0.75rem;font-weight:700;color:#dc2626;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:0.5rem;padding-bottom:0.25rem;border-bottom:2px solid #fca5a5;">⚠️ Overdue (${overdue.length})</div><div class="contact-entries">`;
+html+=`<div style="margin-bottom:1rem;"><div style="font-size:0.75rem;font-weight:700;color:#dc2626;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:0.5rem;padding-bottom:0.25rem;border-bottom:2px solid #fca5a5;display:flex;justify-content:space-between;align-items:center;cursor:pointer;user-select:none;" onclick="toggleTaskSection('overdue')">⚠️ Overdue (${overdue.length})<span id="tsc-caret-overdue" style="font-size:1rem;">▼</span></div><div id="tsc-overdue" class="contact-entries" style="${_taskSectionsState['overdue']?'display:none':''}">`;
 overdue.forEach(r=>{
 const phys=r.provider_id?physMap[r.provider_id]:null;const physName=phys?fmtName(phys):(r.practice_location_id?getLocationLabel(r.practice_location_id):'Location Note');
 const emailLink=phys?.email?` <a href="mailto:${phys.email}" style="color:#0a4d3c;font-size:0.75rem;">✉️ Email</a>`:'';
@@ -291,8 +299,8 @@ if(upcoming.length>0){
 const byDate={};upcoming.forEach(r=>{if(!byDate[r.reminder_date])byDate[r.reminder_date]=[];byDate[r.reminder_date].push(r);});
 Object.entries(byDate).forEach(([date,dayR])=>{
 const d=new Date(date+'T12:00:00');const label=d.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
-const isToday=date===today;
-html+=`<div style="margin-bottom:0.75rem;"><div style="font-size:0.75rem;font-weight:700;color:#92400e;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:0.5rem;padding-bottom:0.25rem;border-bottom:2px solid #fcd34d;">${isToday?'📅 TODAY — ':''}${label}</div><div class="contact-entries">`;
+const isToday=date===today;const secId='date-'+date;
+html+=`<div style="margin-bottom:0.75rem;"><div style="font-size:0.75rem;font-weight:700;color:#92400e;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:0.5rem;padding-bottom:0.25rem;border-bottom:2px solid #fcd34d;display:flex;justify-content:space-between;align-items:center;cursor:pointer;user-select:none;" onclick="toggleTaskSection('${secId}')">${isToday?'📅 TODAY — ':''}${label}<span id="tsc-caret-${secId}" style="font-size:1rem;">▼</span></div><div id="tsc-${secId}" class="contact-entries" style="${_taskSectionsState[secId]?'display:none':''}">`;
 dayR.forEach(r=>{
 const phys=r.provider_id?physMap[r.provider_id]:null;const physName=phys?fmtName(phys):(r.practice_location_id?getLocationLabel(r.practice_location_id):'Location Note');
 const emailLink=phys?.email?` <a href="mailto:${phys.email}" onclick="event.stopPropagation()" style="color:#0a4d3c;font-size:0.75rem;">✉️ Email</a>`:'';
@@ -306,7 +314,7 @@ html+='</div></div>';
 });
 }
 if(openTasks.length>0){
-html+=`<div style="margin-bottom:0.75rem;"><div style="font-size:0.75rem;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:0.5rem;padding-bottom:0.25rem;border-bottom:2px solid #d1d5db;">📌 Open Tasks — no due date (${openTasks.length})</div><div class="contact-entries">`;
+html+=`<div style="margin-bottom:0.75rem;"><div style="font-size:0.75rem;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:0.5rem;padding-bottom:0.25rem;border-bottom:2px solid #d1d5db;display:flex;justify-content:space-between;align-items:center;cursor:pointer;user-select:none;" onclick="toggleTaskSection('open')">📌 Open Tasks — no due date (${openTasks.length})<span id="tsc-caret-open" style="font-size:1rem;">▼</span></div><div id="tsc-open" class="contact-entries" style="${_taskSectionsState['open']?'display:none':''}">`;
 openTasks.forEach(r=>{
 const phys=r.provider_id?physMap[r.provider_id]:null;const physName=phys?fmtName(phys):(r.practice_location_id?getLocationLabel(r.practice_location_id):'Location Note');
 const emailLink=phys?.email?` <a href="mailto:${phys.email}" onclick="event.stopPropagation()" style="color:#0a4d3c;font-size:0.75rem;">✉️ Email</a>`:'';
@@ -320,7 +328,7 @@ html+='</div></div>';
 }
 if(filteredCompleted.length>0){
 const showCount=20;const shown=filteredCompleted.slice(0,showCount);
-html+=`<div style="margin-bottom:0.75rem;"><div style="font-size:0.75rem;font-weight:700;color:#10b981;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:0.5rem;padding-bottom:0.25rem;border-bottom:2px solid #a7f3d0;">✓ Recently Completed (${filteredCompleted.length}${filteredCompleted.length>showCount?' — showing '+showCount:''})</div><div class="contact-entries">`;
+html+=`<div style="margin-bottom:0.75rem;"><div style="font-size:0.75rem;font-weight:700;color:#10b981;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:0.5rem;padding-bottom:0.25rem;border-bottom:2px solid #a7f3d0;display:flex;justify-content:space-between;align-items:center;cursor:pointer;user-select:none;" onclick="toggleTaskSection('completed')">✓ Recently Completed (${filteredCompleted.length}${filteredCompleted.length>showCount?' — showing '+showCount:''})<span id="tsc-caret-completed" style="font-size:1rem;">▼</span></div><div id="tsc-completed" class="contact-entries" style="${_taskSectionsState['completed']?'display:none':''}">`;
 shown.forEach(r=>{
 const phys=r.provider_id?physMap[r.provider_id]:null;const physName=phys?fmtName(phys):(r.practice_location_id?getLocationLabel(r.practice_location_id):'Note');
 const {displayNotes}=parseTaskRecord(r.notes);
