@@ -37,13 +37,36 @@ await loadAllData();
 setupRealtimeSubscription();
 activitySubTab = 'history'; // start on combined history view
 setView('activity'); // default landing: Activity → History tab
-// Prevent background scroll when modals are open (iPad fix)
-document.querySelectorAll('.modal').forEach(modal => {
-modal.addEventListener('touchmove', function(e) {
-const content = modal.querySelector('.modal-content');
-if (content && content.contains(e.target)) return;
-e.preventDefault();
-}, { passive: false });
+// iOS body scroll lock — prevents background scroll when any modal is open
+// On iOS Safari (especially standalone/Home Screen), position:fixed modals
+// still allow the body to scroll behind them unless the body is locked.
+let _iosScrollY = 0;
+let _iosBodyLocked = false;
+function _lockBodyScroll() {
+  if (_iosBodyLocked) return;
+  _iosBodyLocked = true;
+  _iosScrollY = window.scrollY;
+  document.body.style.position = 'fixed';
+  document.body.style.top = `-${_iosScrollY}px`;
+  document.body.style.width = '100%';
+  document.body.style.overflow = 'hidden';
+}
+function _unlockBodyScroll() {
+  if (!_iosBodyLocked) return;
+  _iosBodyLocked = false;
+  document.body.style.position = '';
+  document.body.style.top = '';
+  document.body.style.width = '';
+  document.body.style.overflow = '';
+  window.scrollTo(0, _iosScrollY);
+}
+// Watch all modals for active class changes
+const _modalObserver = new MutationObserver(() => {
+  const anyOpen = !!document.querySelector('.modal.active');
+  if (anyOpen) _lockBodyScroll(); else _unlockBodyScroll();
+});
+document.querySelectorAll('.modal').forEach(m => {
+  _modalObserver.observe(m, { attributes: true, attributeFilter: ['class'] });
 });
 // DPM ↔ Podiatry auto-set (main provider modal)
 $('degree').addEventListener('change', function() {
