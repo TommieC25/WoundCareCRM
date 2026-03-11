@@ -113,6 +113,7 @@ When writing SQL to be copy-pasted into the Supabase SQL editor on iOS (Safari):
 - User is Tom (tom@dynamicoach.com), operates on iPad primarily
 - **NEVER ask Tom to do manual steps** — push, PR creation, merging, file access — handle EVERYTHING autonomously. Tom is paying for Claude Code to do the work. If something can't be automated, explain why and offer the closest alternative.
 - Field routing sheet syncs with Google Sheets for daily field use via Apps Script (`google-apps-script/FieldRoutingSync.gs`)
+- **NEVER use the word "Administrative"** — office/support staff are always called **"Staff"** (not "Administrative Staff"). The valid specialty value stored in the DB may be `Administrative Staff` for legacy reasons, but in all UI labels, CSV guides, documentation, and communications: use "Staff" only. Never write "Administrative" anywhere.
 
 ## Google Sheets Integration
 - Field Routing auto-syncs via Google Apps Script that queries Supabase REST API directly
