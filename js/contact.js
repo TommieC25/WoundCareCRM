@@ -390,10 +390,10 @@ if($('addTaskEditId'))$('addTaskEditId').value = rec.id;
 $('addTaskNote').value = taskNote;
 $('addTaskPhysicianId').value = rec.provider_id || '';
 $('addTaskLocationId').value = rec.practice_location_id || '';
-const ctx=$('addTaskContext');
-if(ctx){ctx.innerHTML=_buildTaskContext(rec.provider_id,rec.practice_location_id);ctx.style.display=(rec.provider_id||rec.practice_location_id)?'block':'none';}
-if($('addTaskProviderRow'))$('addTaskProviderRow').style.display='none';
-const _editLocRow=$('addTaskLocationRow');if(_editLocRow){const _pid=rec.provider_id;if(_pid){const _locs=(physicianAssignments[_pid]||[]).map(a=>{const loc=practiceLocations.find(l=>l.id===a.practice_location_id);if(!loc)return null;const prac=practices.find(pr=>pr.id===loc.practice_id);return{id:loc.id,label:`${prac?prac.name+' \u2014 ':''}${loc.label&&loc.label!==loc.city?loc.label:loc.city||'Office'}${loc.address?' ('+loc.address+')':''}`};}).filter(Boolean);const _sel=$('addTaskLocationSelect');const _cur=rec.practice_location_id||'';_sel.innerHTML='<option value="">No specific location</option>'+_locs.map(l=>`<option value="${l.id}"${l.id===_cur?' selected':''}>${l.label}</option>`).join('');_editLocRow.style.display='block';}else{_editLocRow.style.display='none';}}
+if($('addTaskPracticeRow'))$('addTaskPracticeRow').style.display='none';
+if($('addTaskProviderRow'))$('addTaskProviderRow').style.display='block';
+if(rec.provider_id){selectAddTaskProvider(rec.provider_id);if(rec.practice_location_id&&$('addTaskLocationSelect')){$('addTaskLocationSelect').value=rec.practice_location_id;$('addTaskLocationId').value=rec.practice_location_id;}}
+else{const ctx=$('addTaskContext');if(ctx){ctx.innerHTML=_buildTaskContext(null,rec.practice_location_id);ctx.style.display=rec.practice_location_id?'block':'none';}}
 $('addTaskModalTitle').textContent = 'Edit Task';
 if ($('addTaskAuthor')) $('addTaskAuthor').value = rec.author || '';
 populateReminderDateButtons('task');
@@ -422,7 +422,7 @@ const today = localDate();
 await withSave('addTaskSaveBtn', editId ? 'Save Task' : 'Save Task', async () => {
 let error, _newRec = null;
 if (editId) {
-({error} = await db.from('contact_logs').update({ notes: note, reminder_date: date, author: authorVal }).eq('id', editId));
+({error} = await db.from('contact_logs').update({ notes: note, reminder_date: date, author: authorVal, provider_id: physicianId||null, practice_location_id: locationId||null }).eq('id', editId));
 } else {
 ({data:_newRec,error} = await db.from('contact_logs').insert({ provider_id: physicianId, contact_date: today, author: authorVal, notes: note, practice_location_id: locationId, reminder_date: date }).select().single());
 }
