@@ -456,7 +456,7 @@ return;
 }
 let plotted=0;
 const statusEl=document.createElement('div');
-statusEl.style.cssText='position:absolute;top:10px;right:10px;z-index:1000;background:white;padding:0.5rem 1rem;border-radius:8px;font-size:0.8rem;box-shadow:0 2px 4px rgba(0,0,0,0.2);';
+statusEl.style.cssText='position:absolute;bottom:10px;left:10px;z-index:1000;background:white;padding:0.5rem 1rem;border-radius:8px;font-size:0.8rem;box-shadow:0 2px 4px rgba(0,0,0,0.2);';
 document.getElementById('mapContainer').appendChild(statusEl);
 const uncachedCount=locs.filter(l=>!geocodeCache[l.address+', '+l.city+', FL '+(l.zip||'')]).length;
 statusEl.textContent=uncachedCount?'Geocoding '+uncachedCount+' new addresses...':'Loading '+locs.length+' locations...';
@@ -485,12 +485,19 @@ plotted++;
 }catch(e){console.log('Geocode error for '+addr,e);}
 if(uncachedCount)statusEl.textContent='Plotted '+plotted+' of '+locs.length+'...';
 }
-statusEl.textContent=plotted+' locations mapped'+(search?' for "'+search+'"':'');
-setTimeout(()=>statusEl.remove(),3000);
+statusEl.textContent=plotted+' locations ready';
+setTimeout(()=>statusEl.remove(),5000);
+if(!search)territoryMapCache={version,markers:builtMarkers,bounds};
+if(myLocationMarker){
+const ul=myLocationMarker.getLatLng();const ul2=[ul.lat,ul.lng];
+const nb=builtMarkers.filter(m=>haversineMiles(ul2[0],ul2[1],m.lat,m.lng)<=10);
+if(nb.length){const b2=[[ul2[0],ul2[1]],...nb.map(m=>[m.lat,m.lng])];territoryMap.fitBounds(b2,{padding:[50,50]});showToast(nb.length+' location'+(nb.length!==1?'s':'')+' within 10 mi','info');}
+else{if(bounds.length>1)territoryMap.fitBounds(bounds,{padding:[30,30]});else if(bounds.length===1)territoryMap.setView(bounds[0],15);}
+}else{
 if(bounds.length>1)territoryMap.fitBounds(bounds,{padding:[30,30]});
 else if(bounds.length===1)territoryMap.setView(bounds[0],15);
 else territoryMap.invalidateSize();
-if(!search)territoryMapCache={version,markers:builtMarkers,bounds};
+}
 }
 
 let myLocationMarker = null;
