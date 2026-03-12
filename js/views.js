@@ -507,8 +507,8 @@ if (myLocationCircle) myLocationCircle.remove();
 const icon = L.divIcon({className:'', html:'<div style="width:18px;height:18px;background:#2563eb;border:3px solid white;border-radius:50%;box-shadow:0 2px 6px rgba(0,0,0,0.4);"></div>', iconSize:[18,18], iconAnchor:[9,9]});
 myLocationMarker = L.marker(latlng, {icon}).addTo(territoryMap).bindPopup('<strong>Your Location</strong>').openPopup();
 myLocationCircle = L.circle(latlng, {radius:16093, color:'#2563eb', fillColor:'#2563eb', fillOpacity:0.06, weight:1, dashArray:'6,4'}).addTo(territoryMap);
-territoryMap.setView(latlng, 13);
-if(territoryMapCache){const nearby=territoryMapCache.markers.filter(m=>haversineMiles(latlng[0],latlng[1],m.lat,m.lng)<=10);if(nearby.length)showToast(nearby.length+' location'+(nearby.length!==1?'s':'')+' within 10 mi','info');}
+const nearby=territoryMapCache?territoryMapCache.markers.filter(m=>haversineMiles(latlng[0],latlng[1],m.lat,m.lng)<=10):[];
+if(nearby.length){const bounds=[[latlng[0],latlng[1]],...nearby.map(m=>[m.lat,m.lng])];territoryMap.fitBounds(bounds,{padding:[50,50]});showToast(nearby.length+' location'+(nearby.length!==1?'s':'')+' within 10 mi','info');}else{territoryMap.setView(latlng,13);}
 }, err => {
 showToast('Could not get location: ' + err.message, 'error');
 }, {enableHighAccuracy: true, timeout: 10000});
