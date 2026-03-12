@@ -416,6 +416,7 @@ function saveGeocodeCache(){try{localStorage.setItem('geocodeCache',JSON.stringi
 let territoryMapCache=null;
 let _mapBuiltMarkers=[]; // module-level so locateOnMap() always has access even mid-geocoding
 function getMapDataVersion(){return practiceLocations.length+'_'+physicians.length+'_'+Object.keys(physicianAssignments).length;}
+function getPracticeIcon(){return L.divIcon({className:'',html:'<div style="width:14px;height:14px;background:#0a4d3c;border:2.5px solid white;border-radius:50%;box-shadow:0 2px 5px rgba(0,0,0,0.4);"></div>',iconSize:[14,14],iconAnchor:[7,7]});}
 function buildMarkerPopup(loc,practiceName,physNames,addr){
 return '<strong>'+(practiceName||loc.label||'Office')+'</strong><br>'
 +addr+'<br>'
@@ -433,7 +434,7 @@ territoryMap.on('locationerror',()=>showToast('Location access denied or unavail
 const version=getMapDataVersion();
 if(!search&&territoryMapCache&&territoryMapCache.version===version){
 _mapBuiltMarkers=territoryMapCache.markers;
-territoryMapCache.markers.forEach(m=>{L.marker([m.lat,m.lng]).addTo(territoryMap).bindPopup(m.popup);});
+territoryMapCache.markers.forEach(m=>{L.marker([m.lat,m.lng],{icon:getPracticeIcon()}).addTo(territoryMap).bindPopup(m.popup);});
 $('physicianCount').textContent='Territory Map ('+territoryMapCache.markers.length+' locations)';
 if(territoryMapCache.bounds.length>1)territoryMap.fitBounds(territoryMapCache.bounds,{padding:[30,30]});
 else if(territoryMapCache.bounds.length===1)territoryMap.setView(territoryMapCache.bounds[0],15);
@@ -452,7 +453,7 @@ if(search&&territoryMapCache&&territoryMapCache.version===version){
 const subset=territoryMapCache.markers.filter(m=>filteredLocIds.has(m.locId));
 _mapBuiltMarkers=subset;
 const bounds=[];
-subset.forEach(m=>{L.marker([m.lat,m.lng]).addTo(territoryMap).bindPopup(m.popup);bounds.push([m.lat,m.lng]);});
+subset.forEach(m=>{L.marker([m.lat,m.lng],{icon:getPracticeIcon()}).addTo(territoryMap).bindPopup(m.popup);bounds.push([m.lat,m.lng]);});
 $('physicianCount').textContent='Map: "'+search+'" ('+subset.length+' locations)';
 if(bounds.length>1)territoryMap.fitBounds(bounds,{padding:[30,30]});
 else if(bounds.length===1)territoryMap.setView(bounds[0],15);
@@ -488,7 +489,7 @@ await new Promise(ok=>setTimeout(ok,200));
 }
 if(coords){
 const popup=buildMarkerPopup(loc,practiceName,physNames,addr);
-L.marker([coords.lat,coords.lng]).addTo(territoryMap).bindPopup(popup);
+L.marker([coords.lat,coords.lng],{icon:getPracticeIcon()}).addTo(territoryMap).bindPopup(popup);
 bounds.push([coords.lat,coords.lng]);
 _mapBuiltMarkers.push({lat:coords.lat,lng:coords.lng,popup,locId:loc.id});
 plotted++;
