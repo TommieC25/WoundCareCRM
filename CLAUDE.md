@@ -171,7 +171,7 @@ If `cat /root/.github_pat` returns nothing, the PAT was lost when the container 
 2. Tell Tom: "Code is pushed to `claude/<branch>`. PAT is missing from this container — please run: `echo 'ghp_YOURTOKEN' > /root/.github_pat` and I'll complete the PR/merge."
 3. Tom provides the token → run steps 3-4 above immediately.
 
-### Queued Tasks for Next Session (updated 2026-03-02)
+### Queued Tasks for Next Session (updated 2026-03-12)
 
 #### 0. PRIORITY — Finish DB cleanup after bad NPI import (session 2026-03-02)
 A bulk import of NPI CSV data created phantom locations for every provider. Cleanup tools are built:
@@ -180,16 +180,24 @@ A bulk import of NPI CSV data created phantom locations for every provider. Clea
 - After running db_audit.html phantom cleanup, verify in CRM that affected providers still show their real practice location.
 - Then check for non-Mohs derms in db_audit.html Section 0 and delete them.
 
-#### 1. Group → Location label issue (practice_locations.label column)
+#### 1. Fix corrupted `specialty` field values in DB (code side DONE 2026-03-12)
+**Code fix already merged**: `isStaffSpecialty()` helper in data.js handles both `'Staff'` and `'Administrative Staff'` — old records now display correctly.
+**Still needed — DB migration**: Run this SQL in Supabase to find and fix corrupt values:
+```sql
+-- Diagnose: see all distinct specialty values
+SELECT specialty, COUNT(*) as cnt FROM providers GROUP BY specialty ORDER BY cnt DESC;
+
+-- Fix known bad values (adjust based on what the query above shows):
+UPDATE providers SET specialty = 'Wound Care' WHERE specialty NOT IN ('Dermatology','Podiatry','Wound Care','Other','Administrative Staff','Staff') AND (lower(specialty) LIKE '%wound%' OR lower(specialty) LIKE '%ulcer%');
+UPDATE providers SET specialty = 'Podiatry' WHERE specialty NOT IN ('Dermatology','Podiatry','Wound Care','Other','Administrative Staff','Staff') AND (lower(specialty) LIKE '%pod%' OR lower(specialty) LIKE '%dpm%');
+UPDATE providers SET specialty = 'Dermatology' WHERE specialty NOT IN ('Dermatology','Podiatry','Wound Care','Other','Administrative Staff','Staff') AND lower(specialty) LIKE '%derm%';
+UPDATE providers SET specialty = 'Other' WHERE specialty NOT IN ('Dermatology','Podiatry','Wound Care','Other','Administrative Staff','Staff') AND specialty IS NOT NULL AND specialty != '';
+```
+
+#### 2. Group → Location label issue (practice_locations.label column)
 Tom flagged that some locations show wrong labels. The `label` column on `practice_locations` is supposed to be a human-readable name for the office (e.g., "Jupiter Office", "Boca Raton"). Currently it often defaults to the city name from import. Need to:
 - Audit labels that are blank, generic, or wrong
 - Possibly surface/edit in the CRM profile view
-
-#### 2. Fix corrupted `specialty` field values in DB
-Many providers have garbage data in `specialty` — county names ("Broward", "Palm Beach"), free-text strings, old picklist values.
-- **Valid specialties are EXACTLY**: `Dermatology` (Mohs surgeons ONLY), `Podiatry`, `Wound Care`, `Other`, `Administrative Staff`
-- Need DB migration: map all non-standard values → one of the 5 valid values
-- **Also fix CRM picklist**: Specialty dropdown must show ONLY these 5 options
 
 #### 3. Fix corrupted Facility names (provider names appearing in Facility column)
 Some providers in the Field Routing sheet show their own name (e.g. "Aaron Blom") in the Facility column instead of the practice name. This means their `practice_locations` record has no linked `practice_id` or the `practices` record has a bad/missing name.
@@ -199,6 +207,9 @@ Some providers in the Field Routing sheet show their own name (e.g. "Aaron Blom"
 
 #### 4. Re-paste & sync Apps Script after fixing data
 After fixing specialty values and practice linkages, re-paste the current `google-apps-script/FieldRoutingSync.gs` into the Google Sheet (Extensions → Apps Script) and run Refresh Now to confirm clean output.
+
+#### 5. Map geocoding (added 2026-03-12)
+Map now geocodes by ZIP code only (reliable). First run after cache wipe takes ~1-2 min; subsequent loads are instant from localStorage. If markers still not showing after waiting, check browser console for errors on the Nominatim fetch.
 
 ---
 
