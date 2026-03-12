@@ -410,7 +410,8 @@ $('physicianCount').textContent='Territory Dashboard';
 
 // --- Map view ---
 let territoryMap=null;
-const geocodeCache=(function(){try{return JSON.parse(localStorage.getItem('geocodeCache')||'{}');}catch(e){return {};}})();
+const geocodeCache=(function(){try{const c=JSON.parse(localStorage.getItem('geocodeCache')||'{}');// v2: wipe old full-address cache entries so they re-geocode with zip-only strategy
+const v=localStorage.getItem('geocodeCacheV')||'1';if(v!=='2'){localStorage.removeItem('geocodeCache');localStorage.setItem('geocodeCacheV','2');return {};}return c;}catch(e){return {};}})();
 function saveGeocodeCache(){try{localStorage.setItem('geocodeCache',JSON.stringify(geocodeCache));}catch(e){}}
 let territoryMapCache=null;
 function getMapDataVersion(){return practiceLocations.length+'_'+physicians.length+'_'+Object.keys(physicianAssignments).length;}
@@ -470,11 +471,11 @@ const physNames=assignedPhys.map(p=>p.first_name+' '+p.last_name).join(', ');
 try{
 let coords=geocodeCache[addr];
 if(!coords){
-const geocodeQuery=addr.replace(/#\S+/g,'').replace(/\b(suite|ste|unit|bldg|fl|floor)\s*\S+/gi,'').replace(/\s{2,}/g,' ').trim();
-const r=await fetch('https://nominatim.openstreetmap.org/search?format=json&q='+encodeURIComponent(geocodeQuery)+'&limit=1');
+const zipQuery=(loc.zip?loc.zip+', FL':(loc.city||'')+', FL').trim();
+const r=await fetch('https://nominatim.openstreetmap.org/search?format=json&q='+encodeURIComponent(zipQuery)+'&countrycodes=us&limit=1');
 const d=await r.json();
 if(d&&d[0]){coords={lat:parseFloat(d[0].lat),lng:parseFloat(d[0].lon)};geocodeCache[addr]=coords;saveGeocodeCache();}
-await new Promise(ok=>setTimeout(ok,300));
+await new Promise(ok=>setTimeout(ok,200));
 }
 if(coords){
 const popup=buildMarkerPopup(loc,practiceName,physNames,addr);
