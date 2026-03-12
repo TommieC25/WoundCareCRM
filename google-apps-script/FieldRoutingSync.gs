@@ -76,15 +76,11 @@ function installTriggers() {
     ScriptApp.deleteTrigger(existing[i]);
   }
   ScriptApp.newTrigger('syncFieldRouting')
-    .forSpreadsheet(SpreadsheetApp.getActive())
-    .onOpen()
-    .create();
-  ScriptApp.newTrigger('syncFieldRouting')
     .timeBased()
     .everyMinutes(15)
     .create();
-  Logger.log('Triggers installed: onOpen + every 15 minutes');
-  SpreadsheetApp.getUi().alert('Triggers installed successfully!\n\nThe sheet will now auto-refresh when opened and every 15 minutes.\n\nTo enable the "Sync Now" button in the CRM, deploy this script as a Web App\n(Deploy → New deployment → Web app → Execute as Me → Anyone).');
+  Logger.log('Triggers installed: every 15 minutes (no onOpen — use Refresh Now menu instead)');
+  SpreadsheetApp.getUi().alert('Triggers installed successfully!\n\nThe sheet will auto-refresh every 15 minutes.\nUse WoundCare CRM → Refresh Now to sync immediately.\n\n(onOpen sync removed — prevents iPad crashes on sheet open).');
 }
 
 function onOpen() {
@@ -136,7 +132,9 @@ function syncFieldRouting() {
   var practices = supaFetch_('practices', 'order=name.asc');
   var locations = supaFetch_('practice_locations', 'select=*,practices(name)&order=city.asc');
   var assignments = supaFetch_('provider_location_assignments', 'select=*,practice_locations(*,practices(name))');
-  var contactLogs = supaFetch_('contact_logs', 'select=*&order=contact_date.desc');
+  // Fetch only the 500 most recent logs — enough to find the latest per provider.
+  // Keeping this small prevents memory crashes on iPad (Google Sheets app).
+  var contactLogs = supaFetch_('contact_logs', 'select=id,provider_id,contact_date,notes,reminder_date&order=contact_date.desc&limit=500');
 
   // Build latest activity per provider
   var latestActivity = {};
@@ -295,7 +293,8 @@ function buildRow_(phys, loc, practice, activity, type) {
   var tier       = phys ? normPriority_(phys.priority) : '';
   var specialty  = phys ? phys.specialty || '' : '';
   var county     = (loc ? countyFromZip_(loc.zip) || guessCounty_(loc.city) : '');
-  var notes      = phys ? phys.general_notes || '' : '';
+  var rawNotes   = phys ? phys.general_notes || '' : '';
+  var notes      = rawNotes.length > 120 ? rawNotes.substring(0, 120) + '…' : rawNotes;
   var asVal      = phys && phys.advanced_solution ? 'Y' : '';
   var targetVal  = phys && phys.is_target ? 'Y' : '';
 
