@@ -494,6 +494,8 @@ if(!search)territoryMapCache={version,markers:builtMarkers,bounds};
 }
 
 let myLocationMarker = null;
+let myLocationCircle = null;
+function haversineMiles(lat1,lon1,lat2,lon2){const R=3958.8;const dLat=(lat2-lat1)*Math.PI/180;const dLon=(lon2-lon1)*Math.PI/180;const a=Math.sin(dLat/2)*Math.sin(dLat/2)+Math.cos(lat1*Math.PI/180)*Math.cos(lat2*Math.PI/180)*Math.sin(dLon/2)*Math.sin(dLon/2);return R*2*Math.atan2(Math.sqrt(a),Math.sqrt(1-a));}
 function locateOnMap() {
 if (!territoryMap) { showToast('Open the map first', 'info'); return; }
 if (!navigator.geolocation) { showToast('Geolocation not supported by this browser', 'error'); return; }
@@ -501,9 +503,12 @@ showToast('Getting your location…', 'info');
 navigator.geolocation.getCurrentPosition(pos => {
 const latlng = [pos.coords.latitude, pos.coords.longitude];
 if (myLocationMarker) myLocationMarker.remove();
+if (myLocationCircle) myLocationCircle.remove();
 const icon = L.divIcon({className:'', html:'<div style="width:18px;height:18px;background:#2563eb;border:3px solid white;border-radius:50%;box-shadow:0 2px 6px rgba(0,0,0,0.4);"></div>', iconSize:[18,18], iconAnchor:[9,9]});
 myLocationMarker = L.marker(latlng, {icon}).addTo(territoryMap).bindPopup('<strong>Your Location</strong>').openPopup();
+myLocationCircle = L.circle(latlng, {radius:16093, color:'#2563eb', fillColor:'#2563eb', fillOpacity:0.06, weight:1, dashArray:'6,4'}).addTo(territoryMap);
 territoryMap.setView(latlng, 13);
+if(territoryMapCache){const nearby=territoryMapCache.markers.filter(m=>haversineMiles(latlng[0],latlng[1],m.lat,m.lng)<=10);if(nearby.length)showToast(nearby.length+' location'+(nearby.length!==1?'s':'')+' within 10 mi','info');}
 }, err => {
 showToast('Could not get location: ' + err.message, 'error');
 }, {enableHighAccuracy: true, timeout: 10000});

@@ -91,7 +91,8 @@ return;
 }
 _activitySearchTerm = '';
 if(view==='map'){
-$('searchInput').parentElement.parentElement.style.display='none';
+$('searchInput').parentElement.parentElement.style.display='';
+$('searchInput').placeholder='Filter map…';
 $('addBtn').style.display='none';
 $('sortControls').style.display='none';
 $('tierFilterControls').style.display='none';
@@ -305,16 +306,19 @@ const locs=practiceLocations.filter(l=>l.practice_id===p.id);
 return locs.some(l=>[l.address,l.city,l.zip,l.phone,l.fax,l.practice_email,l.office_hours,l.office_staff,l.receptionist_name,l.best_days,l.label].some(v=>(v||'').toLowerCase().includes(search)));
 });
 }
+let _mapFilterTimer=null;
 function filterList() {
 const val = $('searchInput').value;
 $('searchClear').style.display = val ? 'flex' : 'none';
 if(currentView==='activity'){_activitySearchTerm=val.trim().toLowerCase();renderActivityTabView();}
+else if(currentView==='map'){clearTimeout(_mapFilterTimer);_mapFilterTimer=setTimeout(renderMapView,500);}
 else renderList();
 }
 function clearSearch() {
 $('searchInput').value = '';
 $('searchClear').style.display = 'none';
 if(currentView==='activity'){_activitySearchTerm='';renderActivityTabView();}
+else if(currentView==='map'){renderMapView();}
 else renderList();
 $('searchInput').focus();
 }
