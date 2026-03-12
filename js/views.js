@@ -470,7 +470,8 @@ const physNames=assignedPhys.map(p=>p.first_name+' '+p.last_name).join(', ');
 try{
 let coords=geocodeCache[addr];
 if(!coords){
-const r=await fetch('https://nominatim.openstreetmap.org/search?format=json&q='+encodeURIComponent(addr)+'&limit=1');
+const geocodeQuery=addr.replace(/#\S+/g,'').replace(/\b(suite|ste|unit|bldg|fl|floor)\s*\S+/gi,'').replace(/\s{2,}/g,' ').trim();
+const r=await fetch('https://nominatim.openstreetmap.org/search?format=json&q='+encodeURIComponent(geocodeQuery)+'&limit=1');
 const d=await r.json();
 if(d&&d[0]){coords={lat:parseFloat(d[0].lat),lng:parseFloat(d[0].lon)};geocodeCache[addr]=coords;saveGeocodeCache();}
 await new Promise(ok=>setTimeout(ok,300));
@@ -485,8 +486,8 @@ plotted++;
 }catch(e){console.log('Geocode error for '+addr,e);}
 if(uncachedCount)statusEl.textContent='Plotted '+plotted+' of '+locs.length+'...';
 }
-statusEl.textContent=plotted+' locations ready';
-setTimeout(()=>statusEl.remove(),5000);
+statusEl.textContent=plotted+' locations ready — tap My Location';
+setTimeout(()=>statusEl.remove(),8000);
 if(!search)territoryMapCache={version,markers:builtMarkers,bounds};
 if(myLocationMarker){
 const ul=myLocationMarker.getLatLng();const ul2=[ul.lat,ul.lng];
