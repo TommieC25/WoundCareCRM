@@ -414,6 +414,7 @@ const geocodeCache=(function(){try{const c=JSON.parse(localStorage.getItem('geoc
 const v=localStorage.getItem('geocodeCacheV')||'1';if(v!=='2'){localStorage.removeItem('geocodeCache');localStorage.setItem('geocodeCacheV','2');return {};}return c;}catch(e){return {};}})();
 function saveGeocodeCache(){try{localStorage.setItem('geocodeCache',JSON.stringify(geocodeCache));}catch(e){}}
 let territoryMapCache=null;
+let _mapBuiltMarkers=[]; // module-level so locateOnMap() always has access even mid-geocoding
 function getMapDataVersion(){return practiceLocations.length+'_'+physicians.length+'_'+Object.keys(physicianAssignments).length;}
 function buildMarkerPopup(loc,practiceName,physNames,addr){
 return '<strong>'+(practiceName||loc.label||'Office')+'</strong><br>'
@@ -425,13 +426,15 @@ async function renderMapView(){
 const search=($('searchInput').value||'').toLowerCase().trim();
 $('mainContent').innerHTML='<div style="position:relative;height:calc(100vh - 2rem);"><div id="mapContainer" style="height:100%;border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.1);"></div><button onclick="locateOnMap()" style="position:absolute;top:0.75rem;right:0.75rem;z-index:1000;background:white;border:2px solid #0a4d3c;color:#0a4d3c;padding:0.5rem 0.75rem;border-radius:8px;font-size:0.85rem;font-weight:600;cursor:pointer;box-shadow:0 2px 4px rgba(0,0,0,0.2);">📍 My Location</button></div>';
 if(territoryMap){territoryMap.remove();territoryMap=null;}
+_mapBuiltMarkers=[];
 territoryMap=L.map('mapContainer').setView([25.76,-80.19],11);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'OpenStreetMap',maxZoom:18}).addTo(territoryMap);
 territoryMap.on('locationerror',()=>showToast('Location access denied or unavailable','error'));
 const version=getMapDataVersion();
 if(!search&&territoryMapCache&&territoryMapCache.version===version){
+_mapBuiltMarkers=territoryMapCache.markers;
 territoryMapCache.markers.forEach(m=>{L.marker([m.lat,m.lng]).addTo(territoryMap).bindPopup(m.popup);});
-$('physicianCount').textContent='Territory Map ('+territoryMapCache.markers.length+' locations, cached)';
+$('physicianCount').textContent='Territory Map ('+territoryMapCache.markers.length+' locations)';
 if(territoryMapCache.bounds.length>1)territoryMap.fitBounds(territoryMapCache.bounds,{padding:[30,30]});
 else if(territoryMapCache.bounds.length===1)territoryMap.setView(territoryMapCache.bounds[0],15);
 return;
@@ -445,9 +448,9 @@ if([l.address,l.city,l.zip,l.phone,l.fax,l.label,l.practices?.name||''].some(v=>
 });
 }
 const locs=practiceLocations.filter(l=>l.address&&l.city&&(!search||filteredLocIds.has(l.id)));
-$('physicianCount').textContent=search?'Map: "'+search+'" ('+locs.length+' locations)':'Territory Map ('+locs.length+' locations)';
 if(search&&territoryMapCache&&territoryMapCache.version===version){
 const subset=territoryMapCache.markers.filter(m=>filteredLocIds.has(m.locId));
+_mapBuiltMarkers=subset;
 const bounds=[];
 subset.forEach(m=>{L.marker([m.lat,m.lng]).addTo(territoryMap).bindPopup(m.popup);bounds.push([m.lat,m.lng]);});
 $('physicianCount').textContent='Map: "'+search+'" ('+subset.length+' locations)';
@@ -455,14 +458,20 @@ if(bounds.length>1)territoryMap.fitBounds(bounds,{padding:[30,30]});
 else if(bounds.length===1)territoryMap.setView(bounds[0],15);
 return;
 }
-let plotted=0;
+// Visible banner — centered, green pill, stays until done
 const statusEl=document.createElement('div');
-statusEl.style.cssText='position:absolute;bottom:10px;left:10px;z-index:1000;background:white;padding:0.5rem 1rem;border-radius:8px;font-size:0.8rem;box-shadow:0 2px 4px rgba(0,0,0,0.2);';
+statusEl.style.cssText='position:absolute;bottom:16px;left:50%;transform:translateX(-50%);z-index:1000;background:#0a4d3c;color:white;padding:0.55rem 1.1rem;border-radius:20px;font-size:0.82rem;font-weight:600;box-shadow:0 2px 8px rgba(0,0,0,0.35);white-space:nowrap;pointer-events:none;';
 document.getElementById('mapContainer').appendChild(statusEl);
+if(locs.length===0){
+statusEl.textContent='No locations with address data — check DB';
+$('physicianCount').textContent=search?'Map: "'+search+'" (0 locations)':'Territory Map (0 locations — no address data)';
+return;
+}
 const uncachedCount=locs.filter(l=>!geocodeCache[l.address+', '+l.city+', FL '+(l.zip||'')]).length;
-statusEl.textContent=uncachedCount?'Geocoding '+uncachedCount+' new addresses...':'Loading '+locs.length+' locations...';
+statusEl.textContent=uncachedCount?'Geocoding '+uncachedCount+' new locations… ('+locs.length+' total)':'Loading '+locs.length+' locations…';
+$('physicianCount').textContent='Territory Map (loading '+locs.length+'…)';
 const bounds=[];
-const builtMarkers=[];
+let plotted=0,failed=0;
 for(const loc of locs){
 const addr=loc.address+', '+loc.city+', FL '+(loc.zip||'');
 const practiceName=loc.practices?.name||practices.find(p=>p.id===loc.practice_id)?.name||'';
@@ -481,18 +490,21 @@ if(coords){
 const popup=buildMarkerPopup(loc,practiceName,physNames,addr);
 L.marker([coords.lat,coords.lng]).addTo(territoryMap).bindPopup(popup);
 bounds.push([coords.lat,coords.lng]);
-builtMarkers.push({lat:coords.lat,lng:coords.lng,popup,locId:loc.id});
+_mapBuiltMarkers.push({lat:coords.lat,lng:coords.lng,popup,locId:loc.id});
 plotted++;
+}else{failed++;}
+}catch(e){failed++;console.warn('Geocode error:',addr,e);}
+statusEl.textContent=plotted+' / '+locs.length+' plotted'+(failed?' ('+failed+' failed)':'')+(plotted<locs.length?'…':'');
+$('physicianCount').textContent='Territory Map ('+plotted+' / '+locs.length+')';
 }
-}catch(e){console.log('Geocode error for '+addr,e);}
-if(uncachedCount)statusEl.textContent='Plotted '+plotted+' of '+locs.length+'...';
-}
-statusEl.textContent=plotted+' locations ready — tap My Location';
-setTimeout(()=>statusEl.remove(),8000);
-if(!search)territoryMapCache={version,markers:builtMarkers,bounds};
+const doneMsg=plotted+' location'+(plotted!==1?'s':'')+' on map'+(failed?' · '+failed+' failed':'');
+statusEl.textContent=doneMsg;
+$('physicianCount').textContent='Territory Map ('+plotted+' locations)';
+setTimeout(()=>{if(statusEl.parentNode)statusEl.style.opacity='0';setTimeout(()=>{if(statusEl.parentNode)statusEl.remove();},600);},12000);
+if(!search)territoryMapCache={version,markers:_mapBuiltMarkers.slice(),bounds};
 if(myLocationMarker){
 const ul=myLocationMarker.getLatLng();const ul2=[ul.lat,ul.lng];
-const nb=builtMarkers.filter(m=>haversineMiles(ul2[0],ul2[1],m.lat,m.lng)<=10);
+const nb=_mapBuiltMarkers.filter(m=>haversineMiles(ul2[0],ul2[1],m.lat,m.lng)<=10);
 if(nb.length){const b2=[[ul2[0],ul2[1]],...nb.map(m=>[m.lat,m.lng])];territoryMap.fitBounds(b2,{padding:[50,50]});showToast(nb.length+' location'+(nb.length!==1?'s':'')+' within 10 mi','info');}
 else{if(bounds.length>1)territoryMap.fitBounds(bounds,{padding:[30,30]});else if(bounds.length===1)territoryMap.setView(bounds[0],15);}
 }else{
@@ -516,7 +528,7 @@ if (myLocationCircle) myLocationCircle.remove();
 const icon = L.divIcon({className:'', html:'<div style="width:18px;height:18px;background:#2563eb;border:3px solid white;border-radius:50%;box-shadow:0 2px 6px rgba(0,0,0,0.4);"></div>', iconSize:[18,18], iconAnchor:[9,9]});
 myLocationMarker = L.marker(latlng, {icon}).addTo(territoryMap).bindPopup('<strong>Your Location</strong>').openPopup();
 myLocationCircle = L.circle(latlng, {radius:16093, color:'#2563eb', fillColor:'#2563eb', fillOpacity:0.06, weight:1, dashArray:'6,4'}).addTo(territoryMap);
-const nearby=territoryMapCache?territoryMapCache.markers.filter(m=>haversineMiles(latlng[0],latlng[1],m.lat,m.lng)<=10):[];
+const nearby=_mapBuiltMarkers.filter(m=>haversineMiles(latlng[0],latlng[1],m.lat,m.lng)<=10);
 if(nearby.length){const bounds=[[latlng[0],latlng[1]],...nearby.map(m=>[m.lat,m.lng])];territoryMap.fitBounds(bounds,{padding:[50,50]});showToast(nearby.length+' location'+(nearby.length!==1?'s':'')+' within 10 mi','info');}else{territoryMap.setView(latlng,13);}
 }, err => {
 showToast('Could not get location: ' + err.message, 'error');
