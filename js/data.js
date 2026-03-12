@@ -1,4 +1,5 @@
 // === js/data.js === Data loading, migrations, contact log fetching
+function isStaffSpecialty(s){return s==='Staff'||s==='Administrative Staff';}
 async function loadAllData() {
 try {
 updateSyncIndicators('syncing');

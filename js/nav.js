@@ -347,7 +347,7 @@ const cityDisplay = pLoc.city || '';
 const practiceName = pLoc.practices?.name || getPracticeName(pLoc.practice_id) || p.practice_name || '';
 const locationCount = assignments.length;
 const tierStyles={'1':'background:#ef4444;color:white','2':'background:#f97316;color:white','3':'background:#3b82f6;color:white','4':'background:#8b5cf6;color:white','5':'background:#64748b;color:white'};
-const isStaff=p.specialty==='Staff';
+const isStaff=isStaffSpecialty(p.specialty);
 const np=normPriority(p.priority);
 const tierBadge=isStaff?`<div class="tier" style="background:#0891b2;color:white;">Staff</div>`:np?`<div class="tier" style="${tierStyles[np]||''}">P${np}</div>`:'';
 return `
