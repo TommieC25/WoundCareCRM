@@ -151,7 +151,7 @@ ${r.reminder_date?`<div style="margin-top:0.6rem;padding:0.3rem 0.6rem;border-ra
 const rAdd = (n) => { const d = new Date(today+'T12:00:00'); d.setDate(d.getDate()+n); return localDate(d); };
 const dow = new Date(today+'T12:00:00').getDay();
 const daysToNextMon = ((8-dow)%7)||7;
-const rBtns = [{label:'Today',date:today},{label:'Tom',date:rAdd(1)}];
+const rBtns = [{label:'Today',date:today},{label:'Tomw',date:rAdd(1)}];
 for(let i=0;i<5;i++){const d=rAdd(daysToNextMon+i);const dn=new Date(d+'T12:00:00');rBtns.push({label:'Nxt '+dn.toLocaleDateString('en-US',{weekday:'short'}),date:d});}
 rBtns.push({label:'2 wks',date:rAdd(14)},{label:'Open',date:'2099-12-31'});
 html += `<div style="padding:0.75rem 1rem;background:#fffbeb;border:1px solid #fcd34d;border-radius:10px;margin-bottom:0.75rem;">
