@@ -27,7 +27,7 @@ const today = localDate();
 const dow = new Date(today + 'T12:00:00').getDay(); // 0=Sun,6=Sat
 const buttons = [];
 buttons.push({ label: 'Today', date: today });
-buttons.push({ label: 'Tomorrow', date: addDays(today, 1) });
+buttons.push({ label: 'Tomw', date: addDays(today, 1) });
 // Remaining business days this week (after tomorrow, up to Friday)
 for (let i = 2; i <= 6; i++) {
   const d = addDays(today, i);
