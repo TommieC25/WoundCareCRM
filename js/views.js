@@ -162,7 +162,7 @@ html += `<div style="padding:0.75rem 1rem;background:#fffbeb;border:1px solid #f
 const completeFn = `event.stopPropagation();completeReminder('${r.id}').then(()=>{closeTaskDetailModal();renderTasksView();})`;
 window._openedTaskRec = r;
 const editFn = `closeTaskDetailModal();openEditTaskModal()`;
-const delFn = r.provider_id ? `closeTaskDetailModal();deleteNoteFromActivity('${r.id}','${r.provider_id}').then(()=>renderTasksView())` : '';
+const delFn = r.provider_id ? `closeTaskDetailModal();deleteNoteFromActivity('${r.id}','${r.provider_id}').then(()=>renderTasksView())` : r.practice_location_id ? `closeTaskDetailModal();deletePracticeNote('${r.id}').then(()=>renderTasksView())` : '';
 const profileFn = phys ? `closeTaskDetailModal();setView('physicians');viewPhysician('${phys.id}')` : practice ? `closeTaskDetailModal();setView('practices');viewPractice('${practice.id}')` : '';
 const profileLabel = phys ? '👤 View Full Profile' : '🏢 View Practice Profile';
 html += `<div style="display:flex;flex-direction:column;gap:0.5rem;">
