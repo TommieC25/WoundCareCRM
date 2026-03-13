@@ -14,8 +14,9 @@ $('mainContent').innerHTML = `
 <div class="profile-header">
 <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:0.5rem;flex-wrap:wrap;">
 <div class="profile-name" style="flex:1;">${fmtName(p)}</div>
-<div style="display:flex;gap:0.5rem;flex-shrink:0;">
-<button class="edit-btn" onclick="editPhysicianInfo()" style="background:#0a4d3c;">Edit Provider</button>
+<div style="display:flex;gap:0.5rem;flex-shrink:0;flex-wrap:wrap;">
+<button class="edit-btn" onclick="openContactModal()" style="background:#10b981;">+ Activity</button>
+<button class="edit-btn" onclick="editPhysicianInfo()" style="background:#0a4d3c;">Edit</button>
 <button class="delete-btn" onclick="deletePhysician()">Delete</button>
 </div>
 </div>
@@ -117,7 +118,13 @@ return loc && loc.practice_id === p.id;
 });
 $('mainContent').innerHTML = `
 <div class="profile-header">
-<div class="profile-name">${p.name}</div>
+<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:0.5rem;flex-wrap:wrap;">
+<div class="profile-name" style="flex:1;">${p.name}</div>
+<div style="display:flex;gap:0.5rem;flex-shrink:0;flex-wrap:wrap;">
+<button class="edit-btn" onclick="openPracticeContactModal()" style="background:#10b981;">+ Log Call</button>
+<button class="edit-btn" onclick="editPractice()" style="background:#0a4d3c;">Edit</button>
+</div>
+</div>
 <div class="profile-practice">${p.website ? `<a href="${p.website.match(/^https?:\/\//)?p.website:'https://'+p.website}" target="_blank">${p.website}</a>` : 'No website'}</div>
 <div class="profile-meta">
 ${mi('Locations',locations.length)}${mi('Providers',practicePhysicians.length)}${mi('Cities',[...new Set(locations.map(l=>l.city).filter(Boolean))].join(', ')||'N/A')}
