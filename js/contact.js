@@ -10,6 +10,18 @@ $('authorName').value = '';
 $('contactSaveBtn').textContent = 'Save Note';
 $('contactSaveBtn').className = 'btn-primary';
 setToday();
+// Global mode (no provider): show provider search; otherwise hide it
+const provRow=$('contactProviderRow');
+if(provRow){
+  if(!currentPhysician){
+    provRow.style.display='block';
+    $('contactProviderSearch').value='';
+    $('contactProviderSelectedId').value='';
+    $('contactProviderResults').style.display='none';
+  } else {
+    provRow.style.display='none';
+  }
+}
 populateLocationDropdown();
 populateAlsoAttended();
 const row=$('alsoAttendedRow');if(row)row.style.display='none';
@@ -80,10 +92,45 @@ list.innerHTML = colleagues.map(p => `<div class="selector-option" style="margin
 
 function closeContactModal(){closeModal('contactModal');}
 
+function filterContactProviders() {
+const q=($('contactProviderSearch').value||'').toLowerCase().trim();
+const results=$('contactProviderResults');
+if(!q){results.style.display='none';return;}
+const matches=physicians.filter(p=>fmtName(p).toLowerCase().includes(q)||(p.specialty||'').toLowerCase().includes(q)).slice(0,8);
+if(!matches.length){results.innerHTML='<div style="padding:0.5rem 0.75rem;font-size:0.85rem;color:#999;">No providers found</div>';results.style.display='block';return;}
+results.innerHTML=matches.map(p=>{
+  const locs=(physicianAssignments[p.id]||[]).map(a=>practiceLocations.find(l=>l.id===a.practice_location_id)).filter(Boolean);
+  const prac=locs.length?(practices.find(pr=>pr.id===locs[0].practice_id)||{}).name||'':'';
+  return `<div onclick="selectContactProvider('${p.id}')" style="padding:0.5rem 0.75rem;cursor:pointer;border-bottom:1px solid #f0f0f0;font-size:0.875rem;" onmouseover="this.style.background='#f0f9f4'" onmouseout="this.style.background=''"><span style="font-weight:600;">${fmtName(p)}</span>${prac?`<span style="color:#888;font-size:0.8rem;"> · ${prac}</span>`:''}</div>`;
+}).join('');
+results.style.display='block';
+}
+function selectContactProvider(physId) {
+const p=physicians.find(ph=>ph.id===physId);
+if(!p)return;
+$('contactProviderSearch').value=fmtName(p);
+$('contactProviderSelectedId').value=physId;
+$('contactProviderResults').style.display='none';
+// Populate location dropdown for this provider
+const assignments=(physicianAssignments[physId]||[]);
+const locs=assignments.map(a=>{const loc=practiceLocations.find(l=>l.id===a.practice_location_id);if(!loc)return null;const prac=practices.find(pr=>pr.id===loc.practice_id);return{id:loc.id,label:`${prac?prac.name+' — ':''}${loc.label&&loc.label!==loc.city?loc.label:loc.city||'Office'}${loc.address?' ('+loc.address+')':''}`};}).filter(Boolean);
+const sel=$('contactLocation');
+sel.innerHTML=(locs.length===0?'<option value="">No locations assigned</option>':'<option value="">Select location...</option>')+locs.map(l=>`<option value="${l.id}">${l.label}</option>`).join('');
+$('locationSelectRow').style.display=locs.length<=1?'none':'block';
+if(locs.length===1)sel.value=locs[0].id;
+}
+
 async function saveContact(e) {
 if(e) e.preventDefault();
 try {
-if(!currentPhysician){showToast('Error: no provider selected','error');return;}
+// In global mode (no currentPhysician), read from the provider search field
+let _savePhysician = currentPhysician;
+if(!_savePhysician){
+  const selId=$('contactProviderSelectedId')?.value;
+  if(!selId){showToast('Please select a provider','error');return;}
+  _savePhysician=physicians.find(p=>p.id===selId);
+  if(!_savePhysician){showToast('Provider not found','error');return;}
+}
 const dateVal=$('contactDate').value,authorVal=$('authorName').value;
 const nv=($('contactNotes').value||'').trim();
 if(!dateVal){showToast('Please enter a date','error');return;}
@@ -96,7 +143,7 @@ const baseNote=tv?`[${tv}] ${nv}`:nv;
 const staffVal=$('staffPresent')?$('staffPresent').value.trim():'';
 const noteText=staffVal?`${baseNote} | Staff: ${staffVal}`:baseNote;
 // Activity record — clean, no reminder_date, no embedded task text
-const data={provider_id:currentPhysician.id,contact_date:dateVal,author:authorVal,notes:noteText,practice_location_id:locVal};
+const data={provider_id:_savePhysician.id,contact_date:dateVal,author:authorVal,notes:noteText,practice_location_id:locVal};
 const alsoCbs=document.querySelectorAll('.also-attended-cb:checked');
 const alsoIds=[...alsoCbs].map(cb=>cb.value);
 await withSave('contactSaveBtn','Save Note',async()=>{
@@ -114,11 +161,13 @@ for(const pid of alsoIds){await db.from('providers').update({last_contact:dateVa
 const total=1+alsoIds.length;
 showToast(`Note logged for ${total} provider${total>1?'s':''}`,'success');
 }
-await db.from('providers').update({last_contact:dateVal}).eq('id',currentPhysician.id);
-currentPhysician.last_contact=dateVal;await loadContactLogs(currentPhysician.id);if(currentView==='activity'){renderActivityTabView();}else{renderProfile();}
+await db.from('providers').update({last_contact:dateVal}).eq('id',_savePhysician.id);
+_savePhysician.last_contact=dateVal;
+if(currentPhysician&&currentPhysician.id===_savePhysician.id){currentPhysician.last_contact=dateVal;await loadContactLogs(currentPhysician.id);}
+if(currentView==='activity'){renderActivityTabView();}else if(currentPhysician&&currentPhysician.id===_savePhysician.id){renderProfile();}
 // If follow-up task requested, open separate task modal after closing activity modal
 if(!editingContactId&&reminderOn){
-setTimeout(()=>{closeContactModal();openAddTaskModal(currentPhysician.id,locVal);},400);
+setTimeout(()=>{closeContactModal();openAddTaskModal(_savePhysician.id,locVal);},400);
 }else{
 setTimeout(()=>closeContactModal(),500);
 }
