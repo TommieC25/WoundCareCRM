@@ -401,6 +401,14 @@ Append New Records from CSV <input type="file" accept=".csv" onchange="importCSV
 <input type="time" id="contactTime">
 </div>
 </div>
+<div id="contactProviderRow" style="display:none;margin-bottom:0.75rem;">
+<label>Provider *</label>
+<div style="position:relative;">
+<input type="text" id="contactProviderSearch" placeholder="Search providers..." autocomplete="off" oninput="filterContactProviders()" style="width:100%;padding:0.75rem;font-size:0.9rem;border:2px solid #e5e5e5;border-radius:8px;box-sizing:border-box;font-family:inherit;">
+<div id="contactProviderResults" style="display:none;position:absolute;top:100%;left:0;right:0;background:white;border:1px solid #d1d5db;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,0.1);z-index:200;max-height:200px;overflow-y:auto;margin-top:2px;"></div>
+</div>
+<input type="hidden" id="contactProviderSelectedId">
+</div>
 <div id="locationSelectRow">
 <label>Location</label>
 <select id="contactLocation">
