@@ -427,12 +427,15 @@ overdue.forEach(r => {
 const phys = r.provider_id ? physicians.find(p => p.id === r.provider_id) : null;
 const physName = phys ? fmtName(phys) : (r.practice_location_id ? getLocationLabel(r.practice_location_id) : 'Location Note');
 const emailLink = phys?.email ? ` — <a href="mailto:${phys.email}" onclick="event.stopPropagation()" style="color:#0a4d3c;font-size:0.75rem;">✉️ Email</a>` : '';
+const _locId0 = r.practice_location_id || (physicianAssignments[r.provider_id]?.find(a=>a.is_primary)||physicianAssignments[r.provider_id]?.[0])?.practice_location_id;
+const _loc0 = _locId0 ? practiceLocations.find(l=>l.id===_locId0) : null;
+const phoneLink = _loc0?.phone ? ` <a href="tel:${_loc0.phone.replace(/\D/g,'')}" onclick="event.stopPropagation()" style="color:#0a4d3c;font-size:0.75rem;">📞 ${fmtPhone(_loc0.phone)}</a>` : '';
 const {displayNotes,taskNote}=parseTaskRecord(r.notes);
 const preview = displayNotes.length > 100 ? displayNotes.substring(0,100) + '...' : displayNotes;
 html += `<div class="contact-entry" style="cursor:pointer;border-left-color:#dc2626;background:#fff5f5;margin-bottom:0.5rem;display:flex;gap:0.5rem;align-items:flex-start;" onclick="openTaskDetailModal('${r.id}')">
 <button onclick="event.stopPropagation();completeReminder('${r.id}')" title="Mark complete" style="background:none;border:2px solid #dc2626;color:#dc2626;border-radius:50%;width:22px;height:22px;min-width:22px;cursor:pointer;font-size:0.75rem;display:flex;align-items:center;justify-content:center;margin-top:0.15rem;flex-shrink:0;">✓</button>
 <div style="flex:1;">
-<div style="font-weight:600;color:#dc2626;font-size:0.9rem;">${physName}${emailLink}</div>
+<div style="font-weight:600;color:#dc2626;font-size:0.9rem;">${physName}${phoneLink}${emailLink}</div>
 <div style="font-size:0.75rem;color:#dc2626;font-weight:600;">Due: ${r.reminder_date} (OVERDUE)</div>
 ${taskNote?`<div style="font-size:0.8rem;font-weight:600;color:#92400e;background:#fef3c7;padding:0.15rem 0.4rem;border-radius:4px;margin-top:0.2rem;">📋 ${taskNote}</div>`:''}
 <div style="font-size:0.8rem;color:#666;margin-top:0.2rem;">${preview}</div>
@@ -453,12 +456,15 @@ dayReminders.forEach(r => {
 const phys = r.provider_id ? physicians.find(p => p.id === r.provider_id) : null;
 const physName = phys ? fmtName(phys) : (r.practice_location_id ? getLocationLabel(r.practice_location_id) : 'Location Note');
 const emailLink = phys?.email ? ` — <a href="mailto:${phys.email}" onclick="event.stopPropagation()" style="color:#0a4d3c;font-size:0.75rem;">✉️ Email</a>` : '';
+const _locId1 = r.practice_location_id || (physicianAssignments[r.provider_id]?.find(a=>a.is_primary)||physicianAssignments[r.provider_id]?.[0])?.practice_location_id;
+const _loc1 = _locId1 ? practiceLocations.find(l=>l.id===_locId1) : null;
+const phoneLink = _loc1?.phone ? ` <a href="tel:${_loc1.phone.replace(/\D/g,'')}" onclick="event.stopPropagation()" style="color:#0a4d3c;font-size:0.75rem;">📞 ${fmtPhone(_loc1.phone)}</a>` : '';
 const {displayNotes,taskNote}=parseTaskRecord(r.notes);
 const preview = displayNotes.length > 100 ? displayNotes.substring(0,100) + '...' : displayNotes;
 html += `<div class="contact-entry" style="cursor:pointer;border-left-color:#f59e0b;margin-bottom:0.5rem;display:flex;gap:0.5rem;align-items:flex-start;" onclick="openTaskDetailModal('${r.id}')">
 <button onclick="event.stopPropagation();completeReminder('${r.id}')" title="Mark complete" style="background:none;border:2px solid #f59e0b;color:#92400e;border-radius:50%;width:22px;height:22px;min-width:22px;cursor:pointer;font-size:0.75rem;display:flex;align-items:center;justify-content:center;margin-top:0.15rem;flex-shrink:0;">✓</button>
 <div style="flex:1;">
-<div style="font-weight:600;color:#0a4d3c;font-size:0.9rem;">${physName}${emailLink}</div>
+<div style="font-weight:600;color:#0a4d3c;font-size:0.9rem;">${physName}${phoneLink}${emailLink}</div>
 ${taskNote?`<div style="font-size:0.8rem;font-weight:600;color:#92400e;background:#fef3c7;padding:0.15rem 0.4rem;border-radius:4px;margin-top:0.2rem;">📋 ${taskNote}</div>`:''}
 <div style="font-size:0.8rem;color:#666;margin-top:0.2rem;">${preview}</div>
 <div style="font-size:0.7rem;color:#999;margin-top:0.25rem;">Note from ${r.contact_date}${r.author ? ' by ' + r.author : ''}</div>
@@ -473,12 +479,16 @@ html += `<div style="margin-bottom:0.5rem;"><div style="font-size:0.75rem;font-w
 openReminders.forEach(r => {
 const phys = r.provider_id ? physicians.find(p => p.id === r.provider_id) : null;
 const physName = phys ? fmtName(phys) : (r.practice_location_id ? getLocationLabel(r.practice_location_id) : 'Location Note');
+const emailLink = phys?.email ? ` — <a href="mailto:${phys.email}" onclick="event.stopPropagation()" style="color:#0a4d3c;font-size:0.75rem;">✉️ Email</a>` : '';
+const _locId2 = r.practice_location_id || (physicianAssignments[r.provider_id]?.find(a=>a.is_primary)||physicianAssignments[r.provider_id]?.[0])?.practice_location_id;
+const _loc2 = _locId2 ? practiceLocations.find(l=>l.id===_locId2) : null;
+const phoneLink = _loc2?.phone ? ` <a href="tel:${_loc2.phone.replace(/\D/g,'')}" onclick="event.stopPropagation()" style="color:#0a4d3c;font-size:0.75rem;">📞 ${fmtPhone(_loc2.phone)}</a>` : '';
 const {displayNotes,taskNote}=parseTaskRecord(r.notes);
 const preview = displayNotes.length > 80 ? displayNotes.substring(0,80) + '...' : displayNotes;
 html += `<div class="contact-entry" style="cursor:pointer;border-left-color:#6b7280;margin-bottom:0.5rem;display:flex;gap:0.5rem;align-items:flex-start;" onclick="openTaskDetailModal('${r.id}')">
 <button onclick="event.stopPropagation();completeReminder('${r.id}')" title="Mark complete" style="background:none;border:2px solid #6b7280;color:#6b7280;border-radius:50%;width:22px;height:22px;min-width:22px;cursor:pointer;font-size:0.75rem;display:flex;align-items:center;justify-content:center;margin-top:0.15rem;flex-shrink:0;">✓</button>
 <div style="flex:1;">
-<div style="font-weight:600;color:#0a4d3c;font-size:0.9rem;">${physName}</div>
+<div style="font-weight:600;color:#0a4d3c;font-size:0.9rem;">${physName}${phoneLink}${emailLink}</div>
 ${taskNote?`<div style="font-size:0.8rem;font-weight:600;color:#92400e;background:#fef3c7;padding:0.15rem 0.4rem;border-radius:4px;margin-top:0.2rem;">📋 ${taskNote}</div>`:''}
 <div style="font-size:0.8rem;color:#666;margin-top:0.2rem;">${preview}</div>
 </div></div>`;
