@@ -152,6 +152,7 @@ rBtns.push({label:'2 wks',date:rAdd(14)},{label:'Open',date:'2099-12-31'});
 html += `<div style="padding:0.75rem 1rem;background:#fffbeb;border:1px solid #fcd34d;border-radius:10px;margin-bottom:0.75rem;">
 <div style="font-size:0.72rem;color:#92400e;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:0.4rem;">📅 Reschedule</div>
 <div style="display:flex;flex-wrap:wrap;gap:0.3rem;">${rBtns.map(b=>`<button type="button" onclick="rescheduleTask('${r.id}','${b.date}')" style="padding:0.4rem 0.65rem;font-size:0.8rem;border:1px solid ${r.reminder_date===b.date?'#d97706':'#fcd34d'};border-radius:6px;background:${r.reminder_date===b.date?'#f59e0b':'#fff'};color:${r.reminder_date===b.date?'#fff':'#92400e'};font-weight:${r.reminder_date===b.date?'700':'400'};cursor:pointer;-webkit-tap-highlight-color:transparent;touch-action:manipulation;">${b.label}</button>`).join('')}</div>
+<div style="display:flex;align-items:center;gap:0.4rem;margin-top:0.4rem;"><span style="font-size:0.75rem;color:#92400e;white-space:nowrap;">Specific date:</span><input type="date" value="${r.reminder_date&&r.reminder_date!=='2099-12-31'?r.reminder_date:''}" onchange="if(this.value)rescheduleTask('${r.id}',this.value)" style="flex:1;padding:0.3rem 0.5rem;border:1px solid #fcd34d;border-radius:6px;font-size:0.85rem;font-family:inherit;background:#fff;color:#92400e;-webkit-appearance:none;"></div>
 </div>`;
 const completeFn = `event.stopPropagation();completeReminder('${r.id}').then(()=>{closeTaskDetailModal();renderTasksView();})`;
 window._openedTaskRec = r;
