@@ -83,7 +83,10 @@ ${assign.is_primary
 <div class="section">
 <div class="section-header">
 <h3>Activity Log</h3>
+<div style="display:flex;gap:0.5rem;">
+<button class="edit-btn" onclick="openAddTaskModal('${p.id}',null)">+ Task</button>
 <button class="edit-btn" onclick="openContactModal()">+ Add Activity</button>
+</div>
 </div>
 ${logs.length === 0 ?
 '<div class="empty-notice">No activity yet. Click + Add Activity to record your first call or visit.</div>' :
@@ -247,7 +250,10 @@ return `
 <div class="section">
 <div class="section-header">
 <h3>Activity Log</h3>
+<div style="display:flex;gap:0.5rem;">
+<button class="edit-btn" onclick="openAddTaskModal(null,'${loc.id}')">+ Task</button>
 <button class="edit-btn" onclick="openLocationContactModal('${loc.id}')">+ Log Call</button>
+</div>
 </div>
 <div id="locationActivityContent"><div class="loading">Loading activity...</div></div>
 </div>
