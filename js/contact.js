@@ -348,7 +348,16 @@ if(locRow){
 }
 populateReminderDateButtons('task');
 $('addTaskModal').classList.add('active');
+_checkAddTaskLinked();
 setTimeout(() => $('addTaskNote').focus(), 100);
+}
+function _checkAddTaskLinked() {
+const warn = $('addTaskUnlinkedWarning');
+if (!warn) return;
+const isGlobal = $('addTaskProviderRow') && $('addTaskProviderRow').style.display !== 'none';
+const hasProvider = !!($('addTaskPhysicianId').value);
+const hasLocation = !!($('addTaskLocationId').value);
+warn.style.display = (isGlobal && !hasProvider && !hasLocation) ? 'block' : 'none';
 }
 function filterAddTaskPractices() {
 const q=($('addTaskPracticeSearch').value||'').toLowerCase().trim();
@@ -381,6 +390,7 @@ $('addTaskLocationRow').style.display='block';
 const firstLoc=locs[0];
 const ctx=$('addTaskContext');
 if(ctx){ctx.innerHTML=_buildTaskContext(null,firstLoc?firstLoc.id:null);ctx.style.display='block';}
+_checkAddTaskLinked();
 }
 function openAddTaskForPractice() {
 if(!currentPractice)return;
@@ -423,6 +433,7 @@ $('addTaskLocationRow').style.display='block';
 // Update context
 const ctx=$('addTaskContext');
 if(ctx){ctx.innerHTML=_buildTaskContext(physicianId,null);ctx.style.display='block';}
+_checkAddTaskLinked();
 }
 
 // Opens addTaskModal in edit mode for an existing task record (called from task detail modal)

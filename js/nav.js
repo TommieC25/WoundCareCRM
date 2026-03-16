@@ -426,7 +426,7 @@ if (overdue.length > 0) {
 html += `<div style="margin-bottom:1rem;"><div style="font-size:0.75rem;font-weight:700;color:#dc2626;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:0.5rem;padding-bottom:0.25rem;border-bottom:2px solid #fca5a5;">⚠️ Overdue (${overdue.length})</div>`;
 overdue.forEach(r => {
 const phys = r.provider_id ? physicians.find(p => p.id === r.provider_id) : null;
-const physName = phys ? fmtName(phys) : (r.practice_location_id ? getLocationLabel(r.practice_location_id) : 'Location Note');
+const physName = phys ? fmtName(phys) : (r.practice_location_id ? getLocationLabel(r.practice_location_id) : 'General Reminder');
 const emailLink = phys?.email ? ` — <a href="mailto:${phys.email}" onclick="event.stopPropagation()" style="color:#0a4d3c;font-size:0.75rem;">✉️ Email</a>` : '';
 const _locId0 = r.practice_location_id || (physicianAssignments[r.provider_id]?.find(a=>a.is_primary)||physicianAssignments[r.provider_id]?.[0])?.practice_location_id;
 const _loc0 = _locId0 ? practiceLocations.find(l=>l.id===_locId0) : null;
@@ -455,7 +455,7 @@ const isToday = date === today;
 html += `<div style="margin-bottom:0.75rem;"><div style="font-size:0.75rem;font-weight:700;color:#92400e;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:0.5rem;padding-bottom:0.25rem;border-bottom:2px solid #fcd34d;">${isToday ? '📅 TODAY — ' : ''}${label}</div>`;
 dayReminders.forEach(r => {
 const phys = r.provider_id ? physicians.find(p => p.id === r.provider_id) : null;
-const physName = phys ? fmtName(phys) : (r.practice_location_id ? getLocationLabel(r.practice_location_id) : 'Location Note');
+const physName = phys ? fmtName(phys) : (r.practice_location_id ? getLocationLabel(r.practice_location_id) : 'General Reminder');
 const emailLink = phys?.email ? ` — <a href="mailto:${phys.email}" onclick="event.stopPropagation()" style="color:#0a4d3c;font-size:0.75rem;">✉️ Email</a>` : '';
 const _locId1 = r.practice_location_id || (physicianAssignments[r.provider_id]?.find(a=>a.is_primary)||physicianAssignments[r.provider_id]?.[0])?.practice_location_id;
 const _loc1 = _locId1 ? practiceLocations.find(l=>l.id===_locId1) : null;
@@ -479,7 +479,7 @@ if (openReminders.length > 0) {
 html += `<div style="margin-bottom:0.5rem;"><div style="font-size:0.75rem;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:0.5rem;padding-bottom:0.25rem;border-bottom:2px solid #d1d5db;">📌 Open (${openReminders.length})</div>`;
 openReminders.forEach(r => {
 const phys = r.provider_id ? physicians.find(p => p.id === r.provider_id) : null;
-const physName = phys ? fmtName(phys) : (r.practice_location_id ? getLocationLabel(r.practice_location_id) : 'Location Note');
+const physName = phys ? fmtName(phys) : (r.practice_location_id ? getLocationLabel(r.practice_location_id) : 'General Reminder');
 const emailLink = phys?.email ? ` — <a href="mailto:${phys.email}" onclick="event.stopPropagation()" style="color:#0a4d3c;font-size:0.75rem;">✉️ Email</a>` : '';
 const _locId2 = r.practice_location_id || (physicianAssignments[r.provider_id]?.find(a=>a.is_primary)||physicianAssignments[r.provider_id]?.[0])?.practice_location_id;
 const _loc2 = _locId2 ? practiceLocations.find(l=>l.id===_locId2) : null;

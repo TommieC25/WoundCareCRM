@@ -627,9 +627,12 @@ Add Follow-Up Task after saving
 </div>
 <div id="addTaskLocationRow" style="margin-bottom:1rem;display:none;">
 <label>Location (optional)</label>
-<select id="addTaskLocationSelect" onchange="$('addTaskLocationId').value=this.value" style="width:100%;padding:0.75rem;font-size:0.9rem;border:2px solid #e5e5e5;border-radius:8px;box-sizing:border-box;font-family:inherit;">
+<select id="addTaskLocationSelect" onchange="$('addTaskLocationId').value=this.value;_checkAddTaskLinked()" style="width:100%;padding:0.75rem;font-size:0.9rem;border:2px solid #e5e5e5;border-radius:8px;box-sizing:border-box;font-family:inherit;">
 <option value="">No specific location</option>
 </select>
+</div>
+<div id="addTaskUnlinkedWarning" style="display:none;margin-bottom:0.85rem;padding:0.6rem 0.75rem;background:#fffbeb;border:1.5px solid #f59e0b;border-radius:8px;font-size:0.82rem;color:#92400e;">
+⚠️ No provider or location linked — will save as <strong>General Reminder</strong>. Go back and search for a provider or practice if this task is meant for a specific contact.
 </div>
 <div style="margin-bottom:1rem;">
 <label>Task *</label>
