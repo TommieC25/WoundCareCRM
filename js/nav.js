@@ -232,7 +232,7 @@ const isDone = e.reminder_date === '2000-01-01';
 const isOpen = e.reminder_date === '2099-12-31';
 const isOverdue = !isDone && !isOpen && e.reminder_date < today;
 let barColor = '#6b7280'; // pending = gray
-if (isDone) barColor = '#10b981'; // completed = green
+if (isDone) barColor = '#10b981'; // completed = bright green
 else if (isOverdue) barColor = '#dc2626'; // overdue = red
 // populate _taskDetailLogs so task detail modal can open this record
 if (!window._taskDetailLogs) window._taskDetailLogs = {};
@@ -243,7 +243,8 @@ const editFn = `editTaskFromList('${e.id}')`;
 const delFn = `deleteNote('${e.id}')`;
 const cardId = `plog-${e.id}`;
 const statusText = isDone ? '✓ Completed' : isOpen ? '📌 Open — no due date' : isOverdue ? `⚠️ OVERDUE — Due ${new Date(e.reminder_date+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'})}` : `🔔 Due ${new Date(e.reminder_date+'T12:00:00').toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'})}`;
-const bgColor = isDone ? 'background:#f0fdf4;opacity:0.9;' : isOverdue ? 'background:#fff5f5;' : '';
+// Background tints: amber for pending/open, pink for overdue, green for completed
+const bgColor = isDone ? 'background:#f0fdf4;opacity:0.9;' : isOverdue ? 'background:#fff5f5;' : 'background:#fffbeb;';
 const completeBtn = isDone ? `<div style="width:22px;height:22px;min-width:22px;border-radius:50%;background:#10b981;color:white;display:flex;align-items:center;justify-content:center;font-size:0.75rem;flex-shrink:0;margin-top:0.1rem;">✓</div>` : `<button onclick="event.stopPropagation();completeReminderInPlace('${e.id}','${cardId}',()=>{})" title="Mark complete" style="background:none;border:2px solid ${barColor};color:${barColor};border-radius:50%;width:22px;height:22px;min-width:22px;cursor:pointer;font-size:0.75rem;display:flex;align-items:center;justify-content:center;flex-shrink:0;margin-top:0.1rem;">✓</button>`;
 return `<div class="contact-entry" id="${cardId}" style="border-left-color:${barColor};${bgColor}display:flex;gap:0.5rem;align-items:flex-start;cursor:pointer;" onclick="openTaskDetailModal('${e.id}')">${completeBtn}<div style="flex:1;"><div style="font-size:0.7rem;color:#999;margin-bottom:0.2rem;">${new Date(e.contact_date+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric'})}${e.author?' — '+e.author:''}</div><div style="font-size:0.75rem;font-weight:600;color:${isOverdue?'#dc2626':isDone?'#065f46':'#92400e'};margin-bottom:0.2rem;">${statusText}</div>${taskNote?`<div style="font-size:0.85rem;font-weight:600;color:#92400e;background:#fef3c7;padding:0.15rem 0.4rem;border-radius:4px;margin-bottom:0.2rem;">📋 ${taskNote}</div>`:''}<div style="font-size:0.85rem;color:#333;">${preview}</div><div style="display:flex;gap:0.5rem;margin-top:0.4rem;"><button class="icon-btn" onclick="event.stopPropagation();${editFn}" title="Edit task" style="font-size:0.8rem;">✏️ Edit</button><button class="icon-btn" onclick="event.stopPropagation();${delFn}" title="Delete" style="font-size:0.8rem;color:#dc2626;">🗑️</button></div></div></div>`;
 }
