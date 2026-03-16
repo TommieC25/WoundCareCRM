@@ -38,6 +38,7 @@ button{border:none;border-radius:6px;padding:0.35rem 0.75rem;font-size:0.8rem;fo
 .tag-oot{background:#fee2e2;color:#991b1b;}
 .tag-self{background:#fef3c7;color:#92400e;}
 .tag-orphan{background:#ede9fe;color:#5b21b6;}
+.tag-warn{background:#fef3c7;color:#92400e;}
 .stats-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:0.75rem;margin-bottom:1.5rem;}
 .stat-card{background:#fff;border-radius:8px;padding:0.9rem;box-shadow:0 1px 3px rgba(0,0,0,0.08);text-align:center;}
 .stat-num{font-size:1.8rem;font-weight:800;color:#0a4d3c;}
@@ -189,6 +190,16 @@ button{border:none;border-radius:6px;padding:0.35rem 0.75rem;font-size:0.8rem;fo
   <div id="emptyPracList" class="loading">Loading...</div>
 </div>
 
+<!-- Section: Location Label Audit -->
+<div class="section">
+  <div class="section-header">
+    <span class="section-title">🏷️ Location Labels — Blank or Generic</span>
+    <span class="count-badge" id="locLabelBadge">—</span>
+  </div>
+  <p class="section-note">Locations where <code>label</code> is blank, matches the city name exactly, or matches the practice name exactly. Labels should be human-readable office identifiers like "Jupiter Office" or "Boca Raton #2". Edit inline and save.</p>
+  <div id="locLabelList" class="loading">Loading...</div>
+</div>
+
 </div>
 
 <div class="toast" id="toast"></div>
@@ -293,6 +304,25 @@ function splitNums(raw) {
   return raw.split(/[\/,]/).map(s => s.trim()).filter(Boolean);
 }
 
+async function saveLocLabel(locId, btn) {
+  const input = document.getElementById('lbl-input-' + locId);
+  const newLabel = (input ? input.value : '').trim();
+  if (!newLabel) { showToast('Label cannot be blank', 'error'); return; }
+  btn.disabled = true; btn.textContent = 'Saving…';
+  const {error} = await db.from('practice_locations').update({label: newLabel}).eq('id', locId);
+  if (error) { showToast('Error: ' + error.message, 'error'); btn.disabled = false; btn.textContent = 'Save Label'; return; }
+  showToast('Label saved', 'success');
+  const card = document.getElementById('loclbl-' + locId);
+  if (card) card.remove();
+  const remaining = document.querySelectorAll('[id^="loclbl-"]').length;
+  const badge = document.getElementById('locLabelBadge');
+  if (badge) { badge.textContent = remaining + (remaining === 0 ? ' ✓' : ' to review'); badge.className = 'count-badge ' + (remaining === 0 ? 'ok' : 'warn'); }
+  if (remaining === 0) { const el = document.getElementById('locLabelList'); if (el) el.innerHTML = '<p class="empty">✓ All location labels look good.</p>'; }
+}
+function skipLocLabel(locId) {
+  const card = document.getElementById('loclbl-' + locId);
+  if (card) { card.style.opacity = '0.4'; card.style.pointerEvents = 'none'; }
+}
 async function fixOnePhone(locId, btn) {
   btn.disabled = true; btn.textContent = 'Fixing...';
   const loc = (window._multiPhoneLocs||[]).find(l => l.id === locId);
@@ -1083,8 +1113,46 @@ async function runAudit() {
       window._multiPhoneLocs = multiPhoneLocs;
     }
 
+    // === Location Label Audit ===
+    const badLabels = (locations || []).filter(l => {
+      const lbl = (l.label || '').trim();
+      const city = (l.city || '').trim();
+      const prac = (practiceMap[l.practice_id] || {}).name || '';
+      if (!lbl) return true; // blank
+      if (city && lbl.toLowerCase() === city.toLowerCase()) return true; // just the city
+      if (prac && lbl.toLowerCase() === prac.toLowerCase()) return true; // same as practice name
+      return false;
+    });
+    const locLabelEl = document.getElementById('locLabelList');
+    const locLabelBadge = document.getElementById('locLabelBadge');
+    locLabelBadge.textContent = badLabels.length + (badLabels.length === 0 ? ' ✓' : ' to review');
+    locLabelBadge.className = 'count-badge ' + (badLabels.length === 0 ? 'ok' : 'warn');
+    if (badLabels.length === 0) {
+      locLabelEl.innerHTML = '<p class="empty">✓ All location labels look good.</p>';
+    } else {
+      locLabelEl.innerHTML = badLabels.map(l => {
+        const prac = (practiceMap[l.practice_id] || {}).name || '(No practice)';
+        const lbl = (l.label || '').trim();
+        const city = (l.city || '').trim();
+        const addr = [l.address, l.city, l.zip].filter(Boolean).join(', ');
+        const reason = !lbl ? 'Blank label' : lbl.toLowerCase() === city.toLowerCase() ? 'Label = city name' : 'Label = practice name';
+        const placeholder = city || prac || 'e.g. Jupiter Office';
+        return `<div class="row-card warn" id="loclbl-${l.id}">
+          <div class="row-info">
+            <div class="row-name">${prac} <span class="tag tag-warn">${reason}</span></div>
+            <div class="row-detail">${addr || 'No address'}</div>
+            <div class="row-detail" style="margin-top:0.4rem;display:flex;gap:0.4rem;align-items:center;flex-wrap:wrap;">
+              <input type="text" id="lbl-input-${l.id}" value="${lbl.replace(/"/g,'&quot;')}" placeholder="${placeholder}" style="flex:1;min-width:160px;padding:0.35rem 0.6rem;font-size:0.82rem;border:1.5px solid #fcd34d;border-radius:6px;font-family:inherit;">
+              <button class="btn-primary" onclick="saveLocLabel('${l.id}',this)" style="white-space:nowrap;">Save Label</button>
+              <button onclick="skipLocLabel('${l.id}')" style="background:#e5e7eb;color:#374151;white-space:nowrap;">Skip</button>
+            </div>
+          </div>
+        </div>`;
+      }).join('');
+    }
+
     // Stats
-    const totalIssues = uniquePhantoms.length + nonMohsDerms.length + ootLocs.length + selfPracs.length + orphans.length + multiPhoneLocs.length + totalBadSpecialty;
+    const totalIssues = uniquePhantoms.length + nonMohsDerms.length + ootLocs.length + selfPracs.length + orphans.length + multiPhoneLocs.length + totalBadSpecialty + badLabels.length;
     document.getElementById('aiWorkflow').style.display = 'block';
     document.getElementById('statsGrid').style.display = 'grid';
     document.getElementById('statsGrid').innerHTML = `
@@ -1097,6 +1165,7 @@ async function runAudit() {
       <div class="stat-card"><div class="stat-num ${ootLocs.length > 0 ? 'bad' : ''}">${ootLocs.length}</div><div class="stat-label">OOT Locations</div></div>
       <div class="stat-card"><div class="stat-num ${selfPracs.length > 0 ? 'warn' : ''}">${selfPracs.length}</div><div class="stat-label">Self-Named Practices</div></div>
       <div class="stat-card"><div class="stat-num ${orphans.length > 0 ? 'warn' : ''}">${orphans.length}</div><div class="stat-label">Unlinked Providers</div></div>
+      <div class="stat-card"><div class="stat-num ${badLabels.length > 0 ? 'warn' : ''}">${badLabels.length}</div><div class="stat-label">Generic Labels</div></div>
     `;
 
     document.getElementById('sections').style.display = 'block';
