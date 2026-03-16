@@ -26,6 +26,7 @@ h1{font-size:1.4rem;font-weight:700;color:#0a4d3c;margin-bottom:0.25rem;}
 .row-actions{display:flex;gap:0.4rem;flex-shrink:0;flex-wrap:wrap;}
 button{border:none;border-radius:6px;padding:0.35rem 0.75rem;font-size:0.8rem;font-weight:600;cursor:pointer;font-family:inherit;}
 .btn-del{background:#dc2626;color:#fff;}
+.btn-edit{background:#0a4d3c;color:#fff;}
 .btn-del:hover{background:#b91c1c;}
 .btn-del:disabled{background:#ccc;cursor:not-allowed;}
 .btn-view{background:#e5e7eb;color:#374151;}
@@ -988,6 +989,7 @@ async function runAudit() {
             <div class="row-detail">${addrStr || 'No address'} &nbsp;·&nbsp; ${provCount} provider(s) assigned</div>
           </div>
           <div class="row-actions">
+            ${practice.id ? `<button class="btn-edit" onclick="window.open('index.html?goto=practice&id=${practice.id}','_blank')">Edit Profile</button>` : ''}
             <button class="btn-del" onclick="deleteLocation('${loc.id}', '${(addrStr||loc.city||'location').replace(/'/g,"\\'")}', this)">Delete Location</button>
           </div>
         </div>`;
@@ -1016,6 +1018,7 @@ async function runAudit() {
             <div class="row-detail">${locs.length} location(s) &nbsp;·&nbsp; ${totalProviders.size} provider(s) &nbsp;·&nbsp; ${cities || 'no city'}</div>
           </div>
           <div class="row-actions">
+            <button class="btn-edit" onclick="window.open('index.html?goto=practice&id=${prac.id}','_blank')">Edit Profile</button>
             <button class="btn-del" onclick="deletePracticeAndLocations('${prac.id}', '${prac.name.replace(/'/g,"\\'")}', this)">Delete Practice</button>
           </div>
         </div>`;
@@ -1075,6 +1078,7 @@ async function runAudit() {
             <div class="row-detail">${locs.length} location(s) &nbsp;·&nbsp; ${cities || 'no city'}</div>
           </div>
           <div class="row-actions">
+            <button class="btn-edit" onclick="window.open('index.html?goto=practice&id=${prac.id}','_blank')">Edit Profile</button>
             <button class="btn-del" onclick="deletePracticeAndLocations('${prac.id}', '${prac.name.replace(/'/g,"\\'")}', this)">Delete Practice</button>
           </div>
         </div>`;
