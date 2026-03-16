@@ -159,6 +159,21 @@ html += `<div style="padding:0.75rem 1rem;background:#fffbeb;border:1px solid #f
 <div style="display:flex;flex-wrap:wrap;gap:0.3rem;">${rBtns.map(b=>`<button type="button" onclick="rescheduleTask('${r.id}','${b.date}')" style="padding:0.4rem 0.65rem;font-size:0.8rem;border:1px solid ${r.reminder_date===b.date?'#d97706':'#fcd34d'};border-radius:6px;background:${r.reminder_date===b.date?'#f59e0b':'#fff'};color:${r.reminder_date===b.date?'#fff':'#92400e'};font-weight:${r.reminder_date===b.date?'700':'400'};cursor:pointer;-webkit-tap-highlight-color:transparent;touch-action:manipulation;">${b.label}</button>`).join('')}</div>
 <div style="display:flex;align-items:center;gap:0.4rem;margin-top:0.4rem;"><span style="font-size:0.75rem;color:#92400e;white-space:nowrap;">Specific date:</span><input type="date" value="${r.reminder_date&&r.reminder_date!=='2099-12-31'?r.reminder_date:''}" onchange="if(this.value)rescheduleTask('${r.id}',this.value)" style="flex:1;padding:0.3rem 0.5rem;border:1px solid #fcd34d;border-radius:6px;font-size:0.85rem;font-family:inherit;background:#fff;color:#92400e;-webkit-appearance:none;"></div>
 </div>`;
+// Link-to section — only shown for General Reminders (no provider and no location)
+if (!phys && !loc) {
+html += `<div style="padding:0.75rem 1rem;background:#f0f9ff;border:1.5px dashed #93c5fd;border-radius:10px;margin-bottom:0.75rem;">
+<div style="font-size:0.75rem;color:#1d4ed8;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:0.6rem;">🔗 Link to Provider or Practice</div>
+<div style="position:relative;margin-bottom:0.35rem;">
+<input type="text" id="tdLinkProviderSearch" placeholder="Search providers…" autocomplete="off" oninput="_tdFilterProviders('${r.id}')" style="width:100%;padding:0.6rem 0.75rem;font-size:0.875rem;border:1.5px solid #bfdbfe;border-radius:8px;box-sizing:border-box;font-family:inherit;background:white;">
+<div id="tdLinkProviderResults" style="display:none;position:absolute;top:100%;left:0;right:0;background:white;border:1px solid #d1d5db;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,0.12);z-index:200;max-height:180px;overflow-y:auto;margin-top:2px;"></div>
+</div>
+<div style="text-align:center;font-size:0.75rem;color:#aaa;margin:0.25rem 0 0.35rem;">— or search by practice —</div>
+<div style="position:relative;">
+<input type="text" id="tdLinkPracticeSearch" placeholder="Search practices…" autocomplete="off" oninput="_tdFilterPractices('${r.id}')" style="width:100%;padding:0.6rem 0.75rem;font-size:0.875rem;border:1.5px solid #bfdbfe;border-radius:8px;box-sizing:border-box;font-family:inherit;background:white;">
+<div id="tdLinkPracticeResults" style="display:none;position:absolute;top:100%;left:0;right:0;background:white;border:1px solid #d1d5db;border-radius:8px;box-shadow:0 4px 12px rgba(0,0,0,0.12);z-index:200;max-height:180px;overflow-y:auto;margin-top:2px;"></div>
+</div>
+</div>`;
+}
 const completeFn = `event.stopPropagation();completeReminder('${r.id}').then(()=>{closeTaskDetailModal();renderTasksView();})`;
 window._openedTaskRec = r;
 const editFn = `closeTaskDetailModal();openEditTaskModal()`;
@@ -191,6 +206,51 @@ showToast('Rescheduled to '+label,'success');
 closeTaskDetailModal();
 if(currentView==='activity') renderActivityTabView(); else renderTasksView();
 } catch(e){ showToast('Error: '+e.message,'error'); }
+}
+
+// --- Link-task helpers (used by 🔗 section in task detail modal) ---
+function _tdFilterProviders(logId) {
+const q=($('tdLinkProviderSearch').value||'').toLowerCase().trim();
+const res=$('tdLinkProviderResults');
+if(!q){res.style.display='none';return;}
+const matches=physicians.filter(p=>fmtName(p).toLowerCase().includes(q)||(p.specialty||'').toLowerCase().includes(q)).slice(0,8);
+if(!matches.length){res.innerHTML='<div style="padding:0.5rem 0.75rem;font-size:0.85rem;color:#999;">No providers found</div>';res.style.display='block';return;}
+res.innerHTML=matches.map(p=>`<div onclick="_linkTaskToProvider('${logId}','${p.id}')" style="padding:0.5rem 0.75rem;cursor:pointer;border-bottom:1px solid #f0f0f0;font-size:0.875rem;" onmouseover="this.style.background='#f0f9f4'" onmouseout="this.style.background=''"><span style="font-weight:600;">${fmtName(p)}</span>${p.specialty?`<span style="color:#888;font-size:0.8rem;"> · ${p.specialty}</span>`:''}</div>`).join('');
+res.style.display='block';
+}
+function _tdFilterPractices(logId) {
+const q=($('tdLinkPracticeSearch').value||'').toLowerCase().trim();
+const res=$('tdLinkPracticeResults');
+if(!q){res.style.display='none';return;}
+const matches=practices.filter(p=>(p.name||'').toLowerCase().includes(q)).slice(0,8);
+if(!matches.length){res.innerHTML='<div style="padding:0.5rem 0.75rem;font-size:0.85rem;color:#999;">No practices found</div>';res.style.display='block';return;}
+res.innerHTML=matches.map(p=>{
+const locs=practiceLocations.filter(l=>l.practice_id===p.id);
+const city=[...new Set(locs.map(l=>l.city).filter(Boolean))].slice(0,2).join(', ');
+if(locs.length===1){return `<div onclick="_linkTaskToLocation('${logId}','${locs[0].id}')" style="padding:0.5rem 0.75rem;cursor:pointer;border-bottom:1px solid #f0f0f0;font-size:0.875rem;" onmouseover="this.style.background='#f0f9f4'" onmouseout="this.style.background=''"><span style="font-weight:600;">${p.name}</span>${city?`<span style="color:#888;font-size:0.8rem;"> · ${city}</span>`:''}</div>`;}
+return `<div style="padding:0.5rem 0.75rem;border-bottom:1px solid #f0f0f0;font-size:0.875rem;"><div style="font-weight:600;">${p.name}${city?`<span style="color:#888;font-size:0.8rem;"> · ${city}</span>`:''}</div><div style="display:flex;flex-wrap:wrap;gap:0.3rem;margin-top:0.35rem;">${locs.map(l=>`<button onclick="_linkTaskToLocation('${logId}','${l.id}')" style="padding:0.25rem 0.6rem;font-size:0.78rem;border:1px solid #bfdbfe;border-radius:5px;background:#eff6ff;color:#1d4ed8;cursor:pointer;">${l.label&&l.label!==l.city?l.label:l.city||'Office'}</button>`).join('')}</div></div>`;
+}).join('');
+res.style.display='block';
+}
+async function _linkTaskToProvider(logId, providerId) {
+const {error}=await db.from('contact_logs').update({provider_id:providerId}).eq('id',logId);
+if(error){showToast('Error: '+error.message,'error');return;}
+const r=_taskDetailLogs[logId]||(window._taskDetailLogs||{})[logId];
+if(r){r.provider_id=providerId;}
+showToast('Task linked to provider','success');
+closeTaskDetailModal();
+openTaskDetailModal(logId);
+if(currentView==='activity') renderActivityTabView(); else renderTasksView();
+}
+async function _linkTaskToLocation(logId, locationId) {
+const {error}=await db.from('contact_logs').update({practice_location_id:locationId}).eq('id',logId);
+if(error){showToast('Error: '+error.message,'error');return;}
+const r=_taskDetailLogs[logId]||(window._taskDetailLogs||{})[logId];
+if(r){r.practice_location_id=locationId;}
+showToast('Task linked to practice location','success');
+closeTaskDetailModal();
+openTaskDetailModal(logId);
+if(currentView==='activity') renderActivityTabView(); else renderTasksView();
 }
 
 // --- Activity tab view dispatcher (called by setView('activity') and switchActivityTab) ---
