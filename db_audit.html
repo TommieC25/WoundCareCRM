@@ -1135,12 +1135,16 @@ async function runAudit() {
       locLabelEl.innerHTML = '<p class="empty">✓ All location labels look good.</p>';
     } else {
       locLabelEl.innerHTML = badLabels.map(l => {
-        const prac = (practiceMap[l.practice_id] || {}).name || '(No practice)';
+        const pracObj = practiceMap[l.practice_id] || {};
+        const prac = pracObj.name || '(No practice)';
+        const pracId = l.practice_id || '';
         const lbl = (l.label || '').trim();
         const city = (l.city || '').trim();
         const addr = [l.address, l.city, l.zip].filter(Boolean).join(', ');
         const reason = !lbl ? 'Blank label' : lbl.toLowerCase() === city.toLowerCase() ? 'Label = city name' : 'Label = practice name';
         const placeholder = city || prac || 'e.g. Jupiter Office';
+        const addrSafe = (addr||l.city||'location').replace(/'/g,"\\'");
+        const pracNameSafe = prac.replace(/'/g,"\\'");
         return `<div class="row-card warn" id="loclbl-${l.id}">
           <div class="row-info">
             <div class="row-name">${prac} <span class="tag tag-warn">${reason}</span></div>
@@ -1149,6 +1153,8 @@ async function runAudit() {
               <input type="text" id="lbl-input-${l.id}" value="${lbl.replace(/"/g,'&quot;')}" placeholder="${placeholder}" style="flex:1;min-width:160px;padding:0.35rem 0.6rem;font-size:0.82rem;border:1.5px solid #fcd34d;border-radius:6px;font-family:inherit;">
               <button class="btn-primary" onclick="saveLocLabel('${l.id}',this)" style="white-space:nowrap;">Save Label</button>
               <button onclick="skipLocLabel('${l.id}')" style="background:#e5e7eb;color:#374151;white-space:nowrap;">Skip</button>
+              <button class="btn-del" onclick="deleteLocation('${l.id}','${addrSafe}',this)" style="white-space:nowrap;">Del Location</button>
+              ${pracId ? `<button class="btn-del" onclick="deletePracticeAndLocations('${pracId}','${pracNameSafe}',this)" style="white-space:nowrap;">Del Practice</button>` : ''}
             </div>
           </div>
         </div>`;
