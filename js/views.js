@@ -226,9 +226,10 @@ const matches=practices.filter(p=>(p.name||'').toLowerCase().includes(q)).slice(
 if(!matches.length){res.innerHTML='<div style="padding:0.5rem 0.75rem;font-size:0.85rem;color:#999;">No practices found</div>';res.style.display='block';return;}
 res.innerHTML=matches.map(p=>{
 const locs=practiceLocations.filter(l=>l.practice_id===p.id);
-const city=[...new Set(locs.map(l=>l.city).filter(Boolean))].slice(0,2).join(', ');
-if(locs.length===1){return `<div onclick="_linkTaskToLocation('${logId}','${locs[0].id}')" style="padding:0.5rem 0.75rem;cursor:pointer;border-bottom:1px solid #f0f0f0;font-size:0.875rem;" onmouseover="this.style.background='#f0f9f4'" onmouseout="this.style.background=''"><span style="font-weight:600;">${p.name}</span>${city?`<span style="color:#888;font-size:0.8rem;"> · ${city}</span>`:''}</div>`;}
-return `<div style="padding:0.5rem 0.75rem;border-bottom:1px solid #f0f0f0;font-size:0.875rem;"><div style="font-weight:600;">${p.name}${city?`<span style="color:#888;font-size:0.8rem;"> · ${city}</span>`:''}</div><div style="display:flex;flex-wrap:wrap;gap:0.3rem;margin-top:0.35rem;">${locs.map(l=>`<button onclick="_linkTaskToLocation('${logId}','${l.id}')" style="padding:0.25rem 0.6rem;font-size:0.78rem;border:1px solid #bfdbfe;border-radius:5px;background:#eff6ff;color:#1d4ed8;cursor:pointer;">${l.label&&l.label!==l.city?l.label:l.city||'Office'}</button>`).join('')}</div></div>`;
+// Build a readable label for each location showing address so user can distinguish them
+const locLabel=(l)=>{const parts=[];if(l.label&&l.label!==l.city)parts.push(l.label);if(l.address)parts.push(l.address);if(l.city)parts.push(l.city);return parts.join(' · ')||'Office';};
+if(locs.length===1){const ll=locLabel(locs[0]);return `<div onclick="_linkTaskToLocation('${logId}','${locs[0].id}')" style="padding:0.5rem 0.75rem;cursor:pointer;border-bottom:1px solid #f0f0f0;font-size:0.875rem;" onmouseover="this.style.background='#f0f9f4'" onmouseout="this.style.background=''"><span style="font-weight:600;">${p.name}</span><span style="color:#888;font-size:0.8rem;"> · ${ll}</span></div>`;}
+return `<div style="padding:0.5rem 0.75rem;border-bottom:1px solid #f0f0f0;font-size:0.875rem;"><div style="font-weight:600;margin-bottom:0.3rem;">${p.name}</div><div style="display:flex;flex-direction:column;gap:0.25rem;">${locs.map(l=>`<button onclick="_linkTaskToLocation('${logId}','${l.id}')" style="text-align:left;padding:0.3rem 0.6rem;font-size:0.78rem;border:1px solid #bfdbfe;border-radius:5px;background:#eff6ff;color:#1d4ed8;cursor:pointer;">${locLabel(l)}</button>`).join('')}</div></div>`;
 }).join('');
 res.style.display='block';
 }
