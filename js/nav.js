@@ -218,7 +218,7 @@ const reminderLine=e.reminder_date?(e.reminder_date==='2000-01-01'?`<span style=
 const editFn=opts.editFn||`editNote('${e.id}')`;
 const delFn=opts.deleteFn||`deleteNote('${e.id}')`;
 const actions=opts.editable?`<div class="contact-entry-actions"><button class="icon-btn" onclick="event.stopPropagation();${editFn}" title="Edit">✏️</button><button class="icon-btn" onclick="event.stopPropagation();${delFn}" title="Delete">🗑️</button></div>`:'';
-const today=localDate();const _isDone=e.reminder_date==='2000-01-01';const _isOD=e.reminder_date&&!_isDone&&e.reminder_date!=='2099-12-31'&&e.reminder_date<today;const barColor=e.reminder_date?(_isDone?'#10b981':_isOD?'#dc2626':'#6b7280'):null;if(barColor){if(!window._taskDetailLogs)window._taskDetailLogs={};window._taskDetailLogs[e.id]=e;}const bgColor=(_isOD&&barColor)?'background:#fff5f5;':'';const divStyle=(barColor?`border-left:4px solid ${barColor};${bgColor}`:'')+(opts.onClick?'cursor:pointer;':'');const clickAttr=opts.onClick?` onclick="${opts.onClick}"`:'';
+const today=localDate();const _isDone=e.reminder_date==='2000-01-01';const _isOD=e.reminder_date&&!_isDone&&e.reminder_date!=='2099-12-31'&&e.reminder_date<today;const _isPending=e.reminder_date&&!_isDone&&!_isOD;const barColor=e.reminder_date?(_isDone?'#10b981':_isOD?'#dc2626':'#f59e0b'):null;if(barColor){if(!window._taskDetailLogs)window._taskDetailLogs={};window._taskDetailLogs[e.id]=e;}const bgColor=_isDone?'background:#f0fdf4;':_isOD?'background:#fff5f5;':_isPending?'background:#fffbeb;':'';const divStyle=(barColor?`border-left:4px solid ${barColor};${bgColor}`:'')+(opts.onClick?'cursor:pointer;':'');const clickAttr=opts.onClick?` onclick="${opts.onClick}"`:'';
 return `<div class="contact-entry"${divStyle?` style="${divStyle}"`:''}${clickAttr}><div class="contact-entry-header"><div><span class="contact-entry-date">${headerLine1}</span>${reminderLine}${headerLine2}</div>${actions}</div><div class="contact-entry-notes">${preview}</div></div>`;}
 // Renders a single entry in the provider profile log — handles both tasks (colored bars) and plain notes
 function renderProfileEntry(e) {
@@ -231,7 +231,7 @@ const today = localDate();
 const isDone = e.reminder_date === '2000-01-01';
 const isOpen = e.reminder_date === '2099-12-31';
 const isOverdue = !isDone && !isOpen && e.reminder_date < today;
-let barColor = '#6b7280'; // pending = gray
+let barColor = '#f59e0b'; // pending = amber
 if (isDone) barColor = '#10b981'; // completed = bright green
 else if (isOverdue) barColor = '#dc2626'; // overdue = red
 // populate _taskDetailLogs so task detail modal can open this record
@@ -462,7 +462,7 @@ const _loc1 = _locId1 ? practiceLocations.find(l=>l.id===_locId1) : null;
 const phoneLink = _loc1?.phone ? ` <a href="tel:${_loc1.phone.replace(/\D/g,'')}" onclick="event.stopPropagation()" style="color:#0a4d3c;font-size:0.75rem;">📞 ${fmtPhone(_loc1.phone)}</a>` : '';
 const {displayNotes,taskNote}=parseTaskRecord(r.notes);
 const preview = displayNotes.length > 100 ? displayNotes.substring(0,100) + '...' : displayNotes;
-html += `<div class="contact-entry" style="cursor:pointer;border-left-color:#f59e0b;margin-bottom:0.5rem;display:flex;gap:0.5rem;align-items:flex-start;" onclick="openTaskDetailModal('${r.id}')">
+html += `<div class="contact-entry" style="cursor:pointer;border-left-color:#f59e0b;background:#fffbeb;margin-bottom:0.5rem;display:flex;gap:0.5rem;align-items:flex-start;" onclick="openTaskDetailModal('${r.id}')">
 <button onclick="event.stopPropagation();completeReminder('${r.id}')" title="Mark complete" style="background:none;border:2px solid #f59e0b;color:#92400e;border-radius:50%;width:22px;height:22px;min-width:22px;cursor:pointer;font-size:0.75rem;display:flex;align-items:center;justify-content:center;margin-top:0.15rem;flex-shrink:0;">✓</button>
 <div style="flex:1;">
 <div style="font-weight:600;color:#0a4d3c;font-size:0.9rem;">${physName}${phoneLink}${emailLink}</div>
@@ -486,8 +486,8 @@ const _loc2 = _locId2 ? practiceLocations.find(l=>l.id===_locId2) : null;
 const phoneLink = _loc2?.phone ? ` <a href="tel:${_loc2.phone.replace(/\D/g,'')}" onclick="event.stopPropagation()" style="color:#0a4d3c;font-size:0.75rem;">📞 ${fmtPhone(_loc2.phone)}</a>` : '';
 const {displayNotes,taskNote}=parseTaskRecord(r.notes);
 const preview = displayNotes.length > 80 ? displayNotes.substring(0,80) + '...' : displayNotes;
-html += `<div class="contact-entry" style="cursor:pointer;border-left-color:#6b7280;margin-bottom:0.5rem;display:flex;gap:0.5rem;align-items:flex-start;" onclick="openTaskDetailModal('${r.id}')">
-<button onclick="event.stopPropagation();completeReminder('${r.id}')" title="Mark complete" style="background:none;border:2px solid #6b7280;color:#6b7280;border-radius:50%;width:22px;height:22px;min-width:22px;cursor:pointer;font-size:0.75rem;display:flex;align-items:center;justify-content:center;margin-top:0.15rem;flex-shrink:0;">✓</button>
+html += `<div class="contact-entry" style="cursor:pointer;border-left-color:#f59e0b;background:#fffbeb;margin-bottom:0.5rem;display:flex;gap:0.5rem;align-items:flex-start;" onclick="openTaskDetailModal('${r.id}')">
+<button onclick="event.stopPropagation();completeReminder('${r.id}')" title="Mark complete" style="background:none;border:2px solid #f59e0b;color:#92400e;border-radius:50%;width:22px;height:22px;min-width:22px;cursor:pointer;font-size:0.75rem;display:flex;align-items:center;justify-content:center;margin-top:0.15rem;flex-shrink:0;">✓</button>
 <div style="flex:1;">
 <div style="font-weight:600;color:#0a4d3c;font-size:0.9rem;">${physName}${phoneLink}${emailLink}</div>
 ${taskNote?`<div style="font-size:0.8rem;font-weight:600;color:#92400e;background:#fef3c7;padding:0.15rem 0.4rem;border-radius:4px;margin-top:0.2rem;">📋 ${taskNote}</div>`:''}
