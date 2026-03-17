@@ -36,7 +36,11 @@ $('contactModal').classList.add('active');
 
 function populateLocationDropdown() {
 const select = $('contactLocation');
-if (!currentPhysician) return;
+if (!currentPhysician) {
+  select.innerHTML = '<option value="">Select location...</option>';
+  if($('locationSelectRow'))$('locationSelectRow').style.display='none';
+  return;
+}
 const assignments = physicianAssignments[currentPhysician.id] || [];
 const locations = assignments.map(a => {
 const loc = practiceLocations.find(l => l.id === a.practice_location_id);
