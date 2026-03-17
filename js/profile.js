@@ -211,7 +211,7 @@ $('mainContent').innerHTML = `
 <div class="profile-header">
 <div style="font-size:0.85rem;margin-bottom:0.5rem;"><span style="cursor:pointer;color:#0a4d3c;text-decoration:underline;" onclick="viewPractice('${practice?.id}')">← ${practice?.name || 'Practice'}</span></div>
 <div class="profile-name">${loc.label || 'Office'}</div>
-<div class="profile-practice">${[loc.address, loc.city, loc.zip].filter(Boolean).join(', ')}</div>
+<div class="profile-practice">${[fmtSuiteAddr(loc.address), loc.city, loc.zip].filter(Boolean).join(', ')}</div>
 <div class="profile-meta">
 ${mi('Providers', locPhysicians.length)}${mi('City', loc.city || '—')}${mi('Zip', loc.zip || '—')}
 </div>
@@ -294,7 +294,7 @@ if (el) el.innerHTML = '<div class="empty-notice">No locations assigned yet. Add
 return;
 }
 try {
-const { data: logs, error } = await db.from('contact_logs').select('*').in('practice_location_id', locIds).order('contact_date', { ascending: false }).order('created_at', { ascending: false }).limit(50);
+const { data: logs, error } = await db.from('contact_logs').select('*').in('practice_location_id', locIds).order('contact_date', { ascending: false }).order('created_at', { ascending: false });
 if (error) throw error;
 const el = $('practiceActivityContent');
 if (!el) return;
