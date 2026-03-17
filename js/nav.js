@@ -199,7 +199,9 @@ return 0;
 });
 }
 function ld(val,icon,content){return val?`<div class="location-detail"><span class="location-detail-icon">${icon}</span><span class="location-detail-value">${content||val}</span></div>`:''}
-function locAddr(loc){const a=(loc.address||'')+', '+(loc.city||'')+' '+(loc.zip||'');return`<a href="https://maps.apple.com/?q=${encodeURIComponent(a)}" target="_blank" style="color:#0a4d3c;text-decoration:underline;">${loc.address}${loc.city?', '+loc.city:''}${loc.zip?' '+loc.zip:''}</a>`}
+// Display-only: normalise Suite/Ste/STE variants to #NNN format
+function fmtSuiteAddr(addr){if(!addr)return addr;return addr.replace(/\bSte\.?\s*#?(\d+)/gi,'#$1').replace(/\bSuite\s*#?(\d+)/gi,'#$1').replace(/\bUnit\s*#?(\d+)/gi,'#$1');}
+function locAddr(loc){const rawAddr=fmtSuiteAddr(loc.address)||'';const a=rawAddr+', '+(loc.city||'')+' '+(loc.zip||'');return`<a href="https://maps.apple.com/?q=${encodeURIComponent(a)}" target="_blank" style="color:#0a4d3c;text-decoration:underline;">${rawAddr}${loc.city?', '+loc.city:''}${loc.zip?' '+loc.zip:''}</a>`}
 function normDegree(d){if(!d)return d;return d.replace(/\./g,'').trim();}
 function fmtPhone(p){if(!p)return'';var d=(p+'').replace(/\D/g,'');if(d.length===11&&d[0]==='1')d=d.substring(1);if(d.length===10)return d.substring(0,3)+'-'+d.substring(3,6)+'-'+d.substring(6);return p;}
 function locPhone(p){var f=fmtPhone(p);return`<a href="tel:${(p||'').replace(/\D/g,'')}">${f||p}</a>`}

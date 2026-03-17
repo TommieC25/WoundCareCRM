@@ -412,6 +412,7 @@ showToast('Practice renamed to "' + newName + '"', 'success');
 async function saveLocation(e) {
 e.preventDefault();
 const data={practice_id:$('locationPracticeId').value,label:$('locationLabel').value,address:$('locationAddress').value||null,city:$('locationCity').value||null,zip:$('locationZip').value||null,phone:$('locationPhone').value||null,fax:$('locationFax').value||null,practice_email:$('locationEmail').value||null,office_hours:$('locationHours').value||null,office_staff:$('locationStaff').value||null,receptionist_name:$('locationReceptionist').value||null,best_days:$('locationBestDays').value||null,notes:$('locationNotes').value||null};
+if(!editingLocationId){const missing=[];if(!data.address){missing.push('Address');const el=$('locationAddress');el.style.borderColor='#dc2626';setTimeout(()=>el.style.borderColor='',3000);}if(!data.city){missing.push('City');const el=$('locationCity');el.style.borderColor='#dc2626';setTimeout(()=>el.style.borderColor='',3000);}if(missing.length){showToast(missing.join(' and ')+' required to save a location','error');return;}}
 await withSave('locationSaveBtn','Save Location',async()=>{
 if(editingLocationId){const{error}=await db.from('practice_locations').update(data).eq('id',editingLocationId);if(error)throw error;showToast('Location updated','success');
 }else{const{error}=await db.from('practice_locations').insert(data);if(error)throw error;showToast('Location added','success');}
