@@ -63,7 +63,6 @@ return `
 <div class="location-card-header">
 <div class="location-label" style="cursor:pointer;flex:1;" onclick="viewLocation('${loc.id}')">
 ${loc.label || 'Office'}
-${assign.is_primary ? '<span class="location-badge">Primary</span>' : ''}
 ${practiceName ? `<span class="practice-badge" title="View practice">🏢 ${practiceName}</span>` : ''}
 </div>
 <div class="location-actions">
