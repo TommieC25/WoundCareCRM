@@ -73,6 +73,7 @@ input.row-cb{width:16px;height:16px;min-width:16px;flex-shrink:0;cursor:pointer;
 <p class="subtitle">Finds non-Mohs dermatologists, self-named practices, out-of-territory locations, and orphaned providers</p>
 
 <button class="btn-primary" id="runBtn" onclick="runAudit()">Run Audit</button>
+<button class="btn-primary" id="migrationBtn" onclick="checkAndMigrate()" style="background:#7c3aed;margin-left:0.5rem;">⚙️ Schema: Add is_mobile</button>
 
 <div id="aiWorkflow" class="section" style="display:none;margin-bottom:1.5rem;">
   <div class="section-header" style="margin-bottom:0.5rem;">
@@ -207,6 +208,25 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 const { createClient } = window.supabase;
 const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
+// === SCHEMA MIGRATION ===
+async function checkAndMigrate() {
+  const btn = document.getElementById('migrationBtn');
+  btn.disabled = true; btn.textContent = 'Checking…';
+  // Test if is_mobile column exists by fetching one row
+  const { data, error } = await db.from('providers').select('id,is_mobile').limit(1);
+  if (!error && data !== null && (data.length === 0 || 'is_mobile' in (data[0] || {}))) {
+    showToast('✓ is_mobile column already exists — no migration needed', 'success');
+    btn.textContent = '✓ Already migrated'; btn.style.background = '#059669';
+    return;
+  }
+  // Column missing — show SQL to run
+  const sql = `ALTER TABLE providers ADD COLUMN IF NOT EXISTS is_mobile boolean DEFAULT false;`;
+  const msg = `The is_mobile column does not exist yet.\n\nRun this SQL in Supabase → SQL Editor:\n\n${sql}\n\nAfter running it, come back and click this button again to confirm.`;
+  alert(msg);
+  btn.disabled = false; btn.textContent = '⚙️ Schema: Add is_mobile';
+}
+
+
 // === WHITELIST / ACCEPT (localStorage) ===
 const ACCEPTED_PRACTICES_KEY = 'wc_audit_accepted_practices';
 const ACCEPTED_MOHS_KEY = 'wc_audit_accepted_mohs';
@@ -287,6 +307,17 @@ function looksLikeName(practiceName, providers) {
            lower.startsWith(full) || lower.startsWith(p.last_name.toLowerCase() + ',') ||
            lower.startsWith(p.last_name.toLowerCase() + ' ' + p.first_name.toLowerCase());
   });
+}
+
+async function markProviderMobile(providerId, name, cardEl) {
+  if (!confirm(`Mark "${name}" as Mobile / Home Health?\n\nThis sets is_mobile=true on their record. They will no longer appear in the "No Location" audit section. You can toggle this in their profile in the CRM.`)) return;
+  const { error } = await db.from('providers').update({ is_mobile: true }).eq('id', providerId);
+  if (error) { showToast('Error: ' + error.message + '\n\nIf column missing, click ⚙️ Schema: Add is_mobile first', 'error'); return; }
+  if (cardEl) cardEl.remove();
+  const remaining = document.querySelectorAll('#orphanList .row-card').length;
+  const b = document.getElementById('orphanBadge');
+  if (b) { b.textContent = remaining + (remaining === 0 ? ' ✓' : ' issues'); b.className = 'count-badge ' + (remaining === 0 ? 'ok' : remaining < 5 ? 'warn' : ''); }
+  showToast(`"${name}" marked as Mobile / Home Health`, 'success');
 }
 
 async function deletePracticeAndLocations(practiceId, practiceName, btn) {
@@ -1049,31 +1080,39 @@ async function runAudit() {
     // Self-named practices merged into soloSelfPracs above — window._selfPracs already set
 
     // === SECTION 3: Orphaned providers (0 locations) ===
-    const orphans = (providers || []).filter(p => !(assignedLocsByProvider[p.id]?.size > 0));
+    // Exclude is_mobile providers — they legitimately have no brick-and-mortar office
+    const mobileProviders = (providers || []).filter(p => p.is_mobile);
+    const orphans = (providers || []).filter(p => !(assignedLocsByProvider[p.id]?.size > 0) && !p.is_mobile);
     const orphanEl = document.getElementById('orphanList');
     const orphanBadge = document.getElementById('orphanBadge');
     orphanBadge.textContent = orphans.length + (orphans.length === 0 ? ' ✓' : ' issues');
     orphanBadge.className = 'count-badge ' + (orphans.length === 0 ? 'ok' : orphans.length < 5 ? 'warn' : '');
     window._orphanProviders = orphans;
     if (orphans.length === 0) {
-      orphanEl.innerHTML = '<p class="empty">All providers have at least one location assigned.</p>';
+      orphanEl.innerHTML = `<p class="empty">All providers have at least one location assigned.${mobileProviders.length > 0 ? ` (${mobileProviders.length} Mobile/Home Health provider${mobileProviders.length > 1 ? 's' : ''} excluded)` : ''}</p>`;
     } else {
-      orphanEl.innerHTML = `<div style="margin-bottom:0.75rem;"><button class="btn-primary" onclick="copyOrphansForAI()">📋 Copy for AI Vetting</button> <span style="font-size:0.8rem;color:#666;margin-left:0.5rem;">Ask AI to help identify where these providers practice</span></div>` +
+      orphanEl.innerHTML =
+        `<div class="bulk-bar">
+          <button class="btn-primary" onclick="copyOrphansForAI()">📋 Copy for AI Vetting</button>
+          <span style="font-size:0.8rem;color:#666;">Ask AI to identify where these providers practice, or mark as Mobile below</span>
+          ${mobileProviders.length > 0 ? `<span class="accepted-info">${mobileProviders.length} Mobile/Home Health excluded</span>` : ''}
+        </div>` +
         orphans.map(p => {
-        const name = [p.first_name, p.last_name, p.degree].filter(Boolean).join(' ');
-        const detail = [p.specialty, p.priority ? 'Tier ' + p.priority : '', p.is_target ? 'TARGET' : ''].filter(Boolean).join(' · ');
-        const noteSnip = (p.general_notes || '').substring(0, 100);
-        return `<div class="row-card neutral" id="prov-${p.id}">
-          <div class="row-info">
-            <div class="row-name">${name} <span class="tag tag-orphan">NO LOCATION</span></div>
-            <div class="row-detail">${detail || 'No specialty/tier'}</div>
-            ${noteSnip ? `<div class="row-detail" style="margin-top:0.2rem;font-style:italic;">${noteSnip}${p.general_notes?.length > 100 ? '...' : ''}</div>` : ''}
-          </div>
-          <div class="row-actions">
-            <button class="btn-del" onclick="deleteProvider('${p.id}', '${name.replace(/'/g,"\\'")}', this)">Delete Provider</button>
-          </div>
-        </div>`;
-      }).join('');
+          const name = [p.first_name, p.last_name, p.degree].filter(Boolean).join(' ');
+          const detail = [p.specialty, p.priority ? 'Tier ' + p.priority : '', p.is_target ? 'TARGET' : ''].filter(Boolean).join(' · ');
+          const noteSnip = (p.general_notes || '').substring(0, 100);
+          return `<div class="row-card neutral" id="prov-${p.id}">
+            <div class="row-info">
+              <div class="row-name">${name} <span class="tag tag-orphan">NO LOCATION</span></div>
+              <div class="row-detail">${detail || 'No specialty/tier'}</div>
+              ${noteSnip ? `<div class="row-detail" style="margin-top:0.2rem;font-style:italic;">${noteSnip}${p.general_notes?.length > 100 ? '...' : ''}</div>` : ''}
+            </div>
+            <div class="row-actions">
+              <button class="btn-accept" onclick="markProviderMobile('${p.id}','${name.replace(/'/g,"\\'")}',this.closest('.row-card'))" title="Mobile / Home Care — visits patients, no fixed office">🏠 Mobile</button>
+              <button class="btn-del" onclick="deleteProvider('${p.id}', '${name.replace(/'/g,"\\'")}', this)">Delete Provider</button>
+            </div>
+          </div>`;
+        }).join('');
     }
 
     // === SECTION 4: Practices with no providers ===
@@ -1141,15 +1180,8 @@ async function runAudit() {
     }
 
     // === Location Label Audit ===
-    const badLabels = (locations || []).filter(l => {
-      const lbl = (l.label || '').trim();
-      const city = (l.city || '').trim();
-      const prac = (practiceMap[l.practice_id] || {}).name || '';
-      if (!lbl) return true; // blank
-      if (city && lbl.toLowerCase() === city.toLowerCase()) return true; // just the city
-      if (prac && lbl.toLowerCase() === prac.toLowerCase()) return true; // same as practice name
-      return false;
-    });
+    // Only flag blank labels — city-named labels are intentional and valid (e.g. "Boca Raton" for a Boca office)
+    const badLabels = (locations || []).filter(l => !(l.label || '').trim());
     const locLabelEl = document.getElementById('locLabelList');
     const locLabelBadge = document.getElementById('locLabelBadge');
     locLabelBadge.textContent = badLabels.length + (badLabels.length === 0 ? ' ✓' : ' to review');
@@ -1164,7 +1196,7 @@ async function runAudit() {
         const lbl = (l.label || '').trim();
         const city = (l.city || '').trim();
         const addr = [l.address, l.city, l.zip].filter(Boolean).join(', ');
-        const reason = !lbl ? 'Blank label' : lbl.toLowerCase() === city.toLowerCase() ? 'Label = city name' : 'Label = practice name';
+        const reason = 'Blank label';
         const placeholder = city || prac || 'e.g. Jupiter Office';
         const addrSafe = (addr||l.city||'location').replace(/'/g,"\\'");
         const pracNameSafe = prac.replace(/'/g,"\\'");
