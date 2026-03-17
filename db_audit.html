@@ -231,6 +231,7 @@ async function checkAndMigrate() {
 const ACCEPTED_PRACTICES_KEY = 'wc_audit_accepted_practices';
 const ACCEPTED_MOHS_KEY = 'wc_audit_accepted_mohs';
 const ACCEPTED_OOT_KEY = 'wc_audit_accepted_oot';
+const ACCEPTED_EMPTY_PRAC_KEY = 'wc_audit_accepted_empty_prac';
 function getAcceptedPractices() { return new Set(JSON.parse(localStorage.getItem(ACCEPTED_PRACTICES_KEY) || '[]')); }
 function getAcceptedMohs() { return new Set(JSON.parse(localStorage.getItem(ACCEPTED_MOHS_KEY) || '[]')); }
 function getAcceptedOot() { return new Set(JSON.parse(localStorage.getItem(ACCEPTED_OOT_KEY) || '[]')); }
@@ -257,6 +258,12 @@ function acceptSelectedSoloSelf() {
 function clearAcceptedPractices() { localStorage.removeItem(ACCEPTED_PRACTICES_KEY); showToast('Cleared — re-run audit to see all items', 'info'); }
 function clearAcceptedMohs() { localStorage.removeItem(ACCEPTED_MOHS_KEY); showToast('Cleared — re-run audit to see all items', 'info'); }
 function clearAcceptedOot() { localStorage.removeItem(ACCEPTED_OOT_KEY); showToast('Cleared — re-run audit to see all items', 'info'); }
+function getAcceptedEmptyPrac() { return new Set(JSON.parse(localStorage.getItem(ACCEPTED_EMPTY_PRAC_KEY) || '[]')); }
+function acceptEmptyPractice(id, cardEl) {
+  const s = getAcceptedEmptyPrac(); s.add(id); localStorage.setItem(ACCEPTED_EMPTY_PRAC_KEY, JSON.stringify([...s]));
+  if (cardEl) cardEl.remove(); showToast('Accepted — won\'t flag in future audits', 'success');
+}
+function clearAcceptedEmptyPrac() { localStorage.removeItem(ACCEPTED_EMPTY_PRAC_KEY); showToast('Cleared — re-run audit to see all items', 'info'); }
 function updateSoloSelfBadge() {
   const remaining = document.querySelectorAll('#soloSelfList .row-card').length;
   const b = document.getElementById('soloSelfBadge');
@@ -1118,21 +1125,25 @@ async function runAudit() {
     }
 
     // === SECTION 4: Practices with no providers ===
+    const acceptedEmptyPracs = getAcceptedEmptyPrac();
     const emptyPracs = (practices || []).filter(prac => {
       const locs = locsByPractice[prac.id] || [];
       const total = locs.reduce((n, l) => n + (assignedProvidersByLoc[l.id]?.size || 0), 0);
-      return total === 0;
+      return total === 0 && !acceptedEmptyPracs.has(prac.id);
     });
     window._emptyPracs = emptyPracs;
     window._auditLocsByPractice = locsByPractice;
     const emptyPracEl = document.getElementById('emptyPracList');
     const emptyPracBadge = document.getElementById('emptyPracBadge');
+    const acceptedEmptyCount = acceptedEmptyPracs.size;
     emptyPracBadge.textContent = emptyPracs.length + (emptyPracs.length === 0 ? ' ✓' : ' items');
     emptyPracBadge.className = 'count-badge ' + (emptyPracs.length === 0 ? 'ok' : 'warn');
     if (emptyPracs.length === 0) {
-      emptyPracEl.innerHTML = '<p class="empty">All practices have at least one provider assigned.</p>';
+      emptyPracEl.innerHTML = `<p class="empty">All practices have at least one provider assigned.${acceptedEmptyCount > 0 ? ` (${acceptedEmptyCount} accepted — <button onclick="clearAcceptedEmptyPrac()" style="background:none;border:none;color:#0a4d3c;text-decoration:underline;cursor:pointer;font-size:inherit;">clear</button>)` : ''}</p>`;
     } else {
-      emptyPracEl.innerHTML = `<div style="margin-bottom:0.75rem;"><button class="btn-primary" onclick="copyEmptyPracsForAI()">📋 Copy for AI Vetting</button> <span style="font-size:0.8rem;color:#666;margin-left:0.5rem;">Ask AI to identify who works at these practices</span></div>` +
+      emptyPracEl.innerHTML =
+        (acceptedEmptyCount > 0 ? `<div class="bulk-bar"><span class="accepted-info">${acceptedEmptyCount} accepted (agencies / pending assignment) — <button onclick="clearAcceptedEmptyPrac()" style="background:none;border:none;color:#0a4d3c;text-decoration:underline;cursor:pointer;font-size:0.75rem;">clear</button></span></div>` : '') +
+        `<div style="margin-bottom:0.75rem;"><button class="btn-primary" onclick="copyEmptyPracsForAI()">📋 Copy for AI Vetting</button> <span style="font-size:0.8rem;color:#666;margin-left:0.5rem;">Ask AI to identify who works at these practices</span></div>` +
         emptyPracs.map(prac => {
         const locs = locsByPractice[prac.id] || [];
         const cities = [...new Set(locs.map(l => l.city).filter(Boolean))].join(', ');
@@ -1142,6 +1153,7 @@ async function runAudit() {
             <div class="row-detail">${locs.length} location(s) &nbsp;·&nbsp; ${cities || 'no city'}</div>
           </div>
           <div class="row-actions">
+            <button class="btn-accept" onclick="acceptEmptyPractice('${prac.id}',this.closest('.row-card'))" title="Home health agency, large group pending assignment, or other legitimate practice with no providers yet">✓ Accept</button>
             <button class="btn-edit" onclick="window.open('index.html?goto=practice&id=${prac.id}','_blank')">Edit Profile</button>
             <button class="btn-del" onclick="deletePracticeAndLocations('${prac.id}', '${prac.name.replace(/'/g,"\\'")}', this)">Delete Practice</button>
           </div>
