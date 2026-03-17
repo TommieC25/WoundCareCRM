@@ -496,11 +496,13 @@ const _p=physicianId?physicians.find(p=>p.id===physicianId):null,_l=locationId?p
 const calUrl=buildGoogleCalendarUrl(_newRec,_p,_l,_pr);
 const _tc=$('toastContainer'),_t=document.createElement('div');
 _t.className='toast success';
-_t.style.cssText='display:flex;align-items:center;justify-content:space-between;gap:0.75rem;padding:0.85rem 1rem;';
+_t.style.cssText='display:flex;align-items:center;justify-content:space-between;gap:0.75rem;padding:0.85rem 1rem;flex-wrap:wrap;';
 const _a=document.createElement('a');_a.href=calUrl;_a.target='_blank';_a.rel='noopener';
-_a.textContent='📅 Add to Google Calendar';_a.style.cssText='color:white;font-weight:600;text-decoration:underline;font-size:0.95rem;';
+_a.textContent='📅 Google Cal';_a.style.cssText='color:white;font-weight:600;text-decoration:underline;font-size:0.95rem;white-space:nowrap;';
+const _b=document.createElement('button');_b.textContent='🍎 Apple Cal';_b.style.cssText='background:none;border:1px solid rgba(255,255,255,0.6);color:white;font-weight:600;font-size:0.95rem;cursor:pointer;padding:0.2rem 0.5rem;border-radius:4px;white-space:nowrap;';
+_b.onclick=()=>{downloadTaskICS(_newRec,_p,_l,_pr,'');};
 const _x=document.createElement('button');_x.textContent='×';_x.style.cssText='background:none;border:none;color:white;font-size:1.5rem;line-height:1;cursor:pointer;padding:0;flex-shrink:0;';
-_x.onclick=()=>_t.remove();_t.appendChild(_a);_t.appendChild(_x);_tc.appendChild(_t);
+_x.onclick=()=>_t.remove();_t.appendChild(_a);_t.appendChild(_b);_t.appendChild(_x);_tc.appendChild(_t);
 setTimeout(()=>_t.remove(),15000);
 }
 });
