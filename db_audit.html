@@ -51,6 +51,10 @@ button{border:none;border-radius:6px;padding:0.35rem 0.75rem;font-size:0.8rem;fo
 .toast.success{background:#166534;}
 .toast.error{background:#991b1b;}
 #runBtn{margin-bottom:1.25rem;}
+.btn-accept{background:#059669;color:#fff;}.btn-accept:hover{background:#047857;}
+.bulk-bar{display:flex;gap:0.5rem;align-items:center;margin-bottom:0.75rem;flex-wrap:wrap;}
+input.row-cb{width:16px;height:16px;min-width:16px;flex-shrink:0;cursor:pointer;margin-top:0.2rem;}
+.accepted-info{font-size:0.75rem;color:#666;font-style:italic;}
 .section-note{font-size:0.78rem;color:#666;margin-bottom:0.75rem;line-height:1.4;}
 .confirm-bar{background:#fef3c7;border:1px solid #fcd34d;border-radius:8px;padding:0.75rem 1rem;margin-bottom:0.75rem;font-size:0.85rem;display:none;}
 .confirm-bar.show{display:flex;gap:0.75rem;align-items:center;}
@@ -131,14 +135,14 @@ button{border:none;border-radius:6px;padding:0.35rem 0.75rem;font-size:0.8rem;fo
   <div id="phoneList" class="loading">Loading...</div>
 </div>
 
-<!-- Section -1: Provider-named solo practices — REVIEW ONLY -->
+<!-- Section: Solo / Self-Named Practices (merged) -->
 <div class="section">
   <div class="section-header">
-    <span class="section-title">⚠️ Solo-Named Practices (Review Required)</span>
-    <span class="count-badge" id="phantomBadge">—</span>
+    <span class="section-title">👤 Solo / Self-Named Practices</span>
+    <span class="count-badge" id="soloSelfBadge">—</span>
   </div>
-  <p class="section-note"><strong>REVIEW ONLY — do not delete without verifying.</strong> These are practices whose name closely matches a provider's own name. Many are legitimate solo practices (e.g. "Adam Plotkin DPM LLC" is Dr. Plotkin's real office). Some may be NPI import duplicates. Check each one in the CRM — only delete if the provider has a real group practice and this is a duplicate with no unique data (notes, staff, hours) of its own.</p>
-  <div id="phantomList" class="loading">Loading...</div>
+  <p class="section-note">Practices whose name matches a provider's name or contains a degree abbreviation (MD/DPM/etc). May be a legitimate solo practice or an import artifact. <strong>Accept</strong> to whitelist and hide from future audits (stored in your browser). <strong>Delete</strong> to remove from the database entirely.</p>
+  <div id="soloSelfList" class="loading">Loading...</div>
 </div>
 
 <!-- Section 0: Non-Mohs Dermatologists -->
@@ -161,15 +165,7 @@ button{border:none;border-radius:6px;padding:0.35rem 0.75rem;font-size:0.8rem;fo
   <div id="ootList" class="loading">Loading...</div>
 </div>
 
-<!-- Section 2: Self-named practices -->
-<div class="section">
-  <div class="section-header">
-    <span class="section-title">👤 Self-Named Practices</span>
-    <span class="count-badge" id="selfBadge">—</span>
-  </div>
-  <p class="section-note">Practices whose name looks like a provider's name (contains a degree like MD/DO/DPM, or matches a provider's full name). These are usually import artifacts.</p>
-  <div id="selfList" class="loading">Loading...</div>
-</div>
+<!-- Section 2: Self-named practices — merged into soloSelfList above -->
 
 <!-- Section 3: Orphaned providers -->
 <div class="section">
@@ -210,6 +206,52 @@ const SUPABASE_URL = 'https://xhdjywibdjzbczfjmctp.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhoZGp5d2liZGp6YmN6ZmptY3RwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk3NzE4MTYsImV4cCI6MjA4NTM0NzgxNn0.vHAfeYTVbu2Isu5AoFONvzrtJ2sS3YwF00QRe3LNrbU';
 const { createClient } = window.supabase;
 const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// === WHITELIST / ACCEPT (localStorage) ===
+const ACCEPTED_PRACTICES_KEY = 'wc_audit_accepted_practices';
+const ACCEPTED_MOHS_KEY = 'wc_audit_accepted_mohs';
+const ACCEPTED_OOT_KEY = 'wc_audit_accepted_oot';
+function getAcceptedPractices() { return new Set(JSON.parse(localStorage.getItem(ACCEPTED_PRACTICES_KEY) || '[]')); }
+function getAcceptedMohs() { return new Set(JSON.parse(localStorage.getItem(ACCEPTED_MOHS_KEY) || '[]')); }
+function getAcceptedOot() { return new Set(JSON.parse(localStorage.getItem(ACCEPTED_OOT_KEY) || '[]')); }
+function acceptPractice(id, cardEl) {
+  const s = getAcceptedPractices(); s.add(id); localStorage.setItem(ACCEPTED_PRACTICES_KEY, JSON.stringify([...s]));
+  if (cardEl) cardEl.remove(); updateSoloSelfBadge(); showToast('Accepted — won\'t show in future audits', 'success');
+}
+function acceptMohsProvider(id, cardEl) {
+  const s = getAcceptedMohs(); s.add(id); localStorage.setItem(ACCEPTED_MOHS_KEY, JSON.stringify([...s]));
+  if (cardEl) cardEl.remove(); updateMohsBadge(); showToast('Whitelisted — won\'t appear in Mohs audit again', 'success');
+}
+function acceptOotLocation(id, cardEl) {
+  const s = getAcceptedOot(); s.add(id); localStorage.setItem(ACCEPTED_OOT_KEY, JSON.stringify([...s]));
+  if (cardEl) cardEl.remove(); updateOotBadge(); showToast('Accepted OOT location — whitelisted', 'success');
+}
+function acceptSelectedSoloSelf() {
+  const checkboxes = document.querySelectorAll('.solo-self-cb:checked');
+  if (!checkboxes.length) { showToast('Check at least one item first', 'error'); return; }
+  const s = getAcceptedPractices();
+  checkboxes.forEach(cb => { s.add(cb.dataset.id); cb.closest('.row-card').remove(); });
+  localStorage.setItem(ACCEPTED_PRACTICES_KEY, JSON.stringify([...s]));
+  updateSoloSelfBadge(); showToast(`Accepted ${checkboxes.length} practice(s)`, 'success');
+}
+function clearAcceptedPractices() { localStorage.removeItem(ACCEPTED_PRACTICES_KEY); showToast('Cleared — re-run audit to see all items', 'info'); }
+function clearAcceptedMohs() { localStorage.removeItem(ACCEPTED_MOHS_KEY); showToast('Cleared — re-run audit to see all items', 'info'); }
+function clearAcceptedOot() { localStorage.removeItem(ACCEPTED_OOT_KEY); showToast('Cleared — re-run audit to see all items', 'info'); }
+function updateSoloSelfBadge() {
+  const remaining = document.querySelectorAll('#soloSelfList .row-card').length;
+  const b = document.getElementById('soloSelfBadge');
+  if (b) { b.textContent = remaining + (remaining === 0 ? ' ✓' : ' issues'); b.className = 'count-badge ' + (remaining === 0 ? 'ok' : ''); }
+}
+function updateMohsBadge() {
+  const remaining = document.querySelectorAll('#mohsList .row-card').length;
+  const b = document.getElementById('mohsBadge');
+  if (b) { b.textContent = remaining + (remaining === 0 ? ' ✓' : ' to review'); b.className = 'count-badge ' + (remaining === 0 ? 'ok' : ''); }
+}
+function updateOotBadge() {
+  const remaining = document.querySelectorAll('#ootList .row-card').length;
+  const b = document.getElementById('ootBadge');
+  if (b) { b.textContent = remaining + (remaining === 0 ? ' ✓' : ' issues'); b.className = 'count-badge ' + (remaining === 0 ? 'ok' : ''); }
+}
 
 function showToast(msg, type='info') {
   const t = document.getElementById('toast');
@@ -785,89 +827,85 @@ async function runAudit() {
     window._auditLocations = {};
     (locations || []).forEach(l => window._auditLocations[l.id] = l);
 
-    // === SECTION -1: Phantom provider-named locations ===
-    // A "phantom" location is one where:
-    // 1. The practice name closely matches the provider's name (first+last or last+first)
-    // 2. AND that provider also has assignments to at least 1 other location under a different practice
+    // === SECTION: Solo / Self-Named Practices (merged) ===
     const providerNameMap = {};
     (providers || []).forEach(p => {
       const fn = (p.first_name || '').toLowerCase().trim();
       const ln = (p.last_name || '').toLowerCase().trim();
-      providerNameMap[p.id] = { fn, ln, full: fn + ' ' + ln, rev: ln + ' ' + fn, last: ln };
+      providerNameMap[p.id] = { fn, ln, full: fn + ' ' + ln, rev: ln + ' ' + fn };
     });
-
     function practiceMatchesProvider(pracName, provId) {
       const nm = providerNameMap[provId];
       if (!nm) return false;
       const pn = pracName.toLowerCase().trim();
-      // Match if practice name starts with or equals provider's last name or full name
       return pn === nm.full || pn === nm.rev ||
              pn.startsWith(nm.ln + ',') || pn.startsWith(nm.ln + ' ' + nm.fn) ||
              pn.startsWith(nm.fn + ' ' + nm.ln) ||
              (nm.ln.length > 3 && pn.startsWith(nm.ln));
     }
 
-    // For each location, find if it's a phantom for any of its assigned providers
-    const phantoms = []; // {locId, locAddr, practiceName, practiceId, provId, provName}
+    const acceptedPracs = getAcceptedPractices();
+    const soloSelfPracIds = new Set();
+
+    // Algorithm 1: practice name matches provider name AND provider has other locations
     (locations || []).forEach(loc => {
       const practice = practiceMap[loc.practice_id];
-      if (!practice) return;
+      if (!practice || soloSelfPracIds.has(practice.id) || acceptedPracs.has(practice.id)) return;
       const assignedProvIds = [...(assignedProvidersByLoc[loc.id] || new Set())];
-      assignedProvIds.forEach(provId => {
-        if (!practiceMatchesProvider(practice.name, provId)) return;
-        // Check provider also has other locations under a DIFFERENT practice
+      for (const provId of assignedProvIds) {
+        if (!practiceMatchesProvider(practice.name, provId)) continue;
         const allProvLocs = [...(assignedLocsByProvider[provId] || new Set())];
         const hasOtherPractice = allProvLocs.some(lid => {
           if (lid === loc.id) return false;
           const otherLoc = locations.find(l => l.id === lid);
           return otherLoc && otherLoc.practice_id !== loc.practice_id;
         });
-        if (!hasOtherPractice) return;
-        const p = (providers || []).find(pr => pr.id === provId);
-        const provName = p ? [p.first_name, p.last_name, p.degree].filter(Boolean).join(' ') : provId;
-        const addr = [loc.address, loc.city, loc.zip].filter(Boolean).join(', ');
-        phantoms.push({ locId: loc.id, locAddr: addr, practiceName: practice.name, practiceId: loc.practice_id, provId, provName });
-      });
+        if (hasOtherPractice) { soloSelfPracIds.add(practice.id); break; }
+      }
     });
 
-    // Deduplicate (same locId can match multiple providers — just show once)
-    const seenPhantomLocs = new Set();
-    const uniquePhantoms = phantoms.filter(ph => {
-      if (seenPhantomLocs.has(ph.locId)) return false;
-      seenPhantomLocs.add(ph.locId);
-      return true;
+    // Algorithm 2: practice name contains degree suffix or exactly matches a provider name
+    (practices || []).forEach(p => {
+      if (!acceptedPracs.has(p.id) && looksLikeName(p.name, providers || [])) soloSelfPracIds.add(p.id);
     });
 
-    const phantomEl = document.getElementById('phantomList');
-    const phantomBadge = document.getElementById('phantomBadge');
-    phantomBadge.textContent = uniquePhantoms.length + (uniquePhantoms.length === 0 ? ' ✓' : ' to review');
-    phantomBadge.className = 'count-badge ' + (uniquePhantoms.length === 0 ? 'ok' : '');
-    if (uniquePhantoms.length === 0) {
-      phantomEl.innerHTML = '<p class="empty">No solo-named practices found.</p>';
+    const soloSelfPracs = [...soloSelfPracIds].map(id => practiceMap[id]).filter(Boolean);
+    window._selfPracs = soloSelfPracs; // kept for AI workflow
+
+    const soloSelfEl = document.getElementById('soloSelfList');
+    const soloSelfBadge = document.getElementById('soloSelfBadge');
+    const acceptedPracCount = acceptedPracs.size;
+    soloSelfBadge.textContent = soloSelfPracs.length + (soloSelfPracs.length === 0 ? ' ✓' : ' issues');
+    soloSelfBadge.className = 'count-badge ' + (soloSelfPracs.length === 0 ? 'ok' : '');
+    if (soloSelfPracs.length === 0) {
+      soloSelfEl.innerHTML = `<p class="empty">No solo/self-named practices detected.${acceptedPracCount > 0 ? ` (${acceptedPracCount} whitelisted — <button onclick="clearAcceptedPractices()" style="background:none;border:none;color:#0a4d3c;text-decoration:underline;cursor:pointer;font-size:inherit;">clear</button>)` : ''}</p>`;
     } else {
-      phantomEl.innerHTML = uniquePhantoms.map(ph => {
-        // Show the OTHER practices this provider is also assigned to
-        const p = (providers || []).find(pr => pr.id === ph.provId);
-        const allProvLocs = [...(assignedLocsByProvider[ph.provId] || new Set())];
-        const otherPracticeNames = [...new Set(
-          allProvLocs
-            .filter(lid => lid !== ph.locId)
-            .map(lid => {
-              const otherLoc = locations.find(l => l.id === lid);
-              return otherLoc ? (practiceMap[otherLoc.practice_id] || {}).name : null;
-            })
-            .filter(Boolean)
-        )].join(', ');
-        const noteSnip = (p && p.general_notes || '').substring(0, 100);
-        return `<div class="row-card warn" id="solo-${ph.locId}">
-          <div class="row-info">
-            <div class="row-name">${ph.practiceName} <span class="tag tag-self">SOLO-NAMED</span></div>
-            <div class="row-detail">Provider: ${ph.provName} &nbsp;·&nbsp; ${ph.locAddr || 'No address'}</div>
-            ${otherPracticeNames ? `<div class="row-detail">Also assigned to: <strong>${otherPracticeNames}</strong></div>` : ''}
-            ${noteSnip ? `<div class="row-detail" style="font-style:italic;">${noteSnip}${(p.general_notes||'').length > 100 ? '...' : ''}</div>` : ''}
-          </div>
-        </div>`;
-      }).join('');
+      soloSelfEl.innerHTML =
+        `<div class="bulk-bar">
+          <button class="btn-primary" onclick="acceptSelectedSoloSelf()">✓ Accept Selected</button>
+          <button class="btn-primary" onclick="copySelfPracsForAI()">📋 Copy for AI Vetting</button>
+          ${acceptedPracCount > 0 ? `<span class="accepted-info">${acceptedPracCount} whitelisted — <button onclick="clearAcceptedPractices()" style="background:none;border:none;color:#0a4d3c;text-decoration:underline;cursor:pointer;font-size:0.75rem;">clear</button></span>` : ''}
+        </div>` +
+        soloSelfPracs.map(prac => {
+          const locs = locsByPractice[prac.id] || [];
+          const totalProviders = new Set();
+          locs.forEach(l => (assignedProvidersByLoc[l.id] || new Set()).forEach(pid => totalProviders.add(pid)));
+          const cities = [...new Set(locs.map(l => l.city).filter(Boolean))].join(', ');
+          return `<div class="row-card warn" id="prac-ss-${prac.id}">
+            <div style="display:flex;align-items:flex-start;gap:0.5rem;margin-bottom:0.5rem;">
+              <input type="checkbox" class="solo-self-cb row-cb" data-id="${prac.id}">
+              <div class="row-info">
+                <div class="row-name">${prac.name} <span class="tag tag-self">SELF-NAMED</span></div>
+                <div class="row-detail">${locs.length} location(s) &nbsp;·&nbsp; ${totalProviders.size} provider(s) &nbsp;·&nbsp; ${cities || 'no city'}</div>
+              </div>
+            </div>
+            <div class="row-actions">
+              <button class="btn-accept" onclick="acceptPractice('${prac.id}',this.closest('.row-card'))">✓ Accept</button>
+              <button class="btn-edit" onclick="window.open('index.html?goto=practice&id=${prac.id}','_blank')">Edit Profile</button>
+              <button class="btn-del" onclick="deletePracticeAndLocations('${prac.id}','${prac.name.replace(/'/g,"\\'")}',this)">Delete Practice</button>
+            </div>
+          </div>`;
+        }).join('');
     }
 
     // === SECTION 0: Non-Mohs Dermatologists ===
@@ -875,33 +913,41 @@ async function runAudit() {
     function hasMohsIndicator(p) {
       return MOHS_RE.test(p.title || '') || MOHS_RE.test(p.general_notes || '') || MOHS_RE.test(p.degree || '');
     }
+    const acceptedMohsProvs = getAcceptedMohs();
     const nonMohsDerms = (providers || []).filter(p =>
-      (p.specialty || '').toLowerCase() === 'dermatology' && !hasMohsIndicator(p)
+      (p.specialty || '').toLowerCase() === 'dermatology' && !hasMohsIndicator(p) && !acceptedMohsProvs.has(p.id)
     );
     const mohsEl = document.getElementById('mohsList');
     const mohsBadge = document.getElementById('mohsBadge');
+    const acceptedMohsCount = acceptedMohsProvs.size;
     mohsBadge.textContent = nonMohsDerms.length + (nonMohsDerms.length === 0 ? ' ✓' : ' to review');
     mohsBadge.className = 'count-badge ' + (nonMohsDerms.length === 0 ? 'ok' : '');
     window._nonMohsDerms = nonMohsDerms;
     if (nonMohsDerms.length === 0) {
-      mohsEl.innerHTML = '<p class="empty">All dermatology providers have a Mohs indicator.</p>';
+      mohsEl.innerHTML = `<p class="empty">All dermatology providers have a Mohs indicator or are whitelisted.${acceptedMohsCount > 0 ? ` (${acceptedMohsCount} whitelisted — <button onclick="clearAcceptedMohs()" style="background:none;border:none;color:#0a4d3c;text-decoration:underline;cursor:pointer;font-size:inherit;">clear</button>)` : ''}</p>`;
     } else {
-      mohsEl.innerHTML = `<div style="margin-bottom:0.75rem;"><button class="btn-primary" onclick="copyDermsForAI()">📋 Copy for AI Vetting</button> <span style="font-size:0.8rem;color:#666;margin-left:0.5rem;">Paste into ChatGPT or Claude to check Mohs credentials before deleting</span></div>` +
+      mohsEl.innerHTML =
+        `<div class="bulk-bar">
+          <button class="btn-primary" onclick="copyDermsForAI()">📋 Copy for AI Vetting</button>
+          <span style="font-size:0.8rem;color:#666;">Paste into ChatGPT or Claude to check Mohs credentials before deleting</span>
+          ${acceptedMohsCount > 0 ? `<span class="accepted-info">${acceptedMohsCount} whitelisted — <button onclick="clearAcceptedMohs()" style="background:none;border:none;color:#0a4d3c;text-decoration:underline;cursor:pointer;font-size:0.75rem;">clear</button></span>` : ''}
+        </div>` +
         nonMohsDerms.map(p => {
-        const name = [p.first_name, p.last_name, p.degree].filter(Boolean).join(' ');
-        const detail = [p.title, p.priority ? 'Tier ' + p.priority : '', p.is_target ? 'TARGET' : 'not target'].filter(Boolean).join(' · ');
-        const noteSnip = (p.general_notes || '').substring(0, 120);
-        return `<div class="row-card danger" id="prov-mohs-${p.id}">
-          <div class="row-info">
-            <div class="row-name">${name}</div>
-            <div class="row-detail">${detail || 'No title/tier'}</div>
-            ${noteSnip ? `<div class="row-detail" style="margin-top:0.2rem;font-style:italic;">${noteSnip}${(p.general_notes||'').length > 120 ? '...' : ''}</div>` : ''}
-          </div>
-          <div class="row-actions">
-            <button class="btn-del" onclick="deleteProvider('${p.id}', '${name.replace(/'/g,"\\'")}', this)">Delete Provider</button>
-          </div>
-        </div>`;
-      }).join('');
+          const name = [p.first_name, p.last_name, p.degree].filter(Boolean).join(' ');
+          const detail = [p.title, p.priority ? 'Tier ' + p.priority : '', p.is_target ? 'TARGET' : 'not target'].filter(Boolean).join(' · ');
+          const noteSnip = (p.general_notes || '').substring(0, 120);
+          return `<div class="row-card danger" id="prov-mohs-${p.id}">
+            <div class="row-info">
+              <div class="row-name">${name}</div>
+              <div class="row-detail">${detail || 'No title/tier'}</div>
+              ${noteSnip ? `<div class="row-detail" style="margin-top:0.2rem;font-style:italic;">${noteSnip}${(p.general_notes||'').length > 120 ? '...' : ''}</div>` : ''}
+            </div>
+            <div class="row-actions">
+              <button class="btn-accept" onclick="acceptMohsProvider('${p.id}',this.closest('.row-card'))" title="Keep in CRM — not Mohs but still a valuable contact">✓ Keep (Non-Mohs)</button>
+              <button class="btn-del" onclick="deleteProvider('${p.id}', '${name.replace(/'/g,"\\'")}', this)">Delete Provider</button>
+            </div>
+          </div>`;
+        }).join('');
     }
 
     // === SECTION SPECIALTY: Corrupted specialty values ===
@@ -971,59 +1017,36 @@ async function runAudit() {
     }
 
     // === SECTION 1: Out-of-territory locations ===
-    const ootLocs = (locations || []).filter(l => !guessCounty(l.city));
+    const acceptedOotLocs = getAcceptedOot();
+    const ootLocs = (locations || []).filter(l => !guessCounty(l.city) && !acceptedOotLocs.has(l.id));
     const ootEl = document.getElementById('ootList');
     const ootBadge = document.getElementById('ootBadge');
+    const acceptedOotCount = acceptedOotLocs.size;
     ootBadge.textContent = ootLocs.length + (ootLocs.length === 0 ? ' ✓' : ' issues');
     ootBadge.className = 'count-badge ' + (ootLocs.length === 0 ? 'ok' : '');
     if (ootLocs.length === 0) {
-      ootEl.innerHTML = '<p class="empty">No out-of-territory locations found.</p>';
+      ootEl.innerHTML = `<p class="empty">No out-of-territory locations found.${acceptedOotCount > 0 ? ` (${acceptedOotCount} whitelisted — <button onclick="clearAcceptedOot()" style="background:none;border:none;color:#0a4d3c;text-decoration:underline;cursor:pointer;font-size:inherit;">clear</button>)` : ''}</p>`;
     } else {
-      ootEl.innerHTML = ootLocs.map(loc => {
-        const practice = practiceMap[loc.practice_id] || {};
-        const provCount = (assignedProvidersByLoc[loc.id] || new Set()).size;
-        const addrStr = [loc.address, loc.city, loc.zip].filter(Boolean).join(', ');
-        return `<div class="row-card danger" id="loc-${loc.id}">
-          <div class="row-info">
-            <div class="row-name">${practice.name || '(No practice)'} <span class="tag tag-oot">OUT OF TERRITORY</span></div>
-            <div class="row-detail">${addrStr || 'No address'} &nbsp;·&nbsp; ${provCount} provider(s) assigned</div>
-          </div>
-          <div class="row-actions">
-            ${practice.id ? `<button class="btn-edit" onclick="window.open('index.html?goto=practice&id=${practice.id}','_blank')">Edit Profile</button>` : ''}
-            <button class="btn-del" onclick="deleteLocation('${loc.id}', '${(addrStr||loc.city||'location').replace(/'/g,"\\'")}', this)">Delete Location</button>
-          </div>
-        </div>`;
-      }).join('');
+      ootEl.innerHTML = (acceptedOotCount > 0 ? `<div class="bulk-bar"><span class="accepted-info">${acceptedOotCount} whitelisted — <button onclick="clearAcceptedOot()" style="background:none;border:none;color:#0a4d3c;text-decoration:underline;cursor:pointer;font-size:0.75rem;">clear</button></span></div>` : '') +
+        ootLocs.map(loc => {
+          const practice = practiceMap[loc.practice_id] || {};
+          const provCount = (assignedProvidersByLoc[loc.id] || new Set()).size;
+          const addrStr = [loc.address, loc.city, loc.zip].filter(Boolean).join(', ');
+          return `<div class="row-card danger" id="loc-${loc.id}">
+            <div class="row-info">
+              <div class="row-name">${practice.name || '(No practice)'} <span class="tag tag-oot">OUT OF TERRITORY</span></div>
+              <div class="row-detail">${addrStr || 'No address'} &nbsp;·&nbsp; ${provCount} provider(s) assigned</div>
+            </div>
+            <div class="row-actions">
+              <button class="btn-accept" onclick="acceptOotLocation('${loc.id}',this.closest('.row-card'))" title="National/multi-state account — keep despite OOT address">✓ Accept</button>
+              ${practice.id ? `<button class="btn-edit" onclick="window.open('index.html?goto=practice&id=${practice.id}','_blank')">Edit Profile</button>` : ''}
+              <button class="btn-del" onclick="deleteLocation('${loc.id}', '${(addrStr||loc.city||'location').replace(/'/g,"\\'")}', this)">Delete Location</button>
+            </div>
+          </div>`;
+        }).join('');
     }
 
-    // === SECTION 2: Self-named practices ===
-    const selfPracs = (practices || []).filter(p => looksLikeName(p.name, providers || []));
-    const selfEl = document.getElementById('selfList');
-    const selfBadge = document.getElementById('selfBadge');
-    selfBadge.textContent = selfPracs.length + (selfPracs.length === 0 ? ' ✓' : ' issues');
-    selfBadge.className = 'count-badge ' + (selfPracs.length === 0 ? 'ok' : '');
-    window._selfPracs = selfPracs;
-    if (selfPracs.length === 0) {
-      selfEl.innerHTML = '<p class="empty">No self-named practices detected.</p>';
-    } else {
-      selfEl.innerHTML = `<div style="margin-bottom:0.75rem;"><button class="btn-primary" onclick="copySelfPracsForAI()">📋 Copy for AI Vetting</button> <span style="font-size:0.8rem;color:#666;margin-left:0.5rem;">Ask AI whether these are real solo practices or import duplicates</span></div>` +
-        selfPracs.map(prac => {
-        const locs = locsByPractice[prac.id] || [];
-        const totalProviders = new Set();
-        locs.forEach(l => (assignedProvidersByLoc[l.id] || new Set()).forEach(pid => totalProviders.add(pid)));
-        const cities = [...new Set(locs.map(l => l.city).filter(Boolean))].join(', ');
-        return `<div class="row-card warn" id="prac-${prac.id}">
-          <div class="row-info">
-            <div class="row-name">${prac.name} <span class="tag tag-self">SELF-NAMED</span></div>
-            <div class="row-detail">${locs.length} location(s) &nbsp;·&nbsp; ${totalProviders.size} provider(s) &nbsp;·&nbsp; ${cities || 'no city'}</div>
-          </div>
-          <div class="row-actions">
-            <button class="btn-edit" onclick="window.open('index.html?goto=practice&id=${prac.id}','_blank')">Edit Profile</button>
-            <button class="btn-del" onclick="deletePracticeAndLocations('${prac.id}', '${prac.name.replace(/'/g,"\\'")}', this)">Delete Practice</button>
-          </div>
-        </div>`;
-      }).join('');
-    }
+    // Self-named practices merged into soloSelfPracs above — window._selfPracs already set
 
     // === SECTION 3: Orphaned providers (0 locations) ===
     const orphans = (providers || []).filter(p => !(assignedLocsByProvider[p.id]?.size > 0));
@@ -1162,7 +1185,7 @@ async function runAudit() {
     }
 
     // Stats
-    const totalIssues = uniquePhantoms.length + nonMohsDerms.length + ootLocs.length + selfPracs.length + orphans.length + multiPhoneLocs.length + totalBadSpecialty + badLabels.length;
+    const totalIssues = soloSelfPracs.length + nonMohsDerms.length + ootLocs.length + orphans.length + multiPhoneLocs.length + totalBadSpecialty + badLabels.length;
     document.getElementById('aiWorkflow').style.display = 'block';
     document.getElementById('statsGrid').style.display = 'grid';
     document.getElementById('statsGrid').innerHTML = `
@@ -1170,10 +1193,9 @@ async function runAudit() {
       <div class="stat-card"><div class="stat-num">${(practices||[]).length}</div><div class="stat-label">Total Practices</div></div>
       <div class="stat-card"><div class="stat-num">${(locations||[]).length}</div><div class="stat-label">Total Locations</div></div>
       <div class="stat-card"><div class="stat-num ${totalBadSpecialty > 0 ? 'bad' : ''}">${totalBadSpecialty}</div><div class="stat-label">Bad Specialty Values</div></div>
-      <div class="stat-card"><div class="stat-num ${uniquePhantoms.length > 0 ? 'bad' : ''}">${uniquePhantoms.length}</div><div class="stat-label">Phantom Locations</div></div>
-      <div class="stat-card"><div class="stat-num ${nonMohsDerms.length > 0 ? 'bad' : ''}">${nonMohsDerms.length}</div><div class="stat-label">Non-Mohs Derms</div></div>
-      <div class="stat-card"><div class="stat-num ${ootLocs.length > 0 ? 'bad' : ''}">${ootLocs.length}</div><div class="stat-label">OOT Locations</div></div>
-      <div class="stat-card"><div class="stat-num ${selfPracs.length > 0 ? 'warn' : ''}">${selfPracs.length}</div><div class="stat-label">Self-Named Practices</div></div>
+      <div class="stat-card"><div class="stat-num ${nonMohsDerms.length > 0 ? 'bad' : ''}">${nonMohsDerms.length}</div><div class="stat-label">Unconfirmed Mohs</div></div>
+      <div class="stat-card"><div class="stat-num ${ootLocs.length > 0 ? 'warn' : ''}">${ootLocs.length}</div><div class="stat-label">OOT Locations</div></div>
+      <div class="stat-card"><div class="stat-num ${soloSelfPracs.length > 0 ? 'warn' : ''}">${soloSelfPracs.length}</div><div class="stat-label">Solo/Self-Named</div></div>
       <div class="stat-card"><div class="stat-num ${orphans.length > 0 ? 'warn' : ''}">${orphans.length}</div><div class="stat-label">Unlinked Providers</div></div>
       <div class="stat-card"><div class="stat-num ${badLabels.length > 0 ? 'warn' : ''}">${badLabels.length}</div><div class="stat-label">Generic Labels</div></div>
     `;
