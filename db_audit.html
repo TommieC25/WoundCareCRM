@@ -975,6 +975,7 @@ async function runAudit() {
             </div>
             <div class="row-actions">
               <button class="btn-accept" onclick="acceptMohsProvider('${p.id}',this.closest('.row-card'))" title="Keep in CRM — not Mohs but still a valuable contact">✓ Keep (Non-Mohs)</button>
+              <button class="btn-edit" onclick="window.open('index.html?goto=provider&id=${p.id}','_blank')">Edit Profile</button>
               <button class="btn-del" onclick="deleteProvider('${p.id}', '${name.replace(/'/g,"\\'")}', this)">Delete Provider</button>
             </div>
           </div>`;
@@ -1209,6 +1210,7 @@ async function runAudit() {
               <input type="text" id="lbl-input-${l.id}" value="${lbl.replace(/"/g,'&quot;')}" placeholder="${placeholder}" style="flex:1;min-width:160px;padding:0.35rem 0.6rem;font-size:0.82rem;border:1.5px solid #fcd34d;border-radius:6px;font-family:inherit;">
               <button class="btn-primary" onclick="saveLocLabel('${l.id}',this)" style="white-space:nowrap;">Save Label</button>
               <button onclick="skipLocLabel('${l.id}')" style="background:#e5e7eb;color:#374151;white-space:nowrap;">Skip</button>
+              ${pracId ? `<button class="btn-edit" onclick="window.open('index.html?goto=practice&id=${pracId}','_blank')" style="white-space:nowrap;">Edit Profile</button>` : ''}
               <button class="btn-del" onclick="deleteLocation('${l.id}','${addrSafe}',this)" style="white-space:nowrap;">Del Location</button>
               ${pracId ? `<button class="btn-del" onclick="deletePracticeAndLocations('${pracId}','${pracNameSafe}',this)" style="white-space:nowrap;">Del Practice</button>` : ''}
             </div>
