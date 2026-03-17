@@ -353,13 +353,15 @@ const tierStyles={'1':'background:#ef4444;color:white','2':'background:#f97316;c
 const isStaff=isStaffSpecialty(p.specialty);
 const np=normPriority(p.priority);
 const tierBadge=isStaff?`<div class="tier" style="background:#0891b2;color:white;">Staff</div>`:np?`<div class="tier" style="${tierStyles[np]||''}">P${np}</div>`:'';
+const mobileBadge=p.is_mobile?`<span class="city-badge" style="background:#ede9fe;color:#6d28d9;">🏠 Mobile</span>`:'';
 return `
 <li class="physician-item ${currentPhysician?.id === p.id ? 'active' : ''}"
 onclick="viewPhysician('${p.id}')">
 <div class="name">${fmtName(p)}</div>
 <div class="practice">${practiceName}</div>
 ${tierBadge}
-${cityDisplay ? `<span class="city-badge">${cityDisplay}</span>` : ''}
+${mobileBadge}
+${!p.is_mobile && cityDisplay ? `<span class="city-badge">${cityDisplay}</span>` : ''}
 ${locationCount > 1 ? `<span class="city-badge">+${locationCount - 1} more</span>` : ''}
 </li>
 `}).join('');
