@@ -309,25 +309,6 @@ $('addTaskLocationId').value = locationId || '';
 $('addTaskModalTitle').textContent = 'New Task';
 // mode: 'provider' | 'practice' | 'global'
 const mode = physicianId ? 'provider' : locationId ? 'practice' : 'global';
-// Auto-prefix task note with practice name when opened from a profile
-if (mode !== 'global') {
-  let prefixPracticeName = '';
-  if (physicianId) {
-    const assigns = physicianAssignments[physicianId] || [];
-    const primaryAssign = assigns.find(a => a.is_primary) || assigns[0];
-    if (primaryAssign) {
-      const loc = practiceLocations.find(l => l.id === primaryAssign.practice_location_id);
-      if (loc) { const prac = practices.find(p => p.id === loc.practice_id); if (prac) prefixPracticeName = prac.name; }
-    }
-  } else if (locationId) {
-    const loc = practiceLocations.find(l => l.id === locationId);
-    if (loc) { const prac = practices.find(p => p.id === loc.practice_id); if (prac) prefixPracticeName = prac.name; }
-  }
-  if (prefixPracticeName) {
-    $('addTaskNote').value = prefixPracticeName + ' \u2014 ';
-    setTimeout(() => { const el = $('addTaskNote'); el.focus(); el.setSelectionRange(el.value.length, el.value.length); }, 110);
-  }
-}
 // Context block
 const ctx = $('addTaskContext');
 if(ctx){ctx.innerHTML=_buildTaskContext(physicianId,locationId);ctx.style.display=mode!=='global'?'block':'none';}
