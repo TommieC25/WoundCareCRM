@@ -1108,6 +1108,7 @@ async function runAudit() {
               ${noteSnip ? `<div class="row-detail" style="margin-top:0.2rem;font-style:italic;">${noteSnip}${p.general_notes?.length > 100 ? '...' : ''}</div>` : ''}
             </div>
             <div class="row-actions">
+              <button class="btn-edit" onclick="window.open('index.html?goto=provider&id=${p.id}','_blank')">Edit Profile</button>
               <button class="btn-accept" onclick="markProviderMobile('${p.id}','${name.replace(/'/g,"\\'")}',this.closest('.row-card'))" title="Mobile / Home Care — visits patients, no fixed office">🏠 Mobile</button>
               <button class="btn-del" onclick="deleteProvider('${p.id}', '${name.replace(/'/g,"\\'")}', this)">Delete Provider</button>
             </div>
