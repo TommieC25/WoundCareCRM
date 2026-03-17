@@ -35,8 +35,15 @@ document.addEventListener('DOMContentLoaded', async () => {
 setToday();
 await loadAllData();
 setupRealtimeSubscription();
-activitySubTab = 'history'; // start on combined history view
-setView('activity'); // default landing: Activity → History tab
+// Deep-link routing: ?goto=practice&id=UUID (used by db_audit.html Edit Profile buttons)
+const _goto = new URLSearchParams(window.location.search);
+if (_goto.get('goto') === 'practice' && _goto.get('id')) {
+  setView('practices');
+  viewPractice(_goto.get('id'));
+} else {
+  activitySubTab = 'history'; // start on combined history view
+  setView('activity'); // default landing: Activity → History tab
+}
 // iOS body scroll lock — prevents background scroll when any modal is open
 // On iOS Safari (especially standalone/Home Screen), position:fixed modals
 // still allow the body to scroll behind them unless the body is locked.
