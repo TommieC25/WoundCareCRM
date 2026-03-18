@@ -83,9 +83,9 @@ function buildGoogleCalendarUrl(r, phys, loc, practice, timeVal) {
   if (np) parts.push('Tier ' + np);
   if (dn) parts.push(dn);
   let location = '';
-  if (loc) { const lp = [practice ? practice.name : null, loc.address, loc.city, loc.zip].filter(Boolean); location = lp.join(', '); }
+  if (loc) { const cityState = [loc.city, loc.zip ? 'FL ' + loc.zip : 'FL'].filter(Boolean).join(', '); const lp = [practice ? practice.name : null, loc.address, cityState].filter(Boolean); location = lp.join(', '); }
   let calDates;if(timeVal){const[hh,mm]=timeVal.split(':');const dEnd=new Date(r.reminder_date+'T'+timeVal+':00');dEnd.setHours(dEnd.getHours()+1);const endStr=r.reminder_date.replace(/-/g,'')+`T${String(dEnd.getHours()).padStart(2,'0')}${String(dEnd.getMinutes()).padStart(2,'0')}00`;calDates=ds+'T'+hh+mm+'00/'+endStr;}else{const dsNext=(()=>{const d=new Date(r.reminder_date+'T12:00:00');d.setDate(d.getDate()+1);return d.toISOString().slice(0,10).replace(/-/g,'');})();calDates=ds+'/'+dsNext;}
-  const params = new URLSearchParams({ action:'TEMPLATE', text:'Visit \u2014 '+name, dates:calDates, details:parts.join('\n'), location });
+  const params = new URLSearchParams({ action:'TEMPLATE', text: name, dates:calDates, details:parts.join('\n'), location, ctz:'America/New_York' });
   return 'https://calendar.google.com/calendar/render?' + params.toString();
 }
 function exportTaskToCalendar(logId) {
