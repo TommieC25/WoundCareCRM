@@ -182,7 +182,7 @@ const data={provider_id:null,contact_date:dateVal,author:authorVal,notes:noteTex
 if(editingContactId){const{error}=await db.from('contact_logs').update(data).eq('id',editingContactId);if(error)throw error;showToast('Note updated','success');}
 else{const{error}=await db.from('contact_logs').insert(data);if(error)throw error;showToast('Practice note logged','success');}
 if(currentView==='activity'){renderActivityTabView();}
-if(!editingContactId&&reminderOn){setTimeout(()=>{closeContactModal();openAddTaskModal(null,locVal);},400);}
+if(reminderOn){setTimeout(()=>{closeContactModal();openAddTaskModal(null,locVal);},400);}
 else{setTimeout(()=>closeContactModal(),500);}
 });
 return;
@@ -211,7 +211,7 @@ _savePhysician.last_contact=dateVal;
 if(currentPhysician&&currentPhysician.id===_savePhysician.id){currentPhysician.last_contact=dateVal;await loadContactLogs(currentPhysician.id);}
 if(currentView==='activity'){renderActivityTabView();}else if(currentPhysician&&currentPhysician.id===_savePhysician.id){renderProfile();}
 // If follow-up task requested, open separate task modal after closing activity modal
-if(!editingContactId&&reminderOn){
+if(reminderOn){
 setTimeout(()=>{closeContactModal();openAddTaskModal(_savePhysician.id,locVal);},400);
 }else{
 setTimeout(()=>closeContactModal(),500);
@@ -241,9 +241,8 @@ const taskMatch = notes.match(/\s*\|\s*\[Task:\s*(.*?)\]$/);
 if (taskMatch) notes = notes.slice(0, taskMatch.index).trim();
 $('contactTime').value = time;
 $('contactNotes').value = notes;
-// Tasks are now separate records — hide follow-up section when editing an activity
-if($('reminderRow'))$('reminderRow').style.display='none';
 $('setReminder').checked = false;
+if($('reminderRow'))$('reminderRow').style.display='block';
 $('contactModal').classList.add('active');
 }
 
