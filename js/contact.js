@@ -214,7 +214,7 @@ _savePhysician.last_contact=dateVal;
 if(currentPhysician&&currentPhysician.id===_savePhysician.id){currentPhysician.last_contact=dateVal;await loadContactLogs(currentPhysician.id);}
 if(currentView==='activity'){renderActivityTabView();}else if(currentPhysician&&currentPhysician.id===_savePhysician.id){renderProfile();}
 // If follow-up task requested, open separate task modal after closing activity modal
-if(!editingContactId&&reminderOn){
+if(reminderOn){
 setTimeout(()=>{closeContactModal();openAddTaskModal(_savePhysician.id,locVal);},400);
 }else{
 setTimeout(()=>closeContactModal(),500);
@@ -244,8 +244,8 @@ const taskMatch = notes.match(/\s*\|\s*\[Task:\s*(.*?)\]$/);
 if (taskMatch) notes = notes.slice(0, taskMatch.index).trim();
 $('contactTime').value = time;
 $('contactNotes').value = notes;
-// Tasks are now separate records — hide follow-up section when editing an activity
-if($('reminderRow'))$('reminderRow').style.display='none';
+// Show follow-up reminder option when editing too
+if($('reminderRow'))$('reminderRow').style.display='block';
 $('setReminder').checked = false;
 $('contactModal').classList.add('active');
 }
@@ -308,12 +308,15 @@ const tm=(log.notes||'').match(/^\[(\d{1,2}:\d{2})\]\s*/);
 $('contactTime').value=tm?tm[1]:'';
 $('contactNotes').value=tm?log.notes.slice(tm[0].length):(log.notes||'');
 if($('locationSelectRow'))$('locationSelectRow').style.display='none';
-if($('reminderRow'))$('reminderRow').style.display='none';
+if($('reminderRow'))$('reminderRow').style.display='block';
+$('setReminder').checked=false;
 const pr=$('practicePhysSelectRow');if(pr)pr.style.display='none';
+const _editLog=log;
 $('contactForm').onsubmit=async function(ev){
 ev.preventDefault();
 const tv=$('contactTime').value,nv=$('contactNotes').value;
 const newNote=tv?`[${tv}] ${nv}`:nv;
+const reminderOn=$('setReminder').checked;
 await withSave('contactSaveBtn','Save Changes',async()=>{
 const{error}=await db.from('contact_logs').update({notes:newNote,author:$('authorName').value,contact_date:$('contactDate').value}).eq('id',editingContactId);
 if(error)throw error;
@@ -322,6 +325,11 @@ closeContactModal();
 $('contactForm').onsubmit=function(ev){saveContact(ev);return false;};
 await loadAllData();
 if(currentPractice){renderPracticeProfile();await loadPracticeActivity(currentPractice.id);}
+if(reminderOn){
+const provId=_editLog.provider_id||null;
+const locId=_editLog.practice_location_id||null;
+setTimeout(()=>openAddTaskModal(provId,locId),400);
+}
 });
 return false;
 };
