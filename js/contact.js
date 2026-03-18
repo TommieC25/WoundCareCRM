@@ -44,11 +44,7 @@ const locations = assignments.map(a => {
 const loc = practiceLocations.find(l => l.id === a.practice_location_id);
 if (loc) {
 const practice = practices.find(p => p.id === loc.practice_id);
-const locLabel = loc.label && loc.label !== loc.city ? loc.label : loc.city || 'Office';
-return {
-id: loc.id,
-label: `${practice ? practice.name + ' — ' : ''}${locLabel}${loc.address ? ' ('+loc.address+')' : ''}`
-};
+return { id: loc.id, label: fmtLocOption(loc, practice) };
 }
 return null;
 }).filter(Boolean);
@@ -94,19 +90,20 @@ list.innerHTML = colleagues.map(p => `<div class="selector-option" style="margin
 
 function closeContactModal(){closeModal('contactModal');}
 
-function filterContactProviders() {
-const q=($('contactProviderSearch').value||'').toLowerCase().trim();
-const results=$('contactProviderResults');
+function _filterPhysSearch(inputId, resultsId, onSelectFn) {
+const q=($(inputId).value||'').toLowerCase().trim();
+const results=$(resultsId);
 if(!q){results.style.display='none';return;}
 const matches=physicians.filter(p=>fmtName(p).toLowerCase().includes(q)||(p.specialty||'').toLowerCase().includes(q)).slice(0,8);
 if(!matches.length){results.innerHTML='<div style="padding:0.5rem 0.75rem;font-size:0.85rem;color:#999;">No providers found</div>';results.style.display='block';return;}
 results.innerHTML=matches.map(p=>{
   const locs=(physicianAssignments[p.id]||[]).map(a=>practiceLocations.find(l=>l.id===a.practice_location_id)).filter(Boolean);
   const prac=locs.length?(practices.find(pr=>pr.id===locs[0].practice_id)||{}).name||'':'';
-  return `<div onclick="selectContactProvider('${p.id}')" style="padding:0.5rem 0.75rem;cursor:pointer;border-bottom:1px solid #f0f0f0;font-size:0.875rem;" onmouseover="this.style.background='#f0f9f4'" onmouseout="this.style.background=''"><span style="font-weight:600;">${fmtName(p)}</span>${prac?`<span style="color:#888;font-size:0.8rem;"> · ${prac}</span>`:''}</div>`;
+  return `<div onclick="${onSelectFn}('${p.id}')" style="padding:0.5rem 0.75rem;cursor:pointer;border-bottom:1px solid #f0f0f0;font-size:0.875rem;" onmouseover="this.style.background='#f0f9f4'" onmouseout="this.style.background=''"><span style="font-weight:600;">${fmtName(p)}</span>${prac?`<span style="color:#888;font-size:0.8rem;"> · ${prac}</span>`:''}</div>`;
 }).join('');
 results.style.display='block';
 }
+function filterContactProviders(){_filterPhysSearch('contactProviderSearch','contactProviderResults','selectContactProvider');}
 function filterContactPractices() {
 const q=($('contactPracticeSearch').value||'').toLowerCase().trim();
 const res=$('contactPracticeResults');
@@ -141,7 +138,7 @@ $('contactProviderResults').style.display='none';
 $('contactPracticeSearch').value='';$('contactPracticeSelectedId').value='';
 // Populate location dropdown for this provider
 const assignments=(physicianAssignments[physId]||[]);
-const locs=assignments.map(a=>{const loc=practiceLocations.find(l=>l.id===a.practice_location_id);if(!loc)return null;const prac=practices.find(pr=>pr.id===loc.practice_id);return{id:loc.id,label:`${prac?prac.name+' — ':''}${loc.label&&loc.label!==loc.city?loc.label:loc.city||'Office'}${loc.address?' ('+loc.address+')':''}`};}).filter(Boolean);
+const locs=assignments.map(a=>{const loc=practiceLocations.find(l=>l.id===a.practice_location_id);if(!loc)return null;const prac=practices.find(pr=>pr.id===loc.practice_id);return{id:loc.id,label:fmtLocOption(loc,prac)};}).filter(Boolean);
 const sel=$('contactLocation');
 sel.innerHTML=(locs.length===0?'<option value="">No locations assigned</option>':'<option value="">Select location...</option>')+locs.map(l=>`<option value="${l.id}">${l.label}</option>`).join('');
 $('locationSelectRow').style.display=locs.length<=1?'none':'block';
@@ -185,7 +182,7 @@ const data={provider_id:null,contact_date:dateVal,author:authorVal,notes:noteTex
 if(editingContactId){const{error}=await db.from('contact_logs').update(data).eq('id',editingContactId);if(error)throw error;showToast('Note updated','success');}
 else{const{error}=await db.from('contact_logs').insert(data);if(error)throw error;showToast('Practice note logged','success');}
 if(currentView==='activity'){renderActivityTabView();}
-if(!editingContactId&&reminderOn){setTimeout(()=>{closeContactModal();openAddTaskModal(null,locVal);},400);}
+if(reminderOn){setTimeout(()=>{closeContactModal();openAddTaskModal(null,locVal);},400);}
 else{setTimeout(()=>closeContactModal(),500);}
 });
 return;
@@ -244,9 +241,8 @@ const taskMatch = notes.match(/\s*\|\s*\[Task:\s*(.*?)\]$/);
 if (taskMatch) notes = notes.slice(0, taskMatch.index).trim();
 $('contactTime').value = time;
 $('contactNotes').value = notes;
-// Show follow-up reminder option when editing too
-if($('reminderRow'))$('reminderRow').style.display='block';
 $('setReminder').checked = false;
+if($('reminderRow'))$('reminderRow').style.display='block';
 $('contactModal').classList.add('active');
 }
 
@@ -360,6 +356,7 @@ const _sb=$('addTaskSaveBtn');if(_sb){_sb.textContent='Save Task';_sb.className=
 if($('addTaskEditId'))$('addTaskEditId').value = '';
 $('addTaskNote').value = '';
 if($('addTaskAuthor'))$('addTaskAuthor').value = '';
+if($('addTaskTime'))$('addTaskTime').value = '';
 $('addTaskPhysicianId').value = physicianId || '';
 $('addTaskLocationId').value = locationId || '';
 $('addTaskModalTitle').textContent = 'New Task';
@@ -454,19 +451,7 @@ const locs=practiceLocations.filter(l=>l.practice_id===currentPractice.id);
 openAddTaskModal(null,locs.length>0?locs[0].id:null);
 }
 
-function filterAddTaskProviders() {
-const q=($('addTaskProviderSearch').value||'').toLowerCase().trim();
-const results=$('addTaskProviderResults');
-if(!q){results.style.display='none';return;}
-const matches=physicians.filter(p=>fmtName(p).toLowerCase().includes(q)||(p.specialty||'').toLowerCase().includes(q)).slice(0,8);
-if(!matches.length){results.innerHTML='<div style="padding:0.5rem 0.75rem;font-size:0.85rem;color:#999;">No providers found</div>';results.style.display='block';return;}
-results.innerHTML=matches.map(p=>{
-  const locs=(physicianAssignments[p.id]||[]).map(a=>practiceLocations.find(l=>l.id===a.practice_location_id)).filter(Boolean);
-  const prac=locs.length?(practices.find(pr=>pr.id===locs[0].practice_id)||{}).name||'':'';
-  return `<div onclick="selectAddTaskProvider('${p.id}')" style="padding:0.5rem 0.75rem;cursor:pointer;border-bottom:1px solid #f0f0f0;font-size:0.875rem;" onmouseover="this.style.background='#f0f9f4'" onmouseout="this.style.background=''"><span style="font-weight:600;">${fmtName(p)}</span>${prac?`<span style="color:#888;font-size:0.8rem;"> · ${prac}</span>`:''}</div>`;
-}).join('');
-results.style.display='block';
-}
+function filterAddTaskProviders(){_filterPhysSearch('addTaskProviderSearch','addTaskProviderResults','selectAddTaskProvider');}
 
 function selectAddTaskProvider(physicianId) {
 const phys=physicians.find(p=>p.id===physicianId);
@@ -480,7 +465,7 @@ const locs=assignments.map(a=>{
   const loc=practiceLocations.find(l=>l.id===a.practice_location_id);
   if(!loc)return null;
   const prac=practices.find(pr=>pr.id===loc.practice_id);
-  return{id:loc.id,label:`${prac?prac.name+' — ':''}${loc.label&&loc.label!==loc.city?loc.label:loc.city||'Office'}${loc.address?' ('+loc.address+')':''}`};
+  return{id:loc.id,label:fmtLocOption(loc,prac)};
 }).filter(Boolean);
 const sel=$('addTaskLocationSelect');
 sel.innerHTML='<option value="">No specific location</option>'+locs.map(l=>`<option value="${l.id}">${l.label}</option>`).join('');
@@ -512,6 +497,7 @@ if(rec.provider_id){selectAddTaskProvider(rec.provider_id);if(rec.practice_locat
 else{const ctx=$('addTaskContext');if(ctx){ctx.innerHTML=_buildTaskContext(null,rec.practice_location_id);ctx.style.display=rec.practice_location_id?'block':'none';}}
 $('addTaskModalTitle').textContent = 'Edit Task';
 if ($('addTaskAuthor')) $('addTaskAuthor').value = rec.author || '';
+if ($('addTaskTime')) $('addTaskTime').value = tm ? tm[1] : '';
 populateReminderDateButtons('task');
 if (rec.reminder_date) selectReminderDate(rec.reminder_date, '', 'task');
 $('addTaskModal').classList.add('active');
@@ -549,14 +535,15 @@ if (physicianId && currentPhysician && currentPhysician.id === physicianId) { aw
 if (currentView === 'activity') renderActivityTabView();
 if (!editId && _newRec && date && date !== '2099-12-31') {
 const _p=physicianId?physicians.find(p=>p.id===physicianId):null,_l=locationId?practiceLocations.find(l=>l.id===locationId):null,_pr=_l?practices.find(p=>p.id===_l.practice_id):null;
-const calUrl=buildGoogleCalendarUrl(_newRec,_p,_l,_pr);
+const _taskTime=($('addTaskTime')||{}).value||'';
+const calUrl=buildGoogleCalendarUrl(_newRec,_p,_l,_pr,_taskTime);
 const _tc=$('toastContainer'),_t=document.createElement('div');
 _t.className='toast success';
 _t.style.cssText='display:flex;align-items:center;justify-content:space-between;gap:0.75rem;padding:0.85rem 1rem;flex-wrap:wrap;';
 const _a=document.createElement('a');_a.href=calUrl;_a.target='_blank';_a.rel='noopener';
 _a.textContent='📅 Google Cal';_a.style.cssText='color:white;font-weight:600;text-decoration:underline;font-size:0.95rem;white-space:nowrap;';
 const _b=document.createElement('button');_b.textContent='🍎 Apple Cal';_b.style.cssText='background:none;border:1px solid rgba(255,255,255,0.6);color:white;font-weight:600;font-size:0.95rem;cursor:pointer;padding:0.2rem 0.5rem;border-radius:4px;white-space:nowrap;';
-_b.onclick=()=>{downloadTaskICS(_newRec,_p,_l,_pr,'');};
+_b.onclick=()=>{downloadTaskICS(_newRec,_p,_l,_pr,_taskTime);};
 const _x=document.createElement('button');_x.textContent='×';_x.style.cssText='background:none;border:none;color:white;font-size:1.5rem;line-height:1;cursor:pointer;padding:0;flex-shrink:0;';
 _x.onclick=()=>_t.remove();_t.appendChild(_a);_t.appendChild(_b);_t.appendChild(_x);_tc.appendChild(_t);
 setTimeout(()=>_t.remove(),15000);
