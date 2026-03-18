@@ -198,6 +198,16 @@ input.row-cb{width:16px;height:16px;min-width:16px;flex-shrink:0;cursor:pointer;
   <div id="locLabelList" class="loading">Loading...</div>
 </div>
 
+<!-- Section: Encoding / Character Corruption -->
+<div class="section">
+  <div class="section-header">
+    <span class="section-title">🔤 Name Encoding Issues</span>
+    <span class="count-badge" id="encodingBadge">—</span>
+  </div>
+  <p class="section-note">Provider and practice names containing non-ASCII characters — may indicate import encoding corruption (e.g. "FranÁois" instead of "François"). Edit the corrected spelling inline and click Save.</p>
+  <div id="encodingList" class="loading">Loading...</div>
+</div>
+
 </div>
 
 <div class="toast" id="toast"></div>
@@ -1231,8 +1241,51 @@ async function runAudit() {
       }).join('');
     }
 
+    // Section: Encoding / Character Corruption
+    const nonAscii = /[^\x00-\x7F]/;
+    const encProviders = (providers||[]).filter(p => nonAscii.test(p.first_name||'') || nonAscii.test(p.last_name||''));
+    const encPractices = (practices||[]).filter(p => nonAscii.test(p.name||''));
+    const encTotal = encProviders.length + encPractices.length;
+    const encEl = document.getElementById('encodingList');
+    const encBadge = document.getElementById('encodingBadge');
+    encBadge.textContent = encTotal;
+    encBadge.className = 'count-badge ' + (encTotal > 0 ? '' : 'ok');
+    if (encTotal === 0) {
+      encEl.innerHTML = '<p class="empty">✓ No encoding issues found in provider or practice names.</p>';
+    } else {
+      const rows = [];
+      encProviders.forEach(p => {
+        const fullName = [p.first_name, p.last_name].filter(Boolean).join(' ');
+        const safeId = 'enc_p_' + p.id;
+        rows.push(`<div class="row-card warn" id="encrow_p_${p.id}">
+          <div class="row-info">
+            <div class="row-name">Provider: ${fullName}</div>
+            <div class="row-detail" style="margin-top:0.4rem;display:flex;gap:0.4rem;flex-wrap:wrap;align-items:center;">
+              <input id="enc_fn_${p.id}" type="text" value="${(p.first_name||'').replace(/"/g,'&quot;')}" placeholder="First name" style="padding:0.3rem 0.5rem;font-size:0.85rem;border:1px solid #fcd34d;border-radius:5px;width:130px;">
+              <input id="enc_ln_${p.id}" type="text" value="${(p.last_name||'').replace(/"/g,'&quot;')}" placeholder="Last name" style="padding:0.3rem 0.5rem;font-size:0.85rem;border:1px solid #fcd34d;border-radius:5px;width:130px;">
+              <button class="btn-edit" onclick="fixEncodingProvider('${p.id}')" style="padding:0.3rem 0.75rem;font-size:0.8rem;">Save</button>
+              <button class="btn-view" onclick="document.getElementById('encrow_p_${p.id}').remove()" style="padding:0.3rem 0.6rem;font-size:0.8rem;">Looks OK</button>
+            </div>
+          </div>
+        </div>`);
+      });
+      encPractices.forEach(p => {
+        rows.push(`<div class="row-card warn" id="encrow_prac_${p.id}">
+          <div class="row-info">
+            <div class="row-name">Practice: ${p.name}</div>
+            <div class="row-detail" style="margin-top:0.4rem;display:flex;gap:0.4rem;flex-wrap:wrap;align-items:center;">
+              <input id="enc_prac_${p.id}" type="text" value="${(p.name||'').replace(/"/g,'&quot;')}" style="padding:0.3rem 0.5rem;font-size:0.85rem;border:1px solid #fcd34d;border-radius:5px;width:240px;">
+              <button class="btn-edit" onclick="fixEncodingPractice('${p.id}')" style="padding:0.3rem 0.75rem;font-size:0.8rem;">Save</button>
+              <button class="btn-view" onclick="document.getElementById('encrow_prac_${p.id}').remove()" style="padding:0.3rem 0.6rem;font-size:0.8rem;">Looks OK</button>
+            </div>
+          </div>
+        </div>`);
+      });
+      encEl.innerHTML = rows.join('');
+    }
+
     // Stats
-    const totalIssues = soloSelfPracs.length + nonMohsDerms.length + ootLocs.length + orphans.length + multiPhoneLocs.length + totalBadSpecialty + badLabels.length;
+    const totalIssues = soloSelfPracs.length + nonMohsDerms.length + ootLocs.length + orphans.length + multiPhoneLocs.length + totalBadSpecialty + badLabels.length + encTotal;
     document.getElementById('aiWorkflow').style.display = 'block';
     document.getElementById('statsGrid').style.display = 'grid';
     document.getElementById('statsGrid').innerHTML = `
@@ -1245,6 +1298,7 @@ async function runAudit() {
       <div class="stat-card"><div class="stat-num ${soloSelfPracs.length > 0 ? 'warn' : ''}">${soloSelfPracs.length}</div><div class="stat-label">Solo/Self-Named</div></div>
       <div class="stat-card"><div class="stat-num ${orphans.length > 0 ? 'warn' : ''}">${orphans.length}</div><div class="stat-label">Unlinked Providers</div></div>
       <div class="stat-card"><div class="stat-num ${badLabels.length > 0 ? 'warn' : ''}">${badLabels.length}</div><div class="stat-label">Generic Labels</div></div>
+      <div class="stat-card"><div class="stat-num ${encTotal > 0 ? 'warn' : ''}">${encTotal}</div><div class="stat-label">Encoding Issues</div></div>
     `;
 
     document.getElementById('sections').style.display = 'block';
@@ -1256,6 +1310,26 @@ async function runAudit() {
   } finally {
     btn.textContent = 'Re-Run Audit'; btn.disabled = false;
   }
+}
+
+async function fixEncodingProvider(id) {
+  const fn = document.getElementById('enc_fn_'+id)?.value?.trim();
+  const ln = document.getElementById('enc_ln_'+id)?.value?.trim();
+  if (!fn && !ln) { showToast('Nothing to save', 'error'); return; }
+  const {error} = await db.from('providers').update({first_name:fn, last_name:ln}).eq('id', id);
+  if (error) { showToast('Error: '+error.message, 'error'); return; }
+  showToast('Provider name updated ✓', 'success');
+  const row = document.getElementById('encrow_p_'+id);
+  if (row) { row.className = 'row-card neutral'; row.querySelector('.row-name').textContent = 'Provider: '+fn+' '+ln+' ✓'; row.querySelector('.row-detail').innerHTML = '<span style="color:#10b981;font-size:0.8rem;">Saved</span>'; }
+}
+async function fixEncodingPractice(id) {
+  const name = document.getElementById('enc_prac_'+id)?.value?.trim();
+  if (!name) { showToast('Nothing to save', 'error'); return; }
+  const {error} = await db.from('practices').update({name}).eq('id', id);
+  if (error) { showToast('Error: '+error.message, 'error'); return; }
+  showToast('Practice name updated ✓', 'success');
+  const row = document.getElementById('encrow_prac_'+id);
+  if (row) { row.className = 'row-card neutral'; row.querySelector('.row-name').textContent = 'Practice: '+name+' ✓'; row.querySelector('.row-detail').innerHTML = '<span style="color:#10b981;font-size:0.8rem;">Saved</span>'; }
 }
 </script>
 </body>
