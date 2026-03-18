@@ -304,12 +304,15 @@ const tm=(log.notes||'').match(/^\[(\d{1,2}:\d{2})\]\s*/);
 $('contactTime').value=tm?tm[1]:'';
 $('contactNotes').value=tm?log.notes.slice(tm[0].length):(log.notes||'');
 if($('locationSelectRow'))$('locationSelectRow').style.display='none';
-if($('reminderRow'))$('reminderRow').style.display='none';
+if($('reminderRow'))$('reminderRow').style.display='block';
+$('setReminder').checked=false;
 const pr=$('practicePhysSelectRow');if(pr)pr.style.display='none';
+const _editLog=log;
 $('contactForm').onsubmit=async function(ev){
 ev.preventDefault();
 const tv=$('contactTime').value,nv=$('contactNotes').value;
 const newNote=tv?`[${tv}] ${nv}`:nv;
+const reminderOn=$('setReminder').checked;
 await withSave('contactSaveBtn','Save Changes',async()=>{
 const{error}=await db.from('contact_logs').update({notes:newNote,author:$('authorName').value,contact_date:$('contactDate').value}).eq('id',editingContactId);
 if(error)throw error;
@@ -318,6 +321,11 @@ closeContactModal();
 $('contactForm').onsubmit=function(ev){saveContact(ev);return false;};
 await loadAllData();
 if(currentPractice){renderPracticeProfile();await loadPracticeActivity(currentPractice.id);}
+if(reminderOn){
+const provId=_editLog.provider_id||null;
+const locId=_editLog.practice_location_id||null;
+setTimeout(()=>openAddTaskModal(provId,locId),400);
+}
 });
 return false;
 };
