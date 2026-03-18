@@ -278,6 +278,23 @@ const addr = loc.address || '';
 return pname ? `${pname}${city ? ' · ' + city : ''}` : `${addr}${city ? ', ' + city : ''}`;
 }
 
+// --- Shared helpers for location option labels and task card links ---
+// Formats a location for a <select> option label: "Practice Name — Label (address)"
+function fmtLocOption(loc, prac) {
+const label = loc.label && loc.label !== loc.city ? loc.label : loc.city || 'Office';
+return `${prac ? prac.name + ' — ' : ''}${label}${loc.address ? ' (' + loc.address + ')' : ''}`;
+}
+// Returns a clickable email link for a provider (empty string if no email)
+function getPhysEmailLink(phys) {
+return phys?.email ? ` <a href="mailto:${phys.email}" onclick="event.stopPropagation()" style="color:#0a4d3c;font-size:0.75rem;">✉️ Email</a>` : '';
+}
+// Returns a clickable phone link derived from a task/log record's location (empty string if none)
+function getTaskPhoneLink(r) {
+const locId = r.practice_location_id || (physicianAssignments[r.provider_id]?.find(a=>a.is_primary)||physicianAssignments[r.provider_id]?.[0])?.practice_location_id;
+const loc = locId ? practiceLocations.find(l=>l.id===locId) : null;
+return loc?.phone ? ` <a href="tel:${loc.phone.replace(/\D/g,'')}" onclick="event.stopPropagation()" style="color:#0a4d3c;font-size:0.75rem;">📞 ${fmtPhone(loc.phone)}</a>` : '';
+}
+
 // --- Normalize priority (handles legacy "TIER 3 - MODERATE" and "3" and "P3") ---
 function normPriority(val) {
   if (!val && val !== 0) return null;
@@ -431,10 +448,8 @@ html += `<div style="margin-bottom:1rem;"><div style="font-size:0.75rem;font-wei
 overdue.forEach(r => {
 const phys = r.provider_id ? physicians.find(p => p.id === r.provider_id) : null;
 const physName = phys ? fmtName(phys) : (r.practice_location_id ? getLocationLabel(r.practice_location_id) : 'General Reminder');
-const emailLink = phys?.email ? ` — <a href="mailto:${phys.email}" onclick="event.stopPropagation()" style="color:#0a4d3c;font-size:0.75rem;">✉️ Email</a>` : '';
-const _locId0 = r.practice_location_id || (physicianAssignments[r.provider_id]?.find(a=>a.is_primary)||physicianAssignments[r.provider_id]?.[0])?.practice_location_id;
-const _loc0 = _locId0 ? practiceLocations.find(l=>l.id===_locId0) : null;
-const phoneLink = _loc0?.phone ? ` <a href="tel:${_loc0.phone.replace(/\D/g,'')}" onclick="event.stopPropagation()" style="color:#0a4d3c;font-size:0.75rem;">📞 ${fmtPhone(_loc0.phone)}</a>` : '';
+const emailLink = phys?.email ? ` — ${getPhysEmailLink(phys).trimStart()}` : '';
+const phoneLink = getTaskPhoneLink(r);
 const {displayNotes,taskNote}=parseTaskRecord(r.notes);
 const preview = displayNotes.length > 100 ? displayNotes.substring(0,100) + '...' : displayNotes;
 html += `<div class="contact-entry" style="cursor:pointer;border-left-color:#dc2626;background:#fff5f5;margin-bottom:0.5rem;display:flex;gap:0.5rem;align-items:flex-start;" onclick="openTaskDetailModal('${r.id}')">
@@ -460,10 +475,8 @@ html += `<div style="margin-bottom:0.75rem;"><div style="font-size:0.75rem;font-
 dayReminders.forEach(r => {
 const phys = r.provider_id ? physicians.find(p => p.id === r.provider_id) : null;
 const physName = phys ? fmtName(phys) : (r.practice_location_id ? getLocationLabel(r.practice_location_id) : 'General Reminder');
-const emailLink = phys?.email ? ` — <a href="mailto:${phys.email}" onclick="event.stopPropagation()" style="color:#0a4d3c;font-size:0.75rem;">✉️ Email</a>` : '';
-const _locId1 = r.practice_location_id || (physicianAssignments[r.provider_id]?.find(a=>a.is_primary)||physicianAssignments[r.provider_id]?.[0])?.practice_location_id;
-const _loc1 = _locId1 ? practiceLocations.find(l=>l.id===_locId1) : null;
-const phoneLink = _loc1?.phone ? ` <a href="tel:${_loc1.phone.replace(/\D/g,'')}" onclick="event.stopPropagation()" style="color:#0a4d3c;font-size:0.75rem;">📞 ${fmtPhone(_loc1.phone)}</a>` : '';
+const emailLink = phys?.email ? ` — ${getPhysEmailLink(phys).trimStart()}` : '';
+const phoneLink = getTaskPhoneLink(r);
 const {displayNotes,taskNote}=parseTaskRecord(r.notes);
 const preview = displayNotes.length > 100 ? displayNotes.substring(0,100) + '...' : displayNotes;
 html += `<div class="contact-entry" style="cursor:pointer;border-left-color:#f59e0b;background:#fffbeb;margin-bottom:0.5rem;display:flex;gap:0.5rem;align-items:flex-start;" onclick="openTaskDetailModal('${r.id}')">
@@ -484,10 +497,8 @@ html += `<div style="margin-bottom:0.5rem;"><div style="font-size:0.75rem;font-w
 openReminders.forEach(r => {
 const phys = r.provider_id ? physicians.find(p => p.id === r.provider_id) : null;
 const physName = phys ? fmtName(phys) : (r.practice_location_id ? getLocationLabel(r.practice_location_id) : 'General Reminder');
-const emailLink = phys?.email ? ` — <a href="mailto:${phys.email}" onclick="event.stopPropagation()" style="color:#0a4d3c;font-size:0.75rem;">✉️ Email</a>` : '';
-const _locId2 = r.practice_location_id || (physicianAssignments[r.provider_id]?.find(a=>a.is_primary)||physicianAssignments[r.provider_id]?.[0])?.practice_location_id;
-const _loc2 = _locId2 ? practiceLocations.find(l=>l.id===_locId2) : null;
-const phoneLink = _loc2?.phone ? ` <a href="tel:${_loc2.phone.replace(/\D/g,'')}" onclick="event.stopPropagation()" style="color:#0a4d3c;font-size:0.75rem;">📞 ${fmtPhone(_loc2.phone)}</a>` : '';
+const emailLink = phys?.email ? ` — ${getPhysEmailLink(phys).trimStart()}` : '';
+const phoneLink = getTaskPhoneLink(r);
 const {displayNotes,taskNote}=parseTaskRecord(r.notes);
 const preview = displayNotes.length > 80 ? displayNotes.substring(0,80) + '...' : displayNotes;
 html += `<div class="contact-entry" style="cursor:pointer;border-left-color:#f59e0b;background:#fffbeb;margin-bottom:0.5rem;display:flex;gap:0.5rem;align-items:flex-start;" onclick="openTaskDetailModal('${r.id}')">

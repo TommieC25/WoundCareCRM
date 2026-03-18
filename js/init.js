@@ -98,14 +98,9 @@ if (this.value === 'Podiatry' && !$('quickPhysDegree').value) $('quickPhysDegree
 function localDate(d) { const dt=d||new Date(); return dt.getFullYear()+'-'+String(dt.getMonth()+1).padStart(2,'0')+'-'+String(dt.getDate()).padStart(2,'0'); }
 
 function setToday() {
-const today = new Date();
-const yyyy = today.getFullYear();
-const mm = String(today.getMonth() + 1).padStart(2, '0');
-const dd = String(today.getDate()).padStart(2, '0');
-const hh = String(today.getHours()).padStart(2, '0');
-const min = String(today.getMinutes()).padStart(2, '0');
-$('contactDate').value = `${yyyy}-${mm}-${dd}`;
-$('contactTime').value = `${hh}:${min}`;
+const now = new Date();
+$('contactDate').value = localDate(now);
+$('contactTime').value = String(now.getHours()).padStart(2,'0')+':'+String(now.getMinutes()).padStart(2,'0');
 }
 
 function showToast(message, type = 'info') {
