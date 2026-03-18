@@ -44,11 +44,7 @@ const locations = assignments.map(a => {
 const loc = practiceLocations.find(l => l.id === a.practice_location_id);
 if (loc) {
 const practice = practices.find(p => p.id === loc.practice_id);
-const locLabel = loc.label && loc.label !== loc.city ? loc.label : loc.city || 'Office';
-return {
-id: loc.id,
-label: `${practice ? practice.name + ' — ' : ''}${locLabel}${loc.address ? ' ('+loc.address+')' : ''}`
-};
+return { id: loc.id, label: fmtLocOption(loc, practice) };
 }
 return null;
 }).filter(Boolean);
@@ -94,19 +90,20 @@ list.innerHTML = colleagues.map(p => `<div class="selector-option" style="margin
 
 function closeContactModal(){closeModal('contactModal');}
 
-function filterContactProviders() {
-const q=($('contactProviderSearch').value||'').toLowerCase().trim();
-const results=$('contactProviderResults');
+function _filterPhysSearch(inputId, resultsId, onSelectFn) {
+const q=($(inputId).value||'').toLowerCase().trim();
+const results=$(resultsId);
 if(!q){results.style.display='none';return;}
 const matches=physicians.filter(p=>fmtName(p).toLowerCase().includes(q)||(p.specialty||'').toLowerCase().includes(q)).slice(0,8);
 if(!matches.length){results.innerHTML='<div style="padding:0.5rem 0.75rem;font-size:0.85rem;color:#999;">No providers found</div>';results.style.display='block';return;}
 results.innerHTML=matches.map(p=>{
   const locs=(physicianAssignments[p.id]||[]).map(a=>practiceLocations.find(l=>l.id===a.practice_location_id)).filter(Boolean);
   const prac=locs.length?(practices.find(pr=>pr.id===locs[0].practice_id)||{}).name||'':'';
-  return `<div onclick="selectContactProvider('${p.id}')" style="padding:0.5rem 0.75rem;cursor:pointer;border-bottom:1px solid #f0f0f0;font-size:0.875rem;" onmouseover="this.style.background='#f0f9f4'" onmouseout="this.style.background=''"><span style="font-weight:600;">${fmtName(p)}</span>${prac?`<span style="color:#888;font-size:0.8rem;"> · ${prac}</span>`:''}</div>`;
+  return `<div onclick="${onSelectFn}('${p.id}')" style="padding:0.5rem 0.75rem;cursor:pointer;border-bottom:1px solid #f0f0f0;font-size:0.875rem;" onmouseover="this.style.background='#f0f9f4'" onmouseout="this.style.background=''"><span style="font-weight:600;">${fmtName(p)}</span>${prac?`<span style="color:#888;font-size:0.8rem;"> · ${prac}</span>`:''}</div>`;
 }).join('');
 results.style.display='block';
 }
+function filterContactProviders(){_filterPhysSearch('contactProviderSearch','contactProviderResults','selectContactProvider');}
 function filterContactPractices() {
 const q=($('contactPracticeSearch').value||'').toLowerCase().trim();
 const res=$('contactPracticeResults');
@@ -141,7 +138,7 @@ $('contactProviderResults').style.display='none';
 $('contactPracticeSearch').value='';$('contactPracticeSelectedId').value='';
 // Populate location dropdown for this provider
 const assignments=(physicianAssignments[physId]||[]);
-const locs=assignments.map(a=>{const loc=practiceLocations.find(l=>l.id===a.practice_location_id);if(!loc)return null;const prac=practices.find(pr=>pr.id===loc.practice_id);return{id:loc.id,label:`${prac?prac.name+' — ':''}${loc.label&&loc.label!==loc.city?loc.label:loc.city||'Office'}${loc.address?' ('+loc.address+')':''}`};}).filter(Boolean);
+const locs=assignments.map(a=>{const loc=practiceLocations.find(l=>l.id===a.practice_location_id);if(!loc)return null;const prac=practices.find(pr=>pr.id===loc.practice_id);return{id:loc.id,label:fmtLocOption(loc,prac)};}).filter(Boolean);
 const sel=$('contactLocation');
 sel.innerHTML=(locs.length===0?'<option value="">No locations assigned</option>':'<option value="">Select location...</option>')+locs.map(l=>`<option value="${l.id}">${l.label}</option>`).join('');
 $('locationSelectRow').style.display=locs.length<=1?'none':'block';
@@ -446,19 +443,7 @@ const locs=practiceLocations.filter(l=>l.practice_id===currentPractice.id);
 openAddTaskModal(null,locs.length>0?locs[0].id:null);
 }
 
-function filterAddTaskProviders() {
-const q=($('addTaskProviderSearch').value||'').toLowerCase().trim();
-const results=$('addTaskProviderResults');
-if(!q){results.style.display='none';return;}
-const matches=physicians.filter(p=>fmtName(p).toLowerCase().includes(q)||(p.specialty||'').toLowerCase().includes(q)).slice(0,8);
-if(!matches.length){results.innerHTML='<div style="padding:0.5rem 0.75rem;font-size:0.85rem;color:#999;">No providers found</div>';results.style.display='block';return;}
-results.innerHTML=matches.map(p=>{
-  const locs=(physicianAssignments[p.id]||[]).map(a=>practiceLocations.find(l=>l.id===a.practice_location_id)).filter(Boolean);
-  const prac=locs.length?(practices.find(pr=>pr.id===locs[0].practice_id)||{}).name||'':'';
-  return `<div onclick="selectAddTaskProvider('${p.id}')" style="padding:0.5rem 0.75rem;cursor:pointer;border-bottom:1px solid #f0f0f0;font-size:0.875rem;" onmouseover="this.style.background='#f0f9f4'" onmouseout="this.style.background=''"><span style="font-weight:600;">${fmtName(p)}</span>${prac?`<span style="color:#888;font-size:0.8rem;"> · ${prac}</span>`:''}</div>`;
-}).join('');
-results.style.display='block';
-}
+function filterAddTaskProviders(){_filterPhysSearch('addTaskProviderSearch','addTaskProviderResults','selectAddTaskProvider');}
 
 function selectAddTaskProvider(physicianId) {
 const phys=physicians.find(p=>p.id===physicianId);
@@ -472,7 +457,7 @@ const locs=assignments.map(a=>{
   const loc=practiceLocations.find(l=>l.id===a.practice_location_id);
   if(!loc)return null;
   const prac=practices.find(pr=>pr.id===loc.practice_id);
-  return{id:loc.id,label:`${prac?prac.name+' — ':''}${loc.label&&loc.label!==loc.city?loc.label:loc.city||'Office'}${loc.address?' ('+loc.address+')':''}`};
+  return{id:loc.id,label:fmtLocOption(loc,prac)};
 }).filter(Boolean);
 const sel=$('addTaskLocationSelect');
 sel.innerHTML='<option value="">No specific location</option>'+locs.map(l=>`<option value="${l.id}">${l.label}</option>`).join('');
