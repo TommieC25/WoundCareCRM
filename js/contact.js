@@ -352,6 +352,7 @@ const _sb=$('addTaskSaveBtn');if(_sb){_sb.textContent='Save Task';_sb.className=
 if($('addTaskEditId'))$('addTaskEditId').value = '';
 $('addTaskNote').value = '';
 if($('addTaskAuthor'))$('addTaskAuthor').value = '';
+if($('addTaskTime'))$('addTaskTime').value = '';
 $('addTaskPhysicianId').value = physicianId || '';
 $('addTaskLocationId').value = locationId || '';
 $('addTaskModalTitle').textContent = 'New Task';
@@ -504,6 +505,7 @@ if(rec.provider_id){selectAddTaskProvider(rec.provider_id);if(rec.practice_locat
 else{const ctx=$('addTaskContext');if(ctx){ctx.innerHTML=_buildTaskContext(null,rec.practice_location_id);ctx.style.display=rec.practice_location_id?'block':'none';}}
 $('addTaskModalTitle').textContent = 'Edit Task';
 if ($('addTaskAuthor')) $('addTaskAuthor').value = rec.author || '';
+if ($('addTaskTime')) $('addTaskTime').value = tm ? tm[1] : '';
 populateReminderDateButtons('task');
 if (rec.reminder_date) selectReminderDate(rec.reminder_date, '', 'task');
 $('addTaskModal').classList.add('active');
@@ -541,14 +543,15 @@ if (physicianId && currentPhysician && currentPhysician.id === physicianId) { aw
 if (currentView === 'activity') renderActivityTabView();
 if (!editId && _newRec && date && date !== '2099-12-31') {
 const _p=physicianId?physicians.find(p=>p.id===physicianId):null,_l=locationId?practiceLocations.find(l=>l.id===locationId):null,_pr=_l?practices.find(p=>p.id===_l.practice_id):null;
-const calUrl=buildGoogleCalendarUrl(_newRec,_p,_l,_pr);
+const _taskTime=($('addTaskTime')||{}).value||'';
+const calUrl=buildGoogleCalendarUrl(_newRec,_p,_l,_pr,_taskTime);
 const _tc=$('toastContainer'),_t=document.createElement('div');
 _t.className='toast success';
 _t.style.cssText='display:flex;align-items:center;justify-content:space-between;gap:0.75rem;padding:0.85rem 1rem;flex-wrap:wrap;';
 const _a=document.createElement('a');_a.href=calUrl;_a.target='_blank';_a.rel='noopener';
 _a.textContent='📅 Google Cal';_a.style.cssText='color:white;font-weight:600;text-decoration:underline;font-size:0.95rem;white-space:nowrap;';
 const _b=document.createElement('button');_b.textContent='🍎 Apple Cal';_b.style.cssText='background:none;border:1px solid rgba(255,255,255,0.6);color:white;font-weight:600;font-size:0.95rem;cursor:pointer;padding:0.2rem 0.5rem;border-radius:4px;white-space:nowrap;';
-_b.onclick=()=>{downloadTaskICS(_newRec,_p,_l,_pr,'');};
+_b.onclick=()=>{downloadTaskICS(_newRec,_p,_l,_pr,_taskTime);};
 const _x=document.createElement('button');_x.textContent='×';_x.style.cssText='background:none;border:none;color:white;font-size:1.5rem;line-height:1;cursor:pointer;padding:0;flex-shrink:0;';
 _x.onclick=()=>_t.remove();_t.appendChild(_a);_t.appendChild(_b);_t.appendChild(_x);_tc.appendChild(_t);
 setTimeout(()=>_t.remove(),15000);
