@@ -225,8 +225,10 @@ if (!currentPhysician) return;
 const log = (contactLogs[currentPhysician.id] || []).find(l => l.id === logId);
 if (!log) return;
 editingContactId = logId;
-$('contactModalTitle').textContent = 'Edit Contact Note';
-$('contactSaveBtn').textContent = 'Save Note';
+const isTask = log.reminder_date && log.reminder_date !== '2000-01-01';
+$('contactModalTitle').textContent = isTask ? 'Edit Task' : 'Edit Contact Note';
+$('contactModalTitle').style.color = isTask ? '#8b5cf6' : '';
+$('contactSaveBtn').textContent = isTask ? 'Save Task' : 'Save Note';
 $('contactSaveBtn').className = 'btn-primary';
 populateLocationDropdown();
 $('contactDate').value = log.contact_date;
@@ -242,7 +244,7 @@ if (taskMatch) notes = notes.slice(0, taskMatch.index).trim();
 $('contactTime').value = time;
 $('contactNotes').value = notes;
 $('setReminder').checked = false;
-if($('reminderRow'))$('reminderRow').style.display='block';
+if($('reminderRow'))$('reminderRow').style.display = isTask ? 'none' : 'block';
 $('contactModal').classList.add('active');
 }
 
@@ -294,9 +296,11 @@ try{
 const{data:log,error}=await db.from('contact_logs').select('*').eq('id',logId).single();
 if(error||!log){showToast('Note not found','error');return;}
 editingContactId=logId;
+const isTask=log.reminder_date&&log.reminder_date!=='2000-01-01';
 $('contactForm').reset();
-$('contactModalTitle').textContent='Edit Note';
-$('contactSaveBtn').textContent='Save Changes';
+$('contactModalTitle').textContent=isTask?'Edit Task':'Edit Note';
+$('contactModalTitle').style.color=isTask?'#8b5cf6':'';
+$('contactSaveBtn').textContent=isTask?'Save Task':'Save Changes';
 $('contactSaveBtn').className='btn-primary';
 $('contactDate').value=log.contact_date||'';
 $('authorName').value=log.author||'';
@@ -304,28 +308,24 @@ const tm=(log.notes||'').match(/^\[(\d{1,2}:\d{2})\]\s*/);
 $('contactTime').value=tm?tm[1]:'';
 $('contactNotes').value=tm?log.notes.slice(tm[0].length):(log.notes||'');
 if($('locationSelectRow'))$('locationSelectRow').style.display='none';
-if($('reminderRow'))$('reminderRow').style.display='block';
-$('setReminder').checked=false;
+if($('reminderRow'))$('reminderRow').style.display=isTask?'none':'block';
+if(!isTask)$('setReminder').checked=false;
 const pr=$('practicePhysSelectRow');if(pr)pr.style.display='none';
 const _editLog=log;
 $('contactForm').onsubmit=async function(ev){
 ev.preventDefault();
 const tv=$('contactTime').value,nv=$('contactNotes').value;
 const newNote=tv?`[${tv}] ${nv}`:nv;
-const reminderOn=$('setReminder').checked;
-await withSave('contactSaveBtn','Save Changes',async()=>{
+const reminderOn=!isTask&&$('setReminder').checked;
+await withSave('contactSaveBtn',isTask?'Save Task':'Save Changes',async()=>{
 const{error}=await db.from('contact_logs').update({notes:newNote,author:$('authorName').value,contact_date:$('contactDate').value}).eq('id',editingContactId);
 if(error)throw error;
-showToast('Note updated','success');
+showToast(isTask?'Task updated':'Note updated','success');
 closeContactModal();
 $('contactForm').onsubmit=function(ev){saveContact(ev);return false;};
 await loadAllData();
 if(currentPractice){renderPracticeProfile();await loadPracticeActivity(currentPractice.id);}
-if(reminderOn){
-const provId=_editLog.provider_id||null;
-const locId=_editLog.practice_location_id||null;
-setTimeout(()=>openAddTaskModal(provId,locId),400);
-}
+if(reminderOn){const provId=_editLog.provider_id||null;const locId=_editLog.practice_location_id||null;setTimeout(()=>openAddTaskModal(provId,locId),400);}
 });
 return false;
 };
