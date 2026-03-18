@@ -40,6 +40,9 @@ const _goto = new URLSearchParams(window.location.search);
 if (_goto.get('goto') === 'practice' && _goto.get('id')) {
   setView('practices');
   viewPractice(_goto.get('id'));
+} else if (_goto.get('goto') === 'provider' && _goto.get('id')) {
+  setView('physicians');
+  viewPhysician(_goto.get('id'));
 } else {
   activitySubTab = 'history'; // start on combined history view
   setView('activity'); // default landing: Activity → History tab
