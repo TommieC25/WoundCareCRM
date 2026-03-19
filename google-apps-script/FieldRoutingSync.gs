@@ -264,7 +264,8 @@ function buildRow_(phys, loc, practice, activity, type) {
   if (activity) {
     var note = (activity.notes || '').replace(/^\[\d{1,2}:\d{2}\]\s*/, '');
     var preview = note.length > 80 ? note.substring(0, 80) + '...' : note;
-    status = activity.contact_date + ': ' + preview;
+    var dateLabel = activity.contact_date ? activity.contact_date.substring(5) : '';
+    status = dateLabel + ': ' + preview;
   }
 
   if (type === 'loc-only') {
