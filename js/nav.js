@@ -204,9 +204,9 @@ function fmtSuiteAddr(addr){if(!addr)return addr;return addr.replace(/\bSte\.?\s
 function locAddr(loc){const rawAddr=fmtSuiteAddr(loc.address)||'';const a=rawAddr+', '+(loc.city||'')+' '+(loc.zip||'');return`<a href="https://maps.apple.com/?q=${encodeURIComponent(a)}" target="_blank" style="color:#0a4d3c;text-decoration:underline;">${rawAddr}${loc.city?', '+loc.city:''}${loc.zip?' '+loc.zip:''}</a>`}
 function normDegree(d){if(!d)return d;return d.replace(/\./g,'').trim();}
 function fmtPhone(p){if(!p)return'';var d=(p+'').replace(/\D/g,'');if(d.length===11&&d[0]==='1')d=d.substring(1);if(d.length===10)return d.substring(0,3)+'-'+d.substring(3,6)+'-'+d.substring(6);return p;}
-function locPhone(p){var f=fmtPhone(p);return`<a href="tel:${(p||'').replace(/\D/g,'')}">${f||p}</a>`}
-function locPhones(raw,icon){if(!raw)return'';return raw.split(/[\/,]/).map(s=>s.trim()).filter(Boolean).map(p=>ld(p,icon,locPhone(p))).join('');}
-function locDetails(loc){return ld(loc.address,'📍',locAddr(loc))+locPhones(loc.phone,'📞')+locPhones(loc.fax,'📠')+ld(loc.practice_email,'✉️',loc.practice_email?`<a href="mailto:${loc.practice_email}">${loc.practice_email}</a>`:'')+ld(loc.office_hours,'🕐')+ld(loc.office_staff,'👥')+ld(loc.receptionist_name,'👤')+ld(loc.best_days,'📅')+ld(loc.notes,'📝')}
+function locPhone(p,locId){var f=fmtPhone(p);return`<a href="tel:${(p||'').replace(/\D/g,'')}"${locId?` data-loc-id="${locId}"`:''}>${f||p}</a>`}
+function locPhones(raw,icon,locId){if(!raw)return'';return raw.split(/[\/,]/).map(s=>s.trim()).filter(Boolean).map(p=>ld(p,icon,locPhone(p,locId))).join('');}
+function locDetails(loc){return ld(loc.address,'📍',locAddr(loc))+locPhones(loc.phone,'📞',loc.id)+locPhones(loc.fax,'📠')+ld(loc.practice_email,'✉️',loc.practice_email?`<a href="mailto:${loc.practice_email}">${loc.practice_email}</a>`:'')+ld(loc.office_hours,'🕐')+ld(loc.office_staff,'👥')+ld(loc.receptionist_name,'👤')+ld(loc.best_days,'📅')+ld(loc.notes,'📝')}
 function mi(label,val){return `<div class="meta-item"><div class="meta-label">${label}</div><div class="meta-value">${val}</div></div>`}
 function parseNoteTime(notes){const tm=(notes||'').match(/^\[(\d{1,2}:\d{2}(?:\s*[APap][Mm])?)\]\s*/);return tm?{time:' '+tm[1],text:notes.replace(tm[0],'')}:{time:'',text:notes||''};}
 function parseTaskRecord(notes){const tm=(notes||'').match(/^\[(\d{1,2}:\d{2}(?:\s*[APap][Mm])?)\]\s*/);let dn=tm?notes.replace(tm[0],''):(notes||'');const txm=dn.match(/\s*\|\s*\[Task:\s*(.*?)\]$/);const taskNote=txm?txm[1].trim():'';if(txm)dn=dn.slice(0,txm.index).trim();return{noteTime:tm?tm[1]:'',displayNotes:dn,taskNote};}
@@ -292,7 +292,7 @@ return phys?.email ? ` <a href="mailto:${phys.email}" onclick="event.stopPropaga
 function getTaskPhoneLink(r) {
 const locId = r.practice_location_id || (physicianAssignments[r.provider_id]?.find(a=>a.is_primary)||physicianAssignments[r.provider_id]?.[0])?.practice_location_id;
 const loc = locId ? practiceLocations.find(l=>l.id===locId) : null;
-return loc?.phone ? ` <a href="tel:${loc.phone.replace(/\D/g,'')}" onclick="event.stopPropagation()" style="color:#0a4d3c;font-size:0.75rem;">📞 ${fmtPhone(loc.phone)}</a>` : '';
+return loc?.phone ? ` <a href="tel:${loc.phone.replace(/\D/g,'')}" data-provider-id="${r.provider_id||''}" data-loc-id="${locId||''}" onclick="event.stopPropagation()" style="color:#0a4d3c;font-size:0.75rem;">📞 ${fmtPhone(loc.phone)}</a>` : '';
 }
 
 // --- Normalize priority (handles legacy "TIER 3 - MODERATE" and "3" and "P3") ---

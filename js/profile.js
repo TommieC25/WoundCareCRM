@@ -43,7 +43,7 @@ ${mi('Last Contact',p.last_contact||'Never')}${mi('Locations',assignments.length
 </div>
 <div class="contact-grid">
 ${ci('✉️',isStaffSpecialty(p.specialty)?'Email':'Provider Email',p.email?`<a href="mailto:${p.email}">${p.email}</a>`:'')}
-${ci('📱','Mobile Phone',p.mobile_phone?`<a href="tel:${p.mobile_phone}">${fmtPhone(p.mobile_phone)}</a>`:'')}
+${ci('📱','Mobile Phone',p.mobile_phone?`<a href="tel:${p.mobile_phone}" data-provider-id="${p.id}">${fmtPhone(p.mobile_phone)}</a>`:'')}
 ${ci('📝','General Notes',p.general_notes)}
 ${!p.email&&!p.mobile_phone&&!p.general_notes?'<div class="empty-notice">Click Edit to add email, mobile, and notes</div>':''}
 </div>
@@ -142,7 +142,7 @@ ${mi('Locations',locations.length)}${mi('Providers',practicePhysicians.length)}$
 <button class="delete-btn" onclick="deletePractice()">Delete</button>
 </div>
 </div>
-<div class="contact-grid">${(()=>{const pLocs=practiceLocations.filter(l=>l.practice_id===p.id);const pEmail=pLocs.map(l=>l.practice_email).find(Boolean)||'';const pPhone=pLocs.map(l=>l.phone).find(Boolean)||'';const pFax=pLocs.map(l=>l.fax).find(Boolean)||'';const pHours=pLocs.map(l=>l.office_hours).find(Boolean)||'';const pStaff=pLocs.map(l=>l.office_staff).find(Boolean)||'';const pBestDays=pLocs.map(l=>l.best_days).find(Boolean)||'';const wSite=p.website?`<a href="${p.website.match(/^https?:\/\//)?p.website:'https://'+p.website}" target="_blank" style="color:#0a4d3c;">${p.website}</a>`:'';const practiceEmail=p.email||'';return (wSite?ci('🌐','Website',wSite):'')+ci('✉️','Email',practiceEmail?`<a href="mailto:${practiceEmail}">${practiceEmail}</a>`:pEmail?`<a href="mailto:${pEmail}">${pEmail}</a>`:'')+ci('📞','Phone',pPhone?`<a href="tel:${pPhone.replace(/\D/g,'')}">${fmtPhone(pPhone)}</a>`:'')+ci('📠','Fax',pFax?fmtPhone(pFax):'')+ci('🕐','Office Hours',pHours)+ci('👥','Office Staff',pStaff)+ci('📅','Best Days',pBestDays)+ci('📝','Notes',p.general_notes)||(!pEmail&&!practiceEmail&&!p.general_notes&&!pPhone?'<div class="empty-notice">No details for this practice</div>':'');})()}</div>
+<div class="contact-grid">${(()=>{const pLocs=practiceLocations.filter(l=>l.practice_id===p.id);const pEmail=pLocs.map(l=>l.practice_email).find(Boolean)||'';const pPhone=pLocs.map(l=>l.phone).find(Boolean)||'';const pPhoneLoc=pLocs.find(l=>l.phone)||null;const pFax=pLocs.map(l=>l.fax).find(Boolean)||'';const pHours=pLocs.map(l=>l.office_hours).find(Boolean)||'';const pStaff=pLocs.map(l=>l.office_staff).find(Boolean)||'';const pBestDays=pLocs.map(l=>l.best_days).find(Boolean)||'';const wSite=p.website?`<a href="${p.website.match(/^https?:\/\//)?p.website:'https://'+p.website}" target="_blank" style="color:#0a4d3c;">${p.website}</a>`:'';const practiceEmail=p.email||'';return (wSite?ci('🌐','Website',wSite):'')+ci('✉️','Email',practiceEmail?`<a href="mailto:${practiceEmail}">${practiceEmail}</a>`:pEmail?`<a href="mailto:${pEmail}">${pEmail}</a>`:'')+ci('📞','Phone',pPhone?`<a href="tel:${pPhone.replace(/\D/g,'')}"${pPhoneLoc?` data-loc-id="${pPhoneLoc.id}"`:''}>${fmtPhone(pPhone)}</a>`:'')+ci('📠','Fax',pFax?fmtPhone(pFax):'')+ci('🕐','Office Hours',pHours)+ci('👥','Office Staff',pStaff)+ci('📅','Best Days',pBestDays)+ci('📝','Notes',p.general_notes)||(!pEmail&&!practiceEmail&&!p.general_notes&&!pPhone?'<div class="empty-notice">No details for this practice</div>':'');})()}</div>
 </div>
 <div class="section">
 <div class="section-header">
