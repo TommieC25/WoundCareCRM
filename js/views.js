@@ -491,12 +491,13 @@ const v=localStorage.getItem('geocodeCacheV')||'1';if(v!=='2'){localStorage.remo
 function saveGeocodeCache(){try{localStorage.setItem('geocodeCache',JSON.stringify(geocodeCache));}catch(e){}}
 let territoryMapCache=null;
 let _mapBuiltMarkers=[]; // module-level so locateOnMap() always has access even mid-geocoding
-function getMapDataVersion(){return practiceLocations.length+'_'+physicians.length+'_'+Object.keys(physicianAssignments).length;}
+function getMapDataVersion(){return practiceLocations.length+'_'+physicians.length+'_'+Object.keys(physicianAssignments).length+'_links';}
 function getPracticeIcon(){return L.divIcon({className:'',html:'<div style="width:14px;height:14px;background:#0a4d3c;border:2.5px solid white;border-radius:50%;box-shadow:0 2px 5px rgba(0,0,0,0.4);"></div>',iconSize:[14,14],iconAnchor:[7,7]});}
-function buildMarkerPopup(loc,practiceName,physNames,addr){
+function buildMarkerPopup(loc,practiceName,assignedPhys,addr){
+const physLinks=(assignedPhys||[]).map(p=>`<a href="#" onclick="territoryMap&&territoryMap.closePopup();setView('physicians');viewPhysician('${p.id}');return false;" style="color:#0a4d3c;font-weight:600;text-decoration:none;">${p.first_name} ${p.last_name}</a>`).join('<br>');
 return '<strong>'+(practiceName||loc.label||'Office')+'</strong><br>'
 +addr+'<br>'
-+(physNames?'<em>'+physNames+'</em><br>':'')
++(physLinks?'<span style="font-size:0.88em;">'+physLinks+'</span><br>':'')
 +'<a href="https://maps.apple.com/?q='+encodeURIComponent(addr)+'" target="_blank" style="color:#0a4d3c;">Get Directions</a>';
 }
 async function renderMapView(){
@@ -553,7 +554,6 @@ for(const loc of locs){
 const addr=loc.address+', '+loc.city+', FL '+(loc.zip||'');
 const practiceName=loc.practices?.name||practices.find(p=>p.id===loc.practice_id)?.name||'';
 const assignedPhys=physicians.filter(p=>(physicianAssignments[p.id]||[]).some(a=>a.practice_location_id===loc.id));
-const physNames=assignedPhys.map(p=>p.first_name+' '+p.last_name).join(', ');
 try{
 let coords=geocodeCache[addr];
 if(!coords){
@@ -564,7 +564,7 @@ if(d&&d[0]){coords={lat:parseFloat(d[0].lat),lng:parseFloat(d[0].lon)};geocodeCa
 await new Promise(ok=>setTimeout(ok,200));
 }
 if(coords){
-const popup=buildMarkerPopup(loc,practiceName,physNames,addr);
+const popup=buildMarkerPopup(loc,practiceName,assignedPhys,addr);
 L.marker([coords.lat,coords.lng],{icon:getPracticeIcon()}).addTo(territoryMap).bindPopup(popup);
 bounds.push([coords.lat,coords.lng]);
 _mapBuiltMarkers.push({lat:coords.lat,lng:coords.lng,popup,locId:loc.id});
