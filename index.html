@@ -672,5 +672,18 @@ Add Follow-Up Task after saving
 </div>
 </div>
 </div>
+<!-- Call log prompt — slides up from bottom after returning from a phone call -->
+<div id="callLogPrompt" style="display:none;position:fixed;bottom:0;left:0;right:0;background:white;border-radius:16px 16px 0 0;box-shadow:0 -4px 24px rgba(0,0,0,0.18);padding:1.25rem 1.5rem 2.25rem;z-index:9999;flex-direction:column;gap:0.75rem;transform:translateY(100%);transition:transform 0.25s ease;">
+<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:0.25rem;">
+<span style="font-size:1rem;font-weight:700;color:#0a4d3c;">📞 Log that call?</span>
+<button onclick="_dismissCallPrompt()" style="background:none;border:none;font-size:1.4rem;line-height:1;color:#999;cursor:pointer;padding:0;">×</button>
+</div>
+<div style="font-size:0.95rem;color:#374151;">Call with <strong id="callLogPromptName"></strong></div>
+<div style="display:flex;gap:0.75rem;">
+<button onclick="_confirmCallLog()" style="flex:1;padding:0.75rem;background:#0a4d3c;color:white;border:none;border-radius:10px;font-size:0.95rem;font-weight:600;cursor:pointer;">Add Note</button>
+<button onclick="_dismissCallPrompt()" style="flex:1;padding:0.75rem;background:#f3f4f6;color:#374151;border:none;border-radius:10px;font-size:0.95rem;font-weight:600;cursor:pointer;">Dismiss</button>
+</div>
+</div>
+<style>#callLogPrompt.visible{transform:translateY(0);}</style>
 </body>
 </html>

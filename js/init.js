@@ -35,6 +35,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 setToday();
 await loadAllData();
 setupRealtimeSubscription();
+initCallLogInterceptor();
 // Deep-link routing: ?goto=practice&id=UUID (used by db_audit.html Edit Profile buttons)
 const _goto = new URLSearchParams(window.location.search);
 if (_goto.get('goto') === 'practice' && _goto.get('id')) {

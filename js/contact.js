@@ -168,6 +168,7 @@ const dateVal=$('contactDate').value,authorVal=$('authorName').value;
 const nv=($('contactNotes').value||'').trim();
 if(!dateVal){showToast('Please enter a date','error');return;}
 if(!authorVal){const _a=$('authorName');_a.style.border='2px solid #dc2626';_a.style.borderRadius='6px';setTimeout(()=>{_a.style.border='';},2500);_a.scrollIntoView({behavior:'smooth',block:'center'});showToast('Select your rep name — Tom or Travis','error');return;}
+localStorage.setItem('lastCallLogAuthor',authorVal);
 if(!nv){showToast('Please enter note text','error');return;}
 const tv=$('contactTime').value;
 const locVal=_savePhysician?($('contactLocation').value||null):_savePracticeLocId;
@@ -555,4 +556,84 @@ function toggleAdminPanel() {
 const panel = $('adminPanel');
 panel.classList.toggle('show');
 if (panel.classList.contains('show')) initSheetSyncUrl();
+}
+
+// --- Auto call-log interceptor ---
+let _pendingCall = null;
+
+function initCallLogInterceptor() {
+// Intercept all tel: link taps and capture context
+document.addEventListener('click', function(e) {
+  const a = e.target.closest('a[href^="tel:"]');
+  if (!a) return;
+  const providerId = a.dataset.providerId || (currentPhysician ? currentPhysician.id : null) || null;
+  const locId = a.dataset.locId || null;
+  const phone = a.href.replace('tel:','');
+  // Build a display name from available context
+  let displayName = '';
+  if (providerId) {
+    const phys = physicians.find(p => p.id === providerId);
+    if (phys) displayName = fmtName(phys);
+  }
+  if (!displayName && locId) {
+    const loc = practiceLocations.find(l => l.id === locId);
+    if (loc) {
+      const prac = practices.find(p => p.id === loc.practice_id);
+      displayName = prac?.name || loc.label || loc.city || '';
+    }
+  }
+  if (!displayName && currentPractice) displayName = currentPractice.name || '';
+  if (!displayName) displayName = fmtPhone(phone) || phone;
+  _pendingCall = { providerId, locId, phone, displayName, ts: Date.now() };
+});
+
+// When user returns from phone app, offer to log the call
+document.addEventListener('visibilitychange', function() {
+  if (document.visibilityState !== 'visible') return;
+  if (!_pendingCall) return;
+  const age = Date.now() - _pendingCall.ts;
+  // Ignore if less than 3 seconds (accidental tap) or older than 1 hour
+  if (age < 3000 || age > 3600000) { _pendingCall = null; return; }
+  _showCallLogPrompt(_pendingCall);
+});
+}
+
+function _showCallLogPrompt(ctx) {
+const el = $('callLogPrompt');
+if (!el) return;
+$('callLogPromptName').textContent = ctx.displayName;
+el.style.display = 'flex';
+requestAnimationFrame(() => el.classList.add('visible'));
+}
+
+function _dismissCallPrompt() {
+_pendingCall = null;
+const el = $('callLogPrompt');
+if (!el) return;
+el.classList.remove('visible');
+setTimeout(() => { el.style.display = 'none'; }, 260);
+}
+
+function _confirmCallLog() {
+if (!_pendingCall) return;
+const ctx = _pendingCall;
+_dismissCallPrompt();
+// Set provider context so modal auto-populates their locations
+if (ctx.providerId) {
+  currentPhysician = physicians.find(p => p.id === ctx.providerId) || null;
+  currentPractice = null;
+} else {
+  currentPhysician = null;
+}
+openContactModal();
+// After modal opens: pre-fill Call: prefix, location, and last-used author
+setTimeout(() => {
+  prefixNote('Call: ');
+  if (ctx.locId) {
+    const sel = $('contactLocation');
+    if (sel) { const opt = Array.from(sel.options).find(o => o.value === ctx.locId); if (opt) sel.value = ctx.locId; }
+  }
+  const lastAuthor = localStorage.getItem('lastCallLogAuthor');
+  if (lastAuthor) $('authorName').value = lastAuthor;
+}, 60);
 }
