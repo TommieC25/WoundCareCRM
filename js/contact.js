@@ -560,28 +560,29 @@ if (panel.classList.contains('show')) initSheetSyncUrl();
 
 // --- Auto call-log interceptor ---
 let _pendingCall = null;
+let _callPollInterval = null;
 
 function _savePendingCall(ctx) {
   _pendingCall = ctx;
   try { localStorage.setItem('_crmPendingCall', JSON.stringify(ctx)); } catch(e) {}
+  // Polling is the only reliable way to detect return from Phone app on iOS Safari.
+  // visibilitychange/pageshow/focus all fail to fire consistently after a tel: link tap.
+  if (_callPollInterval) clearInterval(_callPollInterval);
+  _callPollInterval = setInterval(function() {
+    if (!_pendingCall) { clearInterval(_callPollInterval); _callPollInterval = null; return; }
+    if (document.visibilityState !== 'visible') return;
+    const age = Date.now() - _pendingCall.ts;
+    if (age < 1000) return; // still on the call or accidental tap
+    if (age > 3600000) { _clearPendingCall(); return; } // stale
+    clearInterval(_callPollInterval);
+    _callPollInterval = null;
+    _showCallLogPrompt(_pendingCall);
+  }, 500);
 }
 function _clearPendingCall() {
   _pendingCall = null;
+  if (_callPollInterval) { clearInterval(_callPollInterval); _callPollInterval = null; }
   try { localStorage.removeItem('_crmPendingCall'); } catch(e) {}
-}
-function _checkAndShowCallPrompt() {
-  // Restore from localStorage if in-memory state was lost (page reload / bfcache miss)
-  if (!_pendingCall) {
-    try {
-      const s = localStorage.getItem('_crmPendingCall');
-      if (s) _pendingCall = JSON.parse(s);
-    } catch(e) {}
-  }
-  if (!_pendingCall) return;
-  const age = Date.now() - _pendingCall.ts;
-  // Ignore accidental taps (< 1s) or stale entries (> 1 hour)
-  if (age < 1000 || age > 3600000) { _clearPendingCall(); return; }
-  _showCallLogPrompt(_pendingCall);
 }
 
 function initCallLogInterceptor() {
@@ -609,17 +610,6 @@ document.addEventListener('click', function(e) {
   if (!displayName) displayName = fmtPhone(phone) || phone;
   _savePendingCall({ providerId, locId, phone, displayName, ts: Date.now() });
 }, true); // capture phase
-
-// iOS Safari: visibilitychange alone is unreliable when returning from Phone app.
-// Use all three events — whichever fires first on this device/OS version will trigger the prompt.
-document.addEventListener('visibilitychange', function() {
-  if (document.visibilityState === 'visible') _checkAndShowCallPrompt();
-});
-window.addEventListener('pageshow', function() {
-  // pageshow fires on bfcache restoration and normal navigation — reliable on iOS
-  setTimeout(_checkAndShowCallPrompt, 300);
-});
-window.addEventListener('focus', _checkAndShowCallPrompt);
 }
 
 function _showCallLogPrompt(ctx) {
