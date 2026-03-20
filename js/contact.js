@@ -565,14 +565,14 @@ let _callPollInterval = null;
 function _savePendingCall(ctx) {
   _pendingCall = ctx;
   try { localStorage.setItem('_crmPendingCall', JSON.stringify(ctx)); } catch(e) {}
-  // Polling is the only reliable way to detect return from Phone app on iOS Safari.
-  // visibilitychange/pageshow/focus all fail to fire consistently after a tel: link tap.
+  // Polling alone is unreliable: iOS suspends JS intervals when app is backgrounded.
+  // Primary recovery: touchstart listener fires on first screen tap when user returns.
+  // Polling is a secondary fallback for cases where the page did a full reload.
   if (_callPollInterval) clearInterval(_callPollInterval);
   _callPollInterval = setInterval(function() {
     if (!_pendingCall) { clearInterval(_callPollInterval); _callPollInterval = null; return; }
-    if (document.visibilityState !== 'visible') return;
     const age = Date.now() - _pendingCall.ts;
-    if (age < 1000) return; // still on the call or accidental tap
+    if (age < 4000) return; // < 4s: still dialing/calling, or accidental tap
     if (age > 3600000) { _clearPendingCall(); return; } // stale
     clearInterval(_callPollInterval);
     _callPollInterval = null;
@@ -586,6 +586,48 @@ function _clearPendingCall() {
 }
 
 function initCallLogInterceptor() {
+// On startup, check localStorage for a pending call saved before iOS killed the tab.
+// This handles the case where: user taps tel: link → call → iOS returns to home screen →
+// user taps app icon → Safari reloads page from scratch (interval + memory state gone).
+// localStorage survives the reload, so we restore and show the prompt immediately.
+try {
+  const saved = localStorage.getItem('_crmPendingCall');
+  if (saved) {
+    const ctx = JSON.parse(saved);
+    const age = Date.now() - ctx.ts;
+    if (age >= 1000 && age <= 3600000) {
+      // Call _savePendingCall (not just set _pendingCall) so the polling interval is
+      // restarted. The interval fires within 500ms; since age is already > 4s the
+      // prompt shows immediately. setTimeout is a belt-and-suspenders fallback.
+      _savePendingCall(ctx);
+      setTimeout(() => { if (_pendingCall) _showCallLogPrompt(_pendingCall); }, 1500);
+    } else {
+      localStorage.removeItem('_crmPendingCall');
+    }
+  }
+} catch(e) {}
+
+// touchstart recovery: the most reliable iOS recovery path.
+// Fires on every screen tap — very cheap (just a localStorage.getItem).
+// When user returns to the app after a call (regardless of whether the page reloaded
+// or JS was merely suspended), the first tap triggers this and shows the prompt.
+// We intentionally do NOT remove this listener — it must survive across calls.
+document.addEventListener('touchstart', function() {
+  try {
+    const saved = localStorage.getItem('_crmPendingCall');
+    if (!saved) return;
+    const ctx = JSON.parse(saved);
+    const age = Date.now() - ctx.ts;
+    if (age >= 4000 && age <= 3600000) {
+      if (!_pendingCall) _savePendingCall(ctx); // restores interval too
+      _showCallLogPrompt(ctx);
+    } else if (age > 3600000) {
+      localStorage.removeItem('_crmPendingCall'); // stale, discard
+    }
+    // If age < 4000 (still on the call), do nothing — wait for next tap
+  } catch(e) {}
+}, { passive: true });
+
 // Intercept all tel: link taps and capture context
 // Use capture phase (true) so stopPropagation() on task-card phone links doesn't block this
 document.addEventListener('click', function(e) {
