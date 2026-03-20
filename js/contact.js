@@ -586,6 +586,25 @@ function _clearPendingCall() {
 }
 
 function initCallLogInterceptor() {
+// On startup, check localStorage for a pending call saved before iOS killed the tab.
+// This handles the case where: user taps tel: link → call → iOS returns to home screen →
+// user taps app icon → Safari reloads page from scratch (interval + memory state gone).
+// localStorage survives the reload, so we restore and show the prompt immediately.
+try {
+  const saved = localStorage.getItem('_crmPendingCall');
+  if (saved) {
+    const ctx = JSON.parse(saved);
+    const age = Date.now() - ctx.ts;
+    if (age >= 1000 && age <= 3600000) {
+      _pendingCall = ctx;
+      // Delay slightly so the page finishes rendering before the prompt appears
+      setTimeout(() => { if (_pendingCall) _showCallLogPrompt(_pendingCall); }, 1200);
+    } else {
+      localStorage.removeItem('_crmPendingCall');
+    }
+  }
+} catch(e) {}
+
 // Intercept all tel: link taps and capture context
 // Use capture phase (true) so stopPropagation() on task-card phone links doesn't block this
 document.addEventListener('click', function(e) {
