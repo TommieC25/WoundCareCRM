@@ -619,22 +619,31 @@ function _confirmCallLog() {
 if (!_pendingCall) return;
 const ctx = _pendingCall;
 _dismissCallPrompt();
-// Set provider context so modal auto-populates their locations
 if (ctx.providerId) {
+  // Provider call — open standard contact modal with provider context
   currentPhysician = physicians.find(p => p.id === ctx.providerId) || null;
   currentPractice = null;
+  openContactModal();
+  setTimeout(() => {
+    prefixNote('Call: ');
+    if (ctx.locId) {
+      const sel = $('contactLocation');
+      if (sel) { const opt = Array.from(sel.options).find(o => o.value === ctx.locId); if (opt) sel.value = ctx.locId; }
+    }
+    const lastAuthor = localStorage.getItem('lastCallLogAuthor');
+    if (lastAuthor) $('authorName').value = lastAuthor;
+  }, 60);
+} else if (ctx.locId) {
+  // Practice/location call — open location modal (pre-fills location + provider checklist)
+  openLocationContactModal(ctx.locId);
+  setTimeout(() => {
+    prefixNote('Call: ');
+    const lastAuthor = localStorage.getItem('lastCallLogAuthor');
+    if (lastAuthor) $('authorName').value = lastAuthor;
+  }, 60);
 } else {
   currentPhysician = null;
+  openContactModal();
+  setTimeout(() => { prefixNote('Call: '); }, 60);
 }
-openContactModal();
-// After modal opens: pre-fill Call: prefix, location, and last-used author
-setTimeout(() => {
-  prefixNote('Call: ');
-  if (ctx.locId) {
-    const sel = $('contactLocation');
-    if (sel) { const opt = Array.from(sel.options).find(o => o.value === ctx.locId); if (opt) sel.value = ctx.locId; }
-  }
-  const lastAuthor = localStorage.getItem('lastCallLogAuthor');
-  if (lastAuthor) $('authorName').value = lastAuthor;
-}, 60);
 }
