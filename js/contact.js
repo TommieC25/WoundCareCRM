@@ -593,8 +593,8 @@ document.addEventListener('visibilitychange', function() {
   if (document.visibilityState !== 'visible') return;
   if (!_pendingCall) return;
   const age = Date.now() - _pendingCall.ts;
-  // Ignore if less than 3 seconds (accidental tap) or older than 1 hour
-  if (age < 3000 || age > 3600000) { _pendingCall = null; return; }
+  // Ignore if less than 1 second (accidental tap) or older than 1 hour
+  if (age < 1000 || age > 3600000) { _pendingCall = null; return; }
   _showCallLogPrompt(_pendingCall);
 });
 }
