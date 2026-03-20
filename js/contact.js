@@ -599,9 +599,11 @@ try {
     const ctx = JSON.parse(saved);
     const age = Date.now() - ctx.ts;
     if (age >= 1000 && age <= 3600000) {
-      _pendingCall = ctx;
-      // Delay slightly so the page finishes rendering before the prompt appears
-      setTimeout(() => { if (_pendingCall) _showCallLogPrompt(_pendingCall); }, 1200);
+      // Call _savePendingCall (not just set _pendingCall) so the polling interval is
+      // restarted. The interval fires within 500ms; since age is already > 4s the
+      // prompt shows immediately. setTimeout is a belt-and-suspenders fallback.
+      _savePendingCall(ctx);
+      setTimeout(() => { if (_pendingCall) _showCallLogPrompt(_pendingCall); }, 1500);
     } else {
       localStorage.removeItem('_crmPendingCall');
     }
