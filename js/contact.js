@@ -565,12 +565,9 @@ let _callPollInterval = null;
 function _savePendingCall(ctx) {
   _pendingCall = ctx;
   try { localStorage.setItem('_crmPendingCall', JSON.stringify(ctx)); } catch(e) {}
-  // Polling is the only reliable way to detect return from Phone app on iOS Safari.
-  // visibilitychange/pageshow/focus all fail to fire consistently after a tel: link tap.
-  // NOTE: Do NOT check document.visibilityState here — iOS frequently leaves it stuck at
-  // 'hidden' even after the user returns to Safari from the Phone app. Since iOS suspends
-  // JS while Safari is in background, the interval only fires when the tab is actually
-  // active, making the visibilityState check both redundant and unreliable.
+  // Polling alone is unreliable: iOS suspends JS intervals when app is backgrounded.
+  // Primary recovery: touchstart listener fires on first screen tap when user returns.
+  // Polling is a secondary fallback for cases where the page did a full reload.
   if (_callPollInterval) clearInterval(_callPollInterval);
   _callPollInterval = setInterval(function() {
     if (!_pendingCall) { clearInterval(_callPollInterval); _callPollInterval = null; return; }
@@ -609,6 +606,27 @@ try {
     }
   }
 } catch(e) {}
+
+// touchstart recovery: the most reliable iOS recovery path.
+// Fires on every screen tap — very cheap (just a localStorage.getItem).
+// When user returns to the app after a call (regardless of whether the page reloaded
+// or JS was merely suspended), the first tap triggers this and shows the prompt.
+// We intentionally do NOT remove this listener — it must survive across calls.
+document.addEventListener('touchstart', function() {
+  try {
+    const saved = localStorage.getItem('_crmPendingCall');
+    if (!saved) return;
+    const ctx = JSON.parse(saved);
+    const age = Date.now() - ctx.ts;
+    if (age >= 4000 && age <= 3600000) {
+      if (!_pendingCall) _savePendingCall(ctx); // restores interval too
+      _showCallLogPrompt(ctx);
+    } else if (age > 3600000) {
+      localStorage.removeItem('_crmPendingCall'); // stale, discard
+    }
+    // If age < 4000 (still on the call), do nothing — wait for next tap
+  } catch(e) {}
+}, { passive: true });
 
 // Intercept all tel: link taps and capture context
 // Use capture phase (true) so stopPropagation() on task-card phone links doesn't block this
