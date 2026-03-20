@@ -174,7 +174,7 @@ html += `<div style="padding:0.75rem 1rem;background:#f0f9ff;border:1.5px dashed
 </div>
 </div>`;
 }
-const completeFn = `event.stopPropagation();completeReminder('${r.id}').then(()=>{closeTaskDetailModal();if(currentPhysician){loadContactLogs(currentPhysician.id).then(()=>renderProfile());}else if(currentPractice){renderPracticeProfile();}else{renderTasksView();}})`;
+const completeFn = `event.stopPropagation();completeReminder('${r.id}').then(()=>{const btn=document.querySelector('#taskDetailBody button');if(btn){btn.textContent='✓ Completed';btn.disabled=true;btn.style.background='#6b7280';}if(currentPhysician){loadContactLogs(currentPhysician.id).then(()=>{});}else if(currentPractice){renderPracticeProfile();}else{renderTasksView();}})`;
 window._openedTaskRec = r;
 const editFn = `closeTaskDetailModal();openEditTaskModal()`;
 const delFn = r.provider_id ? `closeTaskDetailModal();deleteNoteFromActivity('${r.id}','${r.provider_id}').then(()=>{if(currentPhysician){loadContactLogs(currentPhysician.id).then(()=>renderProfile());}else if(currentPractice){renderPracticeProfile();}else{renderTasksView();}})` : r.practice_location_id ? `closeTaskDetailModal();deletePracticeNote('${r.id}').then(()=>{if(currentPractice){renderPracticeProfile();}else{renderTasksView();}})` : '';
