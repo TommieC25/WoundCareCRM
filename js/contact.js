@@ -567,12 +567,15 @@ function _savePendingCall(ctx) {
   try { localStorage.setItem('_crmPendingCall', JSON.stringify(ctx)); } catch(e) {}
   // Polling is the only reliable way to detect return from Phone app on iOS Safari.
   // visibilitychange/pageshow/focus all fail to fire consistently after a tel: link tap.
+  // NOTE: Do NOT check document.visibilityState here — iOS frequently leaves it stuck at
+  // 'hidden' even after the user returns to Safari from the Phone app. Since iOS suspends
+  // JS while Safari is in background, the interval only fires when the tab is actually
+  // active, making the visibilityState check both redundant and unreliable.
   if (_callPollInterval) clearInterval(_callPollInterval);
   _callPollInterval = setInterval(function() {
     if (!_pendingCall) { clearInterval(_callPollInterval); _callPollInterval = null; return; }
-    if (document.visibilityState !== 'visible') return;
     const age = Date.now() - _pendingCall.ts;
-    if (age < 1000) return; // still on the call or accidental tap
+    if (age < 4000) return; // < 4s: still dialing/calling, or accidental tap
     if (age > 3600000) { _clearPendingCall(); return; } // stale
     clearInterval(_callPollInterval);
     _callPollInterval = null;
