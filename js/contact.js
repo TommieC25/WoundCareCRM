@@ -561,6 +561,29 @@ if (panel.classList.contains('show')) initSheetSyncUrl();
 // --- Auto call-log interceptor ---
 let _pendingCall = null;
 
+function _savePendingCall(ctx) {
+  _pendingCall = ctx;
+  try { localStorage.setItem('_crmPendingCall', JSON.stringify(ctx)); } catch(e) {}
+}
+function _clearPendingCall() {
+  _pendingCall = null;
+  try { localStorage.removeItem('_crmPendingCall'); } catch(e) {}
+}
+function _checkAndShowCallPrompt() {
+  // Restore from localStorage if in-memory state was lost (page reload / bfcache miss)
+  if (!_pendingCall) {
+    try {
+      const s = localStorage.getItem('_crmPendingCall');
+      if (s) _pendingCall = JSON.parse(s);
+    } catch(e) {}
+  }
+  if (!_pendingCall) return;
+  const age = Date.now() - _pendingCall.ts;
+  // Ignore accidental taps (< 1s) or stale entries (> 1 hour)
+  if (age < 1000 || age > 3600000) { _clearPendingCall(); return; }
+  _showCallLogPrompt(_pendingCall);
+}
+
 function initCallLogInterceptor() {
 // Intercept all tel: link taps and capture context
 // Use capture phase (true) so stopPropagation() on task-card phone links doesn't block this
@@ -570,7 +593,6 @@ document.addEventListener('click', function(e) {
   const providerId = a.dataset.providerId || (currentPhysician ? currentPhysician.id : null) || null;
   const locId = a.dataset.locId || null;
   const phone = a.href.replace('tel:','');
-  // Build a display name from available context
   let displayName = '';
   if (providerId) {
     const phys = physicians.find(p => p.id === providerId);
@@ -585,18 +607,19 @@ document.addEventListener('click', function(e) {
   }
   if (!displayName && currentPractice) displayName = currentPractice.name || '';
   if (!displayName) displayName = fmtPhone(phone) || phone;
-  _pendingCall = { providerId, locId, phone, displayName, ts: Date.now() };
+  _savePendingCall({ providerId, locId, phone, displayName, ts: Date.now() });
 }, true); // capture phase
 
-// When user returns from phone app, offer to log the call
+// iOS Safari: visibilitychange alone is unreliable when returning from Phone app.
+// Use all three events — whichever fires first on this device/OS version will trigger the prompt.
 document.addEventListener('visibilitychange', function() {
-  if (document.visibilityState !== 'visible') return;
-  if (!_pendingCall) return;
-  const age = Date.now() - _pendingCall.ts;
-  // Ignore if less than 1 second (accidental tap) or older than 1 hour
-  if (age < 1000 || age > 3600000) { _pendingCall = null; return; }
-  _showCallLogPrompt(_pendingCall);
+  if (document.visibilityState === 'visible') _checkAndShowCallPrompt();
 });
+window.addEventListener('pageshow', function() {
+  // pageshow fires on bfcache restoration and normal navigation — reliable on iOS
+  setTimeout(_checkAndShowCallPrompt, 300);
+});
+window.addEventListener('focus', _checkAndShowCallPrompt);
 }
 
 function _showCallLogPrompt(ctx) {
@@ -608,7 +631,7 @@ requestAnimationFrame(() => el.classList.add('visible'));
 }
 
 function _dismissCallPrompt() {
-_pendingCall = null;
+_clearPendingCall();
 const el = $('callLogPrompt');
 if (!el) return;
 el.classList.remove('visible');
