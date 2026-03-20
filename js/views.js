@@ -154,7 +154,7 @@ const daysToNextMon = ((8-dow)%7)||7;
 const rBtns = [{label:'Today',date:today},{label:'Tomw',date:rAdd(1)}];
 for(let i=0;i<5;i++){const d=rAdd(daysToNextMon+i);const dn=new Date(d+'T12:00:00');rBtns.push({label:'Nxt '+dn.toLocaleDateString('en-US',{weekday:'short'}),date:d});}
 rBtns.push({label:'2 wks',date:rAdd(14)},{label:'Open',date:'2099-12-31'});
-html += `<div style="padding:0.75rem 1rem;background:#fffbeb;border:1px solid #fcd34d;border-radius:10px;margin-bottom:0.75rem;">
+html += `<div id="taskReschedulePanel" style="padding:0.75rem 1rem;background:#fffbeb;border:1px solid #fcd34d;border-radius:10px;margin-bottom:0.75rem;">
 <div style="font-size:0.72rem;color:#92400e;font-weight:700;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:0.4rem;">📅 Reschedule</div>
 <div style="display:flex;flex-wrap:wrap;gap:0.3rem;">${rBtns.map(b=>`<button type="button" onclick="rescheduleTask('${r.id}','${b.date}')" style="padding:0.4rem 0.65rem;font-size:0.8rem;border:1px solid ${r.reminder_date===b.date?'#d97706':'#fcd34d'};border-radius:6px;background:${r.reminder_date===b.date?'#f59e0b':'#fff'};color:${r.reminder_date===b.date?'#fff':'#92400e'};font-weight:${r.reminder_date===b.date?'700':'400'};cursor:pointer;-webkit-tap-highlight-color:transparent;touch-action:manipulation;">${b.label}</button>`).join('')}</div>
 <div style="display:flex;align-items:center;gap:0.4rem;margin-top:0.4rem;"><span style="font-size:0.75rem;color:#92400e;white-space:nowrap;">Specific date:</span><input type="date" value="${r.reminder_date&&r.reminder_date!=='2099-12-31'?r.reminder_date:''}" onchange="if(this.value)rescheduleTask('${r.id}',this.value)" style="flex:1;padding:0.3rem 0.5rem;border:1px solid #fcd34d;border-radius:6px;font-size:0.85rem;font-family:inherit;background:#fff;color:#92400e;-webkit-appearance:none;"></div>
@@ -174,14 +174,14 @@ html += `<div style="padding:0.75rem 1rem;background:#f0f9ff;border:1.5px dashed
 </div>
 </div>`;
 }
-const completeFn = `event.stopPropagation();completeReminder('${r.id}').then(()=>{const btn=document.querySelector('#taskDetailBody button');if(btn){btn.textContent='✓ Completed';btn.disabled=true;btn.style.background='#6b7280';}if(currentPhysician){loadContactLogs(currentPhysician.id).then(()=>{});}else if(currentPractice){renderPracticeProfile();}else{renderTasksView();}})`;
+const completeFn = `event.stopPropagation();completeReminder('${r.id}').then(()=>{const b=document.getElementById('taskMarkCompleteBtn');if(b)b.remove();const p=document.getElementById('taskReschedulePanel');if(p)p.remove();if(currentPhysician){loadContactLogs(currentPhysician.id).then(()=>{});}else if(currentPractice){renderPracticeProfile();}else{renderTasksView();}})`;
 window._openedTaskRec = r;
 const editFn = `closeTaskDetailModal();openEditTaskModal()`;
 const delFn = r.provider_id ? `closeTaskDetailModal();deleteNoteFromActivity('${r.id}','${r.provider_id}').then(()=>{if(currentPhysician){loadContactLogs(currentPhysician.id).then(()=>renderProfile());}else if(currentPractice){renderPracticeProfile();}else{renderTasksView();}})` : r.practice_location_id ? `closeTaskDetailModal();deletePracticeNote('${r.id}').then(()=>{if(currentPractice){renderPracticeProfile();}else{renderTasksView();}})` : '';
 const profileFn = phys ? `closeTaskDetailModal();setView('physicians');viewPhysician('${phys.id}')` : practice ? `closeTaskDetailModal();setView('practices');viewPractice('${practice.id}')` : '';
 const profileLabel = phys ? '👤 View Full Profile' : '🏢 View Practice Profile';
 html += `<div style="display:flex;flex-direction:column;gap:0.5rem;">
-<button onclick="${completeFn}" style="padding:0.75rem;background:#10b981;color:white;border:none;border-radius:8px;font-weight:700;font-size:0.95rem;cursor:pointer;-webkit-tap-highlight-color:transparent;">✓ Mark Complete</button>
+<button id="taskMarkCompleteBtn" onclick="${completeFn}" style="padding:0.75rem;background:#10b981;color:white;border:none;border-radius:8px;font-weight:700;font-size:0.95rem;cursor:pointer;-webkit-tap-highlight-color:transparent;">✓ Mark Complete</button>
 <div style="display:flex;gap:0.5rem;">
 <button onclick="${editFn}" style="flex:1;padding:0.7rem;background:#0a4d3c;color:white;border:none;border-radius:8px;font-weight:600;font-size:0.875rem;cursor:pointer;">✏️ Edit Note/Task</button>
 ${delFn?`<button onclick="${delFn}" style="flex:1;padding:0.7rem;background:#dc2626;color:white;border:none;border-radius:8px;font-weight:600;font-size:0.875rem;cursor:pointer;">🗑️ Delete</button>`:''}
