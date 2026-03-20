@@ -560,6 +560,30 @@ if (panel.classList.contains('show')) initSheetSyncUrl();
 
 // --- Auto call-log interceptor ---
 let _pendingCall = null;
+let _callPollInterval = null;
+
+function _savePendingCall(ctx) {
+  _pendingCall = ctx;
+  try { localStorage.setItem('_crmPendingCall', JSON.stringify(ctx)); } catch(e) {}
+  // Polling is the only reliable way to detect return from Phone app on iOS Safari.
+  // visibilitychange/pageshow/focus all fail to fire consistently after a tel: link tap.
+  if (_callPollInterval) clearInterval(_callPollInterval);
+  _callPollInterval = setInterval(function() {
+    if (!_pendingCall) { clearInterval(_callPollInterval); _callPollInterval = null; return; }
+    if (document.visibilityState !== 'visible') return;
+    const age = Date.now() - _pendingCall.ts;
+    if (age < 1000) return; // still on the call or accidental tap
+    if (age > 3600000) { _clearPendingCall(); return; } // stale
+    clearInterval(_callPollInterval);
+    _callPollInterval = null;
+    _showCallLogPrompt(_pendingCall);
+  }, 500);
+}
+function _clearPendingCall() {
+  _pendingCall = null;
+  if (_callPollInterval) { clearInterval(_callPollInterval); _callPollInterval = null; }
+  try { localStorage.removeItem('_crmPendingCall'); } catch(e) {}
+}
 
 function initCallLogInterceptor() {
 // Intercept all tel: link taps and capture context
@@ -570,7 +594,6 @@ document.addEventListener('click', function(e) {
   const providerId = a.dataset.providerId || (currentPhysician ? currentPhysician.id : null) || null;
   const locId = a.dataset.locId || null;
   const phone = a.href.replace('tel:','');
-  // Build a display name from available context
   let displayName = '';
   if (providerId) {
     const phys = physicians.find(p => p.id === providerId);
@@ -585,18 +608,8 @@ document.addEventListener('click', function(e) {
   }
   if (!displayName && currentPractice) displayName = currentPractice.name || '';
   if (!displayName) displayName = fmtPhone(phone) || phone;
-  _pendingCall = { providerId, locId, phone, displayName, ts: Date.now() };
+  _savePendingCall({ providerId, locId, phone, displayName, ts: Date.now() });
 }, true); // capture phase
-
-// When user returns from phone app, offer to log the call
-document.addEventListener('visibilitychange', function() {
-  if (document.visibilityState !== 'visible') return;
-  if (!_pendingCall) return;
-  const age = Date.now() - _pendingCall.ts;
-  // Ignore if less than 3 seconds (accidental tap) or older than 1 hour
-  if (age < 3000 || age > 3600000) { _pendingCall = null; return; }
-  _showCallLogPrompt(_pendingCall);
-});
 }
 
 function _showCallLogPrompt(ctx) {
@@ -608,7 +621,7 @@ requestAnimationFrame(() => el.classList.add('visible'));
 }
 
 function _dismissCallPrompt() {
-_pendingCall = null;
+_clearPendingCall();
 const el = $('callLogPrompt');
 if (!el) return;
 el.classList.remove('visible');

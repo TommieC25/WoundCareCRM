@@ -600,7 +600,7 @@ const locId = $('assignPhysLocationSelect').value;
 if (!locId) { showQuickErr('Please select a location at the top of this form.'); return; }
 try {
 updateSyncIndicators('syncing');
-const data = {first_name:first,last_name:last,degree:normDegree($('quickPhysDegree').value)||null,specialty:$('quickPhysSpecialty').value||null,priority:$('quickPhysPriority').value||null};
+const data = {first_name:first,last_name:last,degree:normDegree($('quickPhysDegree').value)||null,title:$('quickPhysTitle').value.trim()||null,specialty:$('quickPhysSpecialty').value||null,priority:$('quickPhysPriority').value||null,email:$('quickPhysEmail').value.trim()||null,mobile_phone:$('quickPhysMobile').value.trim()||null,general_notes:$('quickPhysNotes').value.trim()||null};
 const {data:newPhys,error} = await db.from('providers').insert(data).select().single();
 if (error) throw error;
 const {error:assignErr} = await db.from('provider_location_assignments').insert({provider_id:newPhys.id,practice_location_id:locId,is_primary:true});
@@ -611,6 +611,10 @@ $('quickPhysLast').value = '';
 $('quickPhysDegree').value = '';
 $('quickPhysSpecialty').value = '';
 $('quickPhysPriority').value = '';
+$('quickPhysTitle').value = '';
+$('quickPhysEmail').value = '';
+$('quickPhysMobile').value = '';
+$('quickPhysNotes').value = '';
 renderPracticeProfile();
 const locations = practiceLocations.filter(l => l.practice_id === currentPractice.id);
 const existingPhysIds = physicians.filter(p => {
