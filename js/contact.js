@@ -563,6 +563,7 @@ let _pendingCall = null;
 
 function initCallLogInterceptor() {
 // Intercept all tel: link taps and capture context
+// Use capture phase (true) so stopPropagation() on task-card phone links doesn't block this
 document.addEventListener('click', function(e) {
   const a = e.target.closest('a[href^="tel:"]');
   if (!a) return;
@@ -585,7 +586,7 @@ document.addEventListener('click', function(e) {
   if (!displayName && currentPractice) displayName = currentPractice.name || '';
   if (!displayName) displayName = fmtPhone(phone) || phone;
   _pendingCall = { providerId, locId, phone, displayName, ts: Date.now() };
-});
+}, true); // capture phase
 
 // When user returns from phone app, offer to log the call
 document.addEventListener('visibilitychange', function() {
