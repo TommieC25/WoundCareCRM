@@ -560,71 +560,54 @@ if (panel.classList.contains('show')) initSheetSyncUrl();
 
 // --- Auto call-log interceptor ---
 let _pendingCall = null;
-let _callPollInterval = null;
 
 function _savePendingCall(ctx) {
   _pendingCall = ctx;
   try { localStorage.setItem('_crmPendingCall', JSON.stringify(ctx)); } catch(e) {}
-  // Polling alone is unreliable: iOS suspends JS intervals when app is backgrounded.
-  // Primary recovery: touchstart listener fires on first screen tap when user returns.
-  // Polling is a secondary fallback for cases where the page did a full reload.
-  if (_callPollInterval) clearInterval(_callPollInterval);
-  _callPollInterval = setInterval(function() {
-    if (!_pendingCall) { clearInterval(_callPollInterval); _callPollInterval = null; return; }
-    const age = Date.now() - _pendingCall.ts;
-    if (age < 4000) return; // < 4s: still dialing/calling, or accidental tap
-    if (age > 3600000) { _clearPendingCall(); return; } // stale
-    clearInterval(_callPollInterval);
-    _callPollInterval = null;
-    _showCallLogPrompt(_pendingCall);
-  }, 500);
+  // Show the prompt immediately on tap — iOS will switch to Phone app but the prompt
+  // stays rendered. When the user returns (suspended app) it's already visible.
+  // For the reload case, the startup check calls _savePendingCall which shows it again.
+  _showCallLogPrompt(ctx);
 }
 function _clearPendingCall() {
   _pendingCall = null;
-  if (_callPollInterval) { clearInterval(_callPollInterval); _callPollInterval = null; }
   try { localStorage.removeItem('_crmPendingCall'); } catch(e) {}
 }
 
 function initCallLogInterceptor() {
-// On startup, check localStorage for a pending call saved before iOS killed the tab.
-// This handles the case where: user taps tel: link → call → iOS returns to home screen →
-// user taps app icon → Safari reloads page from scratch (interval + memory state gone).
-// localStorage survives the reload, so we restore and show the prompt immediately.
+// On page load (full reload after iOS killed the tab), restore any pending call from
+// localStorage and show the prompt immediately. No delay needed — the prompt is the
+// first thing the user should see when they return and the page reloads.
 try {
   const saved = localStorage.getItem('_crmPendingCall');
   if (saved) {
     const ctx = JSON.parse(saved);
     const age = Date.now() - ctx.ts;
     if (age >= 1000 && age <= 3600000) {
-      // Call _savePendingCall (not just set _pendingCall) so the polling interval is
-      // restarted. The interval fires within 500ms; since age is already > 4s the
-      // prompt shows immediately. setTimeout is a belt-and-suspenders fallback.
-      _savePendingCall(ctx);
-      setTimeout(() => { if (_pendingCall) _showCallLogPrompt(_pendingCall); }, 1500);
+      _pendingCall = ctx;
+      // Slight delay so the page finishes initial render before prompt slides up
+      setTimeout(() => _showCallLogPrompt(ctx), 400);
     } else {
       localStorage.removeItem('_crmPendingCall');
     }
   }
 } catch(e) {}
 
-// touchstart recovery: the most reliable iOS recovery path.
-// Fires on every screen tap — very cheap (just a localStorage.getItem).
-// When user returns to the app after a call (regardless of whether the page reloaded
-// or JS was merely suspended), the first tap triggers this and shows the prompt.
-// We intentionally do NOT remove this listener — it must survive across calls.
+// touchstart: backup for the suspended-app case where the page didn't reload.
+// The prompt should already be visible (shown immediately on tap), but if anything
+// went wrong this ensures it appears on the first touch after returning.
 document.addEventListener('touchstart', function() {
   try {
     const saved = localStorage.getItem('_crmPendingCall');
     if (!saved) return;
     const ctx = JSON.parse(saved);
     const age = Date.now() - ctx.ts;
-    if (age >= 4000 && age <= 3600000) {
-      if (!_pendingCall) _savePendingCall(ctx); // restores interval too
+    if (age >= 1000 && age <= 3600000) {
+      if (!_pendingCall) _pendingCall = ctx;
       _showCallLogPrompt(ctx);
     } else if (age > 3600000) {
-      localStorage.removeItem('_crmPendingCall'); // stale, discard
+      localStorage.removeItem('_crmPendingCall');
     }
-    // If age < 4000 (still on the call), do nothing — wait for next tap
   } catch(e) {}
 }, { passive: true });
 
