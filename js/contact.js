@@ -658,20 +658,19 @@ function _doTelIntercept(a) {
   if (!displayName && currentPractice) displayName = currentPractice.name || '';
   if (!displayName) displayName = fmtPhone(phone) || phone;
   _savePendingCall({ providerId, locId, phone, displayName, ts: Date.now() });
+  showToast('📞 Call started — Log Note will appear on return', 'success');
 }
 
 function _showCallLogPrompt(ctx) {
 const el = $('callLogPrompt');
 if (!el) return;
 $('callLogPromptName').textContent = ctx.displayName;
-el.style.display = 'flex'; // synchronous — no RAF, no animation dependency
+el.classList.add('active'); // uses standard .modal.active system — same as all other modals
 }
 
 function _dismissCallPrompt() {
 _clearPendingCall();
-const el = $('callLogPrompt');
-if (!el) return;
-el.style.display = 'none';
+closeModal('callLogPrompt');
 }
 
 function _confirmCallLog() {
