@@ -575,34 +575,29 @@ function _clearPendingCall() {
 }
 
 function initCallLogInterceptor() {
-// On page load (full reload after iOS killed the tab), restore any pending call from
-// localStorage and show the prompt immediately. No delay needed — the prompt is the
-// first thing the user should see when they return and the page reloads.
+// Restore any pending call saved before this page load (iOS killed/reloaded the tab)
 try {
   const saved = localStorage.getItem('_crmPendingCall');
   if (saved) {
     const ctx = JSON.parse(saved);
     const age = Date.now() - ctx.ts;
-    if (age >= 1000 && age <= 3600000) {
+    if (age >= 500 && age <= 3600000) {
       _pendingCall = ctx;
-      // Slight delay so the page finishes initial render before prompt slides up
-      setTimeout(() => _showCallLogPrompt(ctx), 400);
+      setTimeout(() => _showCallLogPrompt(ctx), 300);
     } else {
       localStorage.removeItem('_crmPendingCall');
     }
   }
 } catch(e) {}
 
-// touchstart: backup for the suspended-app case where the page didn't reload.
-// The prompt should already be visible (shown immediately on tap), but if anything
-// went wrong this ensures it appears on the first touch after returning.
+// Backup: on any touch, check if there's a pending call we missed showing
 document.addEventListener('touchstart', function() {
   try {
     const saved = localStorage.getItem('_crmPendingCall');
     if (!saved) return;
     const ctx = JSON.parse(saved);
     const age = Date.now() - ctx.ts;
-    if (age >= 1000 && age <= 3600000) {
+    if (age >= 500 && age <= 3600000) {
       if (!_pendingCall) _pendingCall = ctx;
       _showCallLogPrompt(ctx);
     } else if (age > 3600000) {
@@ -611,14 +606,43 @@ document.addEventListener('touchstart', function() {
   } catch(e) {}
 }, { passive: true });
 
-// Intercept all tel: link taps and capture context
-// Use capture phase (true) so stopPropagation() on task-card phone links doesn't block this
-document.addEventListener('click', function(e) {
+// PRIMARY INTERCEPTOR: touchend, not click.
+// On iOS PWA, tapping a tel: link causes iOS to immediately open Phone before
+// the 'click' event fires — JS is suspended mid-flight. 'touchend' fires
+// before the native action, so we catch it here.
+// Track start position to reject scroll-cancel-on-link (not a real tap).
+let _txStart = 0, _tyStart = 0;
+document.addEventListener('touchstart', function(e) {
+  if (e.target.closest('a[href^="tel:"]')) {
+    _txStart = e.touches[0].clientX;
+    _tyStart = e.touches[0].clientY;
+  }
+}, { capture: true, passive: true });
+
+let _lastTelIntercept = 0; // debounce: ignore click if touchend already fired
+document.addEventListener('touchend', function(e) {
   const a = e.target.closest('a[href^="tel:"]');
   if (!a) return;
+  const dx = Math.abs(e.changedTouches[0].clientX - _txStart);
+  const dy = Math.abs(e.changedTouches[0].clientY - _tyStart);
+  if (dx > 12 || dy > 12) return; // was a scroll, not a tap
+  _lastTelIntercept = Date.now();
+  _doTelIntercept(a);
+}, { capture: true, passive: true });
+
+// click kept as fallback for non-iOS or desktop testing
+document.addEventListener('click', function(e) {
+  if (Date.now() - _lastTelIntercept < 800) return; // already handled by touchend
+  const a = e.target.closest('a[href^="tel:"]');
+  if (!a) return;
+  _doTelIntercept(a);
+}, true);
+}
+
+function _doTelIntercept(a) {
   const providerId = a.dataset.providerId || (currentPhysician ? currentPhysician.id : null) || null;
   const locId = a.dataset.locId || null;
-  const phone = a.href.replace('tel:','');
+  const phone = (a.getAttribute('href') || '').replace('tel:','');
   let displayName = '';
   if (providerId) {
     const phys = physicians.find(p => p.id === providerId);
@@ -634,23 +658,20 @@ document.addEventListener('click', function(e) {
   if (!displayName && currentPractice) displayName = currentPractice.name || '';
   if (!displayName) displayName = fmtPhone(phone) || phone;
   _savePendingCall({ providerId, locId, phone, displayName, ts: Date.now() });
-}, true); // capture phase
 }
 
 function _showCallLogPrompt(ctx) {
 const el = $('callLogPrompt');
 if (!el) return;
 $('callLogPromptName').textContent = ctx.displayName;
-el.style.display = 'flex';
-requestAnimationFrame(() => el.classList.add('visible'));
+el.style.display = 'flex'; // synchronous — no RAF, no animation dependency
 }
 
 function _dismissCallPrompt() {
 _clearPendingCall();
 const el = $('callLogPrompt');
 if (!el) return;
-el.classList.remove('visible');
-setTimeout(() => { el.style.display = 'none'; }, 260);
+el.style.display = 'none';
 }
 
 function _confirmCallLog() {
