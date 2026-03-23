@@ -530,6 +530,15 @@ if (editId) {
 ({data:_newRec,error} = await db.from('contact_logs').insert({ provider_id: physicianId, contact_date: today, author: authorVal, notes: note, practice_location_id: locationId, reminder_date: date }).select().single());
 }
 if (error) throw error;
+// Keep _taskDetailLogs in sync so re-opening the task detail modal shows updated text
+if (editId) {
+  const existing = (typeof _taskDetailLogs !== 'undefined' && _taskDetailLogs[editId]) || (window._taskDetailLogs||{})[editId] || {};
+  const updated = Object.assign({}, existing, { notes: note, reminder_date: date, author: authorVal, provider_id: physicianId||null, practice_location_id: locationId||null });
+  if (typeof _taskDetailLogs !== 'undefined') _taskDetailLogs[editId] = updated;
+  if (!window._taskDetailLogs) window._taskDetailLogs = {};
+  window._taskDetailLogs[editId] = updated;
+  window._openedTaskRec = updated;
+}
 showToast(editId ? 'Task updated' : 'Task saved', 'success');
 closeAddTaskModal();
 if (physicianId && currentPhysician && currentPhysician.id === physicianId) { await loadContactLogs(physicianId); renderProfile(); }
