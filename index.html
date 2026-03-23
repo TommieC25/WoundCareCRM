@@ -678,21 +678,11 @@ Add Follow-Up Task after saving
 </div>
 </div>
 </div>
-<!-- Call log prompt — uses standard modal system so it's guaranteed visible -->
-<div id="callLogPrompt" class="modal">
-<div class="modal-content" style="max-width:380px;">
-<div class="modal-header">
-<h2 style="font-size:1.2rem;">📞 Log that call?</h2>
-<button onclick="_dismissCallPrompt()" class="close-btn">×</button>
-</div>
-<div class="modal-body" style="display:flex;flex-direction:column;gap:1rem;">
-<p style="font-size:1rem;color:#374151;">Call with <strong id="callLogPromptName"></strong></p>
-<div style="display:flex;gap:0.75rem;">
-<button onclick="_confirmCallLog()" class="btn-primary" style="flex:1;">Add Note</button>
-<button onclick="_dismissCallPrompt()" class="btn-secondary" style="flex:1;padding:0.75rem;font-size:0.95rem;">Dismiss</button>
-</div>
-</div>
-</div>
+<!-- Call log banner — non-blocking floating bar, stays visible while browsing CRM during a call -->
+<div id="callLogBanner" style="display:none;position:fixed;bottom:calc(env(safe-area-inset-bottom,0px) + 0.6rem);left:0.75rem;right:0.75rem;z-index:9998;background:#0a4d3c;color:white;border-radius:14px;padding:0.75rem 1rem;align-items:center;gap:0.75rem;box-shadow:0 4px 20px rgba(0,0,0,0.35);">
+<span style="flex:1;font-size:0.9rem;line-height:1.3;">📞 Log call: <strong id="callLogBannerName"></strong></span>
+<button onclick="_confirmCallLog()" style="background:white;color:#0a4d3c;border:none;border-radius:8px;padding:0.45rem 0.9rem;font-weight:700;font-size:0.875rem;cursor:pointer;white-space:nowrap;flex-shrink:0;">Add Note</button>
+<button onclick="_dismissCallPrompt()" style="background:none;border:none;color:rgba(255,255,255,0.75);font-size:1.5rem;line-height:1;cursor:pointer;padding:0 0.1rem;flex-shrink:0;">×</button>
 </div>
 
 </body>
