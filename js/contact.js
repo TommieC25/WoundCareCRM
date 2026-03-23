@@ -662,19 +662,20 @@ function _doTelIntercept(a) {
   if (!displayName && currentPractice) displayName = currentPractice.name || '';
   if (!displayName) displayName = fmtPhone(phone) || phone;
   _savePendingCall({ providerId, locId, phone, displayName, ts: Date.now() });
-  showToast('📞 Call logged — tap anywhere on return to add note', 'success');
+  showToast('📞 Call saved — green bar will appear when you return', 'success');
 }
 
 function _showCallLogPrompt(ctx) {
-const el = $('callLogPrompt');
+const el = $('callLogBanner');
 if (!el) return;
-$('callLogPromptName').textContent = ctx.displayName;
-el.classList.add('active'); // uses standard .modal.active system — same as all other modals
+$('callLogBannerName').textContent = ctx.displayName;
+el.style.display = 'flex'; // non-blocking banner — user can browse CRM freely during call
 }
 
 function _dismissCallPrompt() {
 _clearPendingCall();
-closeModal('callLogPrompt');
+const el = $('callLogBanner');
+if (el) el.style.display = 'none';
 }
 
 function _confirmCallLog() {
