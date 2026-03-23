@@ -51,20 +51,13 @@ openEditTaskModal();
 function downloadTaskICS(r, phys, loc, practice, timeVal) {
   if (!r.reminder_date || r.reminder_date === '2099-12-31') { return; }
   const name = phys ? fmtName(phys) : (practice ? practice.name : (loc ? (loc.label || 'Office') : 'Task'));
-  const {displayNotes:dn,taskNote} = parseTaskRecord(r.notes);
   const ds = r.reminder_date.replace(/-/g, '');
-  let desc = '';
-  if (taskNote) desc += 'Task: ' + taskNote + '\\n';
-  if (phys && phys.specialty) desc += phys.specialty + '\\n';
-  const np = phys ? normPriority(phys.priority) : null;
-  if (np) desc += 'Tier ' + np + '\\n';
-  if (dn) desc += dn.replace(/[\r\n]+/g, '\\n');
   let location = '';
   if (loc) { const parts = [practice ? practice.name : null, loc.address, loc.city, loc.zip].filter(Boolean); location = parts.join(', '); }
   const uid = 'woundcare-' + (r.id || Date.now()) + '@woundcarecrm';
   const stamp = new Date().toISOString().replace(/[-:.]/g,'').slice(0,15) + 'Z';
   let dtStart,dtEnd;if(timeVal){const[hh,mm]=timeVal.split(':');const dEnd=new Date(r.reminder_date+'T'+timeVal+':00');dEnd.setHours(dEnd.getHours()+1);const endStr=r.reminder_date.replace(/-/g,'')+`T${String(dEnd.getHours()).padStart(2,'0')}${String(dEnd.getMinutes()).padStart(2,'0')}00`;dtStart='DTSTART:'+ds+'T'+hh+mm+'00';dtEnd='DTEND:'+endStr;}else{const dsNext=(()=>{const d=new Date(r.reminder_date+'T12:00:00');d.setDate(d.getDate()+1);return d.toISOString().slice(0,10).replace(/-/g,'');})();dtStart='DTSTART;VALUE=DATE:'+ds;dtEnd='DTEND;VALUE=DATE:'+dsNext;}
-  const ics = ['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//WoundCareCRM//EN','CALSCALE:GREGORIAN','METHOD:PUBLISH','BEGIN:VEVENT','UID:'+uid,'DTSTAMP:'+stamp,dtStart,dtEnd,'SUMMARY:Visit \u2014 '+name,location?'LOCATION:'+location:null,desc?'DESCRIPTION:'+desc:null,'BEGIN:VALARM','TRIGGER:-PT30M','ACTION:DISPLAY','DESCRIPTION:Upcoming: '+name,'END:VALARM','END:VEVENT','END:VCALENDAR'].filter(l=>l!==null).join('\r\n');
+  const ics = ['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//WoundCareCRM//EN','CALSCALE:GREGORIAN','METHOD:PUBLISH','BEGIN:VEVENT','UID:'+uid,'DTSTAMP:'+stamp,dtStart,dtEnd,'SUMMARY:'+name,location?'LOCATION:'+location:null,'BEGIN:VALARM','TRIGGER:-PT30M','ACTION:DISPLAY','DESCRIPTION:'+name,'END:VALARM','END:VEVENT','END:VCALENDAR'].filter(l=>l!==null).join('\r\n');
   const blob = new Blob([ics], {type:'text/calendar;charset=utf-8'});
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -74,18 +67,11 @@ function downloadTaskICS(r, phys, loc, practice, timeVal) {
 }
 function buildGoogleCalendarUrl(r, phys, loc, practice, timeVal) {
   const name = phys ? fmtName(phys) : (practice ? practice.name : (loc ? (loc.label || 'Office') : 'Task'));
-  const {displayNotes:dn,taskNote} = parseTaskRecord(r.notes);
   const ds = r.reminder_date.replace(/-/g, '');
-  const parts = [];
-  if (taskNote) parts.push('Task: ' + taskNote);
-  if (phys && phys.specialty) parts.push(phys.specialty);
-  const np = phys ? normPriority(phys.priority) : null;
-  if (np) parts.push('Tier ' + np);
-  if (dn) parts.push(dn);
   let location = '';
   if (loc) { const cityState = [loc.city, loc.zip ? 'FL ' + loc.zip : 'FL'].filter(Boolean).join(', '); const lp = [practice ? practice.name : null, loc.address, cityState].filter(Boolean); location = lp.join(', '); }
   let calDates;if(timeVal){const[hh,mm]=timeVal.split(':');const dEnd=new Date(r.reminder_date+'T'+timeVal+':00');dEnd.setHours(dEnd.getHours()+1);const endStr=r.reminder_date.replace(/-/g,'')+`T${String(dEnd.getHours()).padStart(2,'0')}${String(dEnd.getMinutes()).padStart(2,'0')}00`;calDates=ds+'T'+hh+mm+'00/'+endStr;}else{const dsNext=(()=>{const d=new Date(r.reminder_date+'T12:00:00');d.setDate(d.getDate()+1);return d.toISOString().slice(0,10).replace(/-/g,'');})();calDates=ds+'/'+dsNext;}
-  const params = new URLSearchParams({ action:'TEMPLATE', text: name, dates:calDates, details:parts.join('\n'), location, ctz:'America/New_York' });
+  const params = new URLSearchParams({ action:'TEMPLATE', text: name, dates:calDates, location, ctz:'America/New_York' });
   return 'https://calendar.google.com/calendar/render?' + params.toString();
 }
 function exportTaskToCalendar(logId) {
