@@ -590,8 +590,12 @@ try {
   }
 } catch(e) {}
 
-// Backup: on any touch, check if there's a pending call we missed showing
-document.addEventListener('touchstart', function() {
+// Recovery: on any touch that is NOT on a tel: link, check for a pending call.
+// Skipping tel: links is critical — if the user is tapping a phone number to
+// start a new call, we must not show the modal (it blocks the call from placing).
+// This fires on first tap back in the app after a call ends.
+document.addEventListener('touchstart', function(e) {
+  if (e.target.closest('a[href^="tel:"]')) return; // new call starting — skip
   try {
     const saved = localStorage.getItem('_crmPendingCall');
     if (!saved) return;
