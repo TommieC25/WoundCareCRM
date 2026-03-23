@@ -564,10 +564,10 @@ let _pendingCall = null;
 function _savePendingCall(ctx) {
   _pendingCall = ctx;
   try { localStorage.setItem('_crmPendingCall', JSON.stringify(ctx)); } catch(e) {}
-  // Show the prompt immediately on tap — iOS will switch to Phone app but the prompt
-  // stays rendered. When the user returns (suspended app) it's already visible.
-  // For the reload case, the startup check calls _savePendingCall which shows it again.
-  _showCallLogPrompt(ctx);
+  // Do NOT show the modal here — showing it immediately blocks the tel: link from
+  // placing the call (iOS sees a DOM change and cancels the navigation).
+  // The modal is shown instead via the touchstart listener when the user returns,
+  // or via the startup check if the page reloaded.
 }
 function _clearPendingCall() {
   _pendingCall = null;
@@ -658,7 +658,7 @@ function _doTelIntercept(a) {
   if (!displayName && currentPractice) displayName = currentPractice.name || '';
   if (!displayName) displayName = fmtPhone(phone) || phone;
   _savePendingCall({ providerId, locId, phone, displayName, ts: Date.now() });
-  showToast('📞 Call started — Log Note will appear on return', 'success');
+  showToast('📞 Call logged — tap anywhere on return to add note', 'success');
 }
 
 function _showCallLogPrompt(ctx) {
