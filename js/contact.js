@@ -6,7 +6,7 @@ function openContactModal() {
 editingContactId = null;
 $('contactForm').reset();
 $('contactModalTitle').textContent = 'Add Contact Note';
-$('authorName').value = '';
+$('authorName').value = localStorage.getItem('lastCallLogAuthor') || '';
 $('contactSaveBtn').textContent = 'Save Note';
 $('contactSaveBtn').className = 'btn-primary';
 setToday();
