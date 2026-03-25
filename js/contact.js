@@ -324,9 +324,8 @@ if(error)throw error;
 showToast(isTask?'Task updated':'Note updated','success');
 closeContactModal();
 $('contactForm').onsubmit=function(ev){saveContact(ev);return false;};
-await loadAllData();
-if(currentPractice){renderPracticeProfile();await loadPracticeActivity(currentPractice.id);}
 if(reminderOn){const provId=_editLog.provider_id||null;const locId=_editLog.practice_location_id||null;setTimeout(()=>openAddTaskModal(provId,locId),400);}
+loadAllData().then(async()=>{if(currentPractice){renderPracticeProfile();await loadPracticeActivity(currentPractice.id);}}).catch(()=>{});
 });
 return false;
 };
@@ -541,8 +540,8 @@ if (editId) {
 }
 showToast(editId ? 'Task updated' : 'Task saved', 'success');
 closeAddTaskModal();
-if (physicianId && currentPhysician && currentPhysician.id === physicianId) { await loadContactLogs(physicianId); renderProfile(); }
-if (currentView === 'activity') renderActivityTabView();
+if (currentView === 'activity') renderTasksView();
+if (physicianId && currentPhysician && currentPhysician.id === physicianId) { loadContactLogs(physicianId).then(()=>renderProfile()).catch(()=>{}); }
 if (!editId && _newRec && date && date !== '2099-12-31') {
 const _p=physicianId?physicians.find(p=>p.id===physicianId):null,_l=locationId?practiceLocations.find(l=>l.id===locationId):null,_pr=_l?practices.find(p=>p.id===_l.practice_id):null;
 const _taskTime=($('addTaskTime')||{}).value||'';
