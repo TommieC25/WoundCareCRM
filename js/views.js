@@ -480,7 +480,7 @@ let _mapBuiltMarkers=[]; // module-level so locateOnMap() always has access even
 function getMapDataVersion(){return practiceLocations.length+'_'+physicians.length+'_'+Object.keys(physicianAssignments).length+'_links';}
 function getPracticeIcon(){return L.divIcon({className:'',html:'<div style="width:14px;height:14px;background:#0a4d3c;border:2.5px solid white;border-radius:50%;box-shadow:0 2px 5px rgba(0,0,0,0.4);"></div>',iconSize:[14,14],iconAnchor:[7,7]});}
 function buildMarkerPopup(loc,practiceName,assignedPhys,addr){
-const physLinks=(assignedPhys||[]).map(p=>`<a href="#" onclick="territoryMap&&territoryMap.closePopup();setView('physicians');viewPhysician('${p.id}');return false;" style="color:#0a4d3c;font-weight:600;text-decoration:none;">${p.first_name} ${p.last_name}</a>`).join('<br>');
+const physLinks=(assignedPhys||[]).map(p=>`<a href="#" onclick="territoryMap&&territoryMap.closePopup();setView('physicians');viewPhysician('${p.id}');return false;" style="color:#0a4d3c;font-weight:600;text-decoration:none;">${fmtName(p)}</a>`).join('<br>');
 const practiceLink=loc.practice_id?`<a href="#" onclick="territoryMap&&territoryMap.closePopup();setView('practices');viewPractice('${loc.practice_id}');return false;" style="display:inline-block;margin-bottom:0.3rem;color:white;background:#0a4d3c;padding:0.25rem 0.6rem;border-radius:5px;font-weight:700;font-size:0.82rem;text-decoration:none;">📋 View Profile</a><br>`:'';
 return '<strong>'+(practiceName||loc.label||'Office')+'</strong><br>'
 +addr+'<br>'
