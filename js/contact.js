@@ -258,7 +258,7 @@ try {
 updateSyncIndicators('syncing');
 const {error} = await db.from('contact_logs').update({reminder_date: '2000-01-01'}).eq('id', logId);
 if (error) throw error;
-showToast('Reminder marked complete ✓', 'success');
+showToast('Task completed ✓', 'success');
 updateSyncIndicators('synced');
 if (!currentPhysician && !currentPractice && !(currentView === 'activity' && activitySubTab === 'tasks')) { renderEmptyState(); }
 } catch(e) { showToast('Error: ' + e.message, 'error'); updateSyncIndicators('error'); }
