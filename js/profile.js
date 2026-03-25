@@ -409,12 +409,9 @@ if (error) throw error;
 await Promise.all(physIds.map(pid => db.from('providers').update({last_contact:dateVal}).eq('id',pid)));
 const label = physIds.length > 0 ? `Call logged for ${physIds.length} physician${physIds.length!==1?'s':''}` : 'Location note logged';
 showToast(label, 'success');
-await loadAllData();
-renderPracticeProfile();
-await loadPracticeActivity(currentPractice.id);
-// If follow-up task requested, open separate task modal after closing activity modal
 const taskPhysId = physIds.length > 0 ? physIds[0] : null;
-setTimeout(() => { closeContactModal(); $('contactForm').onsubmit = function(ev) { saveContact(ev); return false; }; const pr = $('practicePhysSelectRow'); if (pr) pr.style.display = 'none'; if (reminderOn) openAddTaskModal(taskPhysId, locVal); }, 500);
+closeContactModal();$('contactForm').onsubmit=function(ev){saveContact(ev);return false;};const _psr=$('practicePhysSelectRow');if(_psr)_psr.style.display='none';if(reminderOn)openAddTaskModal(taskPhysId,locVal);
+loadAllData().then(async()=>{renderPracticeProfile();await loadPracticeActivity(currentPractice.id);}).catch(()=>{});
 });
 }
 
@@ -476,14 +473,8 @@ if (error) throw error;
 await Promise.all(physIds.map(pid => db.from('providers').update({ last_contact: dateVal }).eq('id', pid)));
 const label = physIds.length > 0 ? `Note logged for ${physIds.length} physician${physIds.length !== 1 ? 's' : ''}` : 'Location note logged';
 showToast(label, 'success');
-await loadAllData();
-const updatedLoc = practiceLocations.find(l => l.id === locId);
-if (updatedLoc) {
-currentPractice = practices.find(p => p.id === updatedLoc.practice_id);
-renderLocationProfile(updatedLoc);
-}
-// If follow-up task requested, open separate task modal after closing activity modal
 const taskPhysId = physIds.length > 0 ? physIds[0] : null;
-setTimeout(() => { closeContactModal(); $('contactForm').onsubmit = function(ev) { saveContact(ev); return false; }; const pr = $('practicePhysSelectRow'); if (pr) pr.style.display = 'none'; if (reminderOn) openAddTaskModal(taskPhysId, locId); }, 500);
+closeContactModal();$('contactForm').onsubmit=function(ev){saveContact(ev);return false;};const _psr2=$('practicePhysSelectRow');if(_psr2)_psr2.style.display='none';if(reminderOn)openAddTaskModal(taskPhysId,locId);
+loadAllData().then(()=>{const updatedLoc=practiceLocations.find(l=>l.id===locId);if(updatedLoc){currentPractice=practices.find(p=>p.id===updatedLoc.practice_id);renderLocationProfile(updatedLoc);}}).catch(()=>{});
 });
 }

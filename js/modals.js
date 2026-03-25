@@ -288,9 +288,7 @@ const addr=$('practiceAddress').value,city=$('practiceCity').value,zip=$('practi
 const pEmail=$('practiceEmail').value||null;
 if(addr||city){const locData={practice_id:newPract.id,label:'Main Office',address:addr||null,city:city||null,zip:zip||null,phone:ph||null,fax:fx||null,practice_email:pEmail};const{error:le}=await db.from('practice_locations').insert(locData);if(le)console.error('Location insert error:',le);}
 showToast('Practice added','success');}
-await loadAllData();if(currentPractice){currentPractice=practices.find(p=>p.id===currentPractice.id);renderPracticeProfile();}
-if(currentPhysician){renderProfile();}
-setTimeout(()=>closePracticeModal(),500);
+closePracticeModal();loadAllData().then(()=>{if(currentPractice){currentPractice=practices.find(p=>p.id===currentPractice.id);renderPracticeProfile();}if(currentPhysician){renderProfile();}}).catch(()=>{});
 });
 }
 async function deletePractice() {
@@ -416,7 +414,7 @@ if(!editingLocationId){const missing=[];if(!data.address){missing.push('Address'
 await withSave('locationSaveBtn','Save Location',async()=>{
 if(editingLocationId){const{error}=await db.from('practice_locations').update(data).eq('id',editingLocationId);if(error)throw error;showToast('Location updated','success');
 }else{const{error}=await db.from('practice_locations').insert(data);if(error)throw error;showToast('Location added','success');}
-await loadAllData();if(currentPractice)renderPracticeProfile();if(currentPhysician)renderProfile();setTimeout(()=>closeLocationModal(),500);
+closeLocationModal();loadAllData().then(()=>{if(currentPractice)renderPracticeProfile();if(currentPhysician)renderProfile();}).catch(()=>{});
 });
 }
 async function deleteLocation(locationId) {
