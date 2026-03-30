@@ -493,6 +493,8 @@ $('addTaskPhysicianId').value = rec.provider_id || '';
 $('addTaskLocationId').value = rec.practice_location_id || '';
 if($('addTaskPracticeRow'))$('addTaskPracticeRow').style.display='none';
 if($('addTaskProviderRow'))$('addTaskProviderRow').style.display='block';
+if($('addTaskProviderSearch'))$('addTaskProviderSearch').value='';
+if($('addTaskProviderResults'))$('addTaskProviderResults').style.display='none';
 if(rec.provider_id){selectAddTaskProvider(rec.provider_id);if(rec.practice_location_id&&$('addTaskLocationSelect')){$('addTaskLocationSelect').value=rec.practice_location_id;$('addTaskLocationId').value=rec.practice_location_id;const ctx=$('addTaskContext');if(ctx){ctx.innerHTML=_buildTaskContext(rec.provider_id,rec.practice_location_id);}}}
 else{const ctx=$('addTaskContext');if(ctx){ctx.innerHTML=_buildTaskContext(null,rec.practice_location_id);ctx.style.display=rec.practice_location_id?'block':'none';}if($('addTaskLocationRow'))$('addTaskLocationRow').style.display='none';}
 $('addTaskModalTitle').textContent = 'Edit Task';
