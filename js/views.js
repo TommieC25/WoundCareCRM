@@ -472,8 +472,8 @@ $('physicianCount').textContent='Territory Dashboard';
 
 // --- Map view ---
 let territoryMap=null;
-const geocodeCache=(function(){try{const c=JSON.parse(localStorage.getItem('geocodeCache')||'{}');// v2: wipe old full-address cache entries so they re-geocode with zip-only strategy
-const v=localStorage.getItem('geocodeCacheV')||'1';if(v!=='2'){localStorage.removeItem('geocodeCache');localStorage.setItem('geocodeCacheV','2');return {};}return c;}catch(e){return {};}})();
+const geocodeCache=(function(){try{const c=JSON.parse(localStorage.getItem('geocodeCache')||'{}');// v3: wipe zip-only cache entries so they re-geocode with full address strategy
+const v=localStorage.getItem('geocodeCacheV')||'1';if(v!=='3'){localStorage.removeItem('geocodeCache');localStorage.setItem('geocodeCacheV','3');return {};}return c;}catch(e){return {};}})();
 function saveGeocodeCache(){try{localStorage.setItem('geocodeCache',JSON.stringify(geocodeCache));}catch(e){}}
 let territoryMapCache=null;
 let _mapBuiltMarkers=[]; // module-level so locateOnMap() always has access even mid-geocoding
@@ -494,7 +494,7 @@ $('mainContent').innerHTML='<div style="height:calc(100vh - 2rem);"><div id="map
 if(territoryMap){territoryMap.remove();territoryMap=null;}
 _mapBuiltMarkers=[];
 territoryMap=L.map('mapContainer',{tap:false}).setView([25.76,-80.19],11);
-L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png',{attribution:'©OpenStreetMap contributors ©CARTO',maxZoom:19,subdomains:'abcd'}).addTo(territoryMap);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap contributors',maxZoom:19}).addTo(territoryMap);
 const LocBtn=L.Control.extend({options:{position:'topright'},onAdd:function(){const b=L.DomUtil.create('button');b.innerHTML='📍 My Location';b.style.cssText='background:white;border:2px solid #0a4d3c;color:#0a4d3c;padding:0.5rem 0.75rem;border-radius:8px;font-size:0.85rem;font-weight:600;cursor:pointer;box-shadow:0 2px 4px rgba(0,0,0,0.2);white-space:nowrap;';L.DomEvent.on(b,'click',L.DomEvent.stopPropagation);L.DomEvent.on(b,'click',locateOnMap);return b;}});new LocBtn().addTo(territoryMap);
 territoryMap.on('locationerror',()=>showToast('Location access denied or unavailable','error'));
 const version=getMapDataVersion();
@@ -547,11 +547,18 @@ const assignedPhys=physicians.filter(p=>(physicianAssignments[p.id]||[]).some(a=
 try{
 let coords=geocodeCache[addr];
 if(!coords){
+let d=null;
+if(loc.address&&(loc.city||loc.zip)){
+const r=await fetch('https://nominatim.openstreetmap.org/search?format=json&street='+encodeURIComponent(loc.address)+'&city='+encodeURIComponent(loc.city||'')+'&state=FL&postalcode='+encodeURIComponent(loc.zip||'')+'&countrycodes=us&limit=1');
+d=await r.json();
+}
+if(!d||!d[0]){
 const zipQuery=(loc.zip?loc.zip+', FL':(loc.city||'')+', FL').trim();
-const r=await fetch('https://nominatim.openstreetmap.org/search?format=json&q='+encodeURIComponent(zipQuery)+'&countrycodes=us&limit=1');
-const d=await r.json();
+const r2=await fetch('https://nominatim.openstreetmap.org/search?format=json&q='+encodeURIComponent(zipQuery)+'&countrycodes=us&limit=1');
+d=await r2.json();
+}
 if(d&&d[0]){coords={lat:parseFloat(d[0].lat),lng:parseFloat(d[0].lon)};geocodeCache[addr]=coords;saveGeocodeCache();}
-await new Promise(ok=>setTimeout(ok,200));
+await new Promise(ok=>setTimeout(ok,300));
 }
 if(coords){
 const popup=buildMarkerPopup(loc,practiceName,assignedPhys,addr);
