@@ -1,35 +1,42 @@
 // === js/data.js === Data loading, migrations, contact log fetching
 function isStaffSpecialty(s){return s==='Staff'||s==='Administrative Staff';}
-async function loadAllData() {
-try {
+
+// --- Local cache helpers ---
+const _CRM_CACHE_KEY='crmCache_v1';
+function saveCrmCache(){try{localStorage.setItem(_CRM_CACHE_KEY,JSON.stringify({physicians,practices,locations:practiceLocations,assignments:physicianAssignments,ts:Date.now()}));}catch(e){}}
+// Re-fetch a single provider's assignments (1 query vs 4) and update in-memory + cache
+async function refreshAssignments(providerId){try{const{data,error}=await db.from('provider_location_assignments').select('*, practice_locations(*, practices(name))').eq('provider_id',providerId);if(!error&&data){physicianAssignments[providerId]=data;saveCrmCache();}}catch(e){console.warn('refreshAssignments error:',e);}}
+
+async function loadAllData(){
+// Fast path: render from localStorage cache immediately (eliminates cold-start blank screen)
+try{
+const raw=localStorage.getItem(_CRM_CACHE_KEY);
+if(raw){const c=JSON.parse(raw);if(c&&c.ts&&(Date.now()-c.ts)<3600000){physicians=c.physicians||[];practices=c.practices||[];practiceLocations=c.locations||[];physicianAssignments=c.assignments||{};renderList();}}
+}catch(e){}
+// Always refresh from network — updates cache when done
+try{
 updateSyncIndicators('syncing');
-const [physRes, practRes, locRes, assignRes] = await Promise.all([
-  db.from('providers').select('*').order('last_name', { ascending: true }),
-  db.from('practices').select('*').order('name', { ascending: true }),
-  db.from('practice_locations').select('*, practices(name)').order('city', { ascending: true }),
+const[physRes,practRes,locRes,assignRes]=await Promise.all([
+  db.from('providers').select('*').order('last_name',{ascending:true}),
+  db.from('practices').select('*').order('name',{ascending:true}),
+  db.from('practice_locations').select('*, practices(name)').order('city',{ascending:true}),
   db.from('provider_location_assignments').select('*, practice_locations(*, practices(name))'),
 ]);
-if (physRes.error) throw physRes.error;
-physicians = physRes.data || [];
-if (!practRes.error) practices = practRes.data || [];
-if (!locRes.error) practiceLocations = locRes.data || [];
-if (!assignRes.error) {
-physicianAssignments = {};
-(assignRes.data || []).forEach(a => {
-if (!physicianAssignments[a.provider_id]) physicianAssignments[a.provider_id] = [];
-physicianAssignments[a.provider_id].push(a);
-});
-}
+if(physRes.error)throw physRes.error;
+physicians=physRes.data||[];
+if(!practRes.error)practices=practRes.data||[];
+if(!locRes.error)practiceLocations=locRes.data||[];
+if(!assignRes.error){physicianAssignments={};(assignRes.data||[]).forEach(a=>{if(!physicianAssignments[a.provider_id])physicianAssignments[a.provider_id]=[];physicianAssignments[a.provider_id].push(a);});}
+saveCrmCache();
 territoryMapCache=null;
 renderList();
 updateSyncIndicators('synced');
 updateConnectionStatus('connected');
-// Silently fix encoding corruptions in the background
 fixEncodingCorruptions().catch(e=>console.warn('Encoding fix error:',e));
-} catch (error) {
-console.error('Error loading data:', error);
+}catch(error){
+console.error('Error loading data:',error);
 updateSyncIndicators('error');
-showToast('Error loading data: ' + error.message, 'error');
+showToast('Error loading data: '+error.message,'error');
 }
 }
 

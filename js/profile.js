@@ -413,7 +413,8 @@ const label = physIds.length > 0 ? `Call logged for ${physIds.length} physician$
 showToast(label, 'success');
 const taskPhysId = physIds.length > 0 ? physIds[0] : null;
 closeContactModal();$('contactForm').onsubmit=function(ev){saveContact(ev);return false;};const _psr=$('practicePhysSelectRow');if(_psr)_psr.style.display='none';if(reminderOn)openAddTaskModal(taskPhysId,locVal);
-loadAllData().then(async()=>{renderPracticeProfile();await loadPracticeActivity(currentPractice.id);}).catch(()=>{});
+physIds.forEach(pid=>{const p=physicians.find(ph=>ph.id===pid);if(p)p.last_contact=dateVal;});saveCrmCache();
+renderPracticeProfile();loadPracticeActivity(currentPractice.id);
 });
 }
 
@@ -477,6 +478,7 @@ const label = physIds.length > 0 ? `Note logged for ${physIds.length} physician$
 showToast(label, 'success');
 const taskPhysId = physIds.length > 0 ? physIds[0] : null;
 closeContactModal();$('contactForm').onsubmit=function(ev){saveContact(ev);return false;};const _psr2=$('practicePhysSelectRow');if(_psr2)_psr2.style.display='none';if(reminderOn)openAddTaskModal(taskPhysId,locId);
-loadAllData().then(()=>{const updatedLoc=practiceLocations.find(l=>l.id===locId);if(updatedLoc){currentPractice=practices.find(p=>p.id===updatedLoc.practice_id);renderLocationProfile(updatedLoc);}}).catch(()=>{});
+physIds.forEach(pid=>{const p=physicians.find(ph=>ph.id===pid);if(p)p.last_contact=dateVal;});saveCrmCache();
+const _updLoc=practiceLocations.find(l=>l.id===locId);if(_updLoc){currentPractice=practices.find(p=>p.id===_updLoc.practice_id);renderLocationProfile(_updLoc);}
 });
 }
