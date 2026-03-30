@@ -12,6 +12,7 @@ return loc?.practice_id;
 const associatedPractices = practices.filter(pr => practiceIds.includes(pr.id));
 $('mainContent').innerHTML = `
 <div class="profile-header">
+${_prevView==='map'?'<button onclick="setView(\'map\')" style="margin-bottom:0.5rem;background:none;border:1px solid #0a4d3c;color:#0a4d3c;border-radius:6px;padding:0.3rem 0.7rem;font-size:0.8rem;cursor:pointer;">← Back to Map</button>':''}
 <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:0.5rem;flex-wrap:wrap;">
 <div class="profile-name" style="flex:1;">${fmtName(p)}</div>
 <div style="display:flex;gap:0.5rem;flex-shrink:0;flex-wrap:wrap;">
@@ -122,6 +123,7 @@ return loc && loc.practice_id === p.id;
 });
 $('mainContent').innerHTML = `
 <div class="profile-header">
+${_prevView==='map'?'<button onclick="setView(\'map\')" style="margin-bottom:0.5rem;background:none;border:1px solid #0a4d3c;color:#0a4d3c;border-radius:6px;padding:0.3rem 0.7rem;font-size:0.8rem;cursor:pointer;">← Back to Map</button>':''}
 <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:0.5rem;flex-wrap:wrap;">
 <div class="profile-name" style="flex:1;">${p.name}</div>
 <div style="display:flex;gap:0.5rem;flex-shrink:0;flex-wrap:wrap;">

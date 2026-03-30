@@ -72,6 +72,7 @@ document.querySelectorAll(`.reminder-date-btn[data-prefix="${prefix}"]`).forEach
 function setView(view) {
 // 'tasks' is now a sub-tab of 'activity'; route it there
 if(view==='tasks'){activitySubTab='tasks';view='activity';}
+_prevView = currentView;
 currentView = view;
 $('tabPhysicians').classList.toggle('active', view === 'physicians');
 $('tabPractices').classList.toggle('active', view === 'practices');
