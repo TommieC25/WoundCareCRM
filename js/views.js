@@ -490,11 +490,12 @@ return '<strong>'+(practiceName||loc.label||'Office')+'</strong><br>'
 }
 async function renderMapView(){
 const search=($('searchInput').value||'').toLowerCase().trim();
-$('mainContent').innerHTML='<div style="position:relative;height:calc(100vh - 2rem);"><div id="mapContainer" style="height:100%;border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.1);"></div><button onclick="locateOnMap()" style="position:absolute;top:0.75rem;right:0.75rem;z-index:1000;background:white;border:2px solid #0a4d3c;color:#0a4d3c;padding:0.5rem 0.75rem;border-radius:8px;font-size:0.85rem;font-weight:600;cursor:pointer;box-shadow:0 2px 4px rgba(0,0,0,0.2);">📍 My Location</button></div>';
+$('mainContent').innerHTML='<div style="height:calc(100vh - 2rem);"><div id="mapContainer" style="height:100%;border-radius:12px;overflow:hidden;box-shadow:0 1px 3px rgba(0,0,0,0.1);"></div></div>';
 if(territoryMap){territoryMap.remove();territoryMap=null;}
 _mapBuiltMarkers=[];
 territoryMap=L.map('mapContainer',{tap:false}).setView([25.76,-80.19],11);
-L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',{attribution:'©OpenStreetMap contributors ©CARTO',maxZoom:19}).addTo(territoryMap);
+L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png',{attribution:'©OpenStreetMap contributors ©CARTO',maxZoom:19,subdomains:'abcd'}).addTo(territoryMap);
+const LocBtn=L.Control.extend({options:{position:'topright'},onAdd:function(){const b=L.DomUtil.create('button');b.innerHTML='📍 My Location';b.style.cssText='background:white;border:2px solid #0a4d3c;color:#0a4d3c;padding:0.5rem 0.75rem;border-radius:8px;font-size:0.85rem;font-weight:600;cursor:pointer;box-shadow:0 2px 4px rgba(0,0,0,0.2);white-space:nowrap;';L.DomEvent.on(b,'click',L.DomEvent.stopPropagation);L.DomEvent.on(b,'click',locateOnMap);return b;}});new LocBtn().addTo(territoryMap);
 territoryMap.on('locationerror',()=>showToast('Location access denied or unavailable','error'));
 const version=getMapDataVersion();
 if(!search&&territoryMapCache&&territoryMapCache.version===version){
