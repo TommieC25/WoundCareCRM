@@ -495,6 +495,7 @@ if(territoryMap){territoryMap.remove();territoryMap=null;}
 _mapBuiltMarkers=[];
 territoryMap=L.map('mapContainer',{tap:false}).setView([25.76,-80.19],11);
 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'© OpenStreetMap contributors',maxZoom:19}).addTo(territoryMap);
+setTimeout(()=>{if(territoryMap)territoryMap.invalidateSize();},200);
 const LocBtn=L.Control.extend({options:{position:'topright'},onAdd:function(){const b=L.DomUtil.create('button');b.innerHTML='📍 My Location';b.style.cssText='background:white;border:2px solid #0a4d3c;color:#0a4d3c;padding:0.5rem 0.75rem;border-radius:8px;font-size:0.85rem;font-weight:600;cursor:pointer;box-shadow:0 2px 4px rgba(0,0,0,0.2);white-space:nowrap;';L.DomEvent.on(b,'click',L.DomEvent.stopPropagation);L.DomEvent.on(b,'click',locateOnMap);return b;}});new LocBtn().addTo(territoryMap);
 territoryMap.on('locationerror',()=>showToast('Location access denied or unavailable','error'));
 const version=getMapDataVersion();
@@ -549,7 +550,8 @@ let coords=geocodeCache[addr];
 if(!coords){
 let d=null;
 if(loc.address&&(loc.city||loc.zip)){
-const r=await fetch('https://nominatim.openstreetmap.org/search?format=json&street='+encodeURIComponent(loc.address)+'&city='+encodeURIComponent(loc.city||'')+'&state=FL&postalcode='+encodeURIComponent(loc.zip||'')+'&countrycodes=us&limit=1');
+const baseStreet=(loc.address||'').replace(/\s*(#\S+|ste\.?\s*\S+|suite\s*\S+|unit\s*\S+|apt\.?\s*\S+)$/i,'').trim();
+const r=await fetch('https://nominatim.openstreetmap.org/search?format=json&street='+encodeURIComponent(baseStreet)+'&city='+encodeURIComponent(loc.city||'')+'&state=FL&postalcode='+encodeURIComponent(loc.zip||'')+'&countrycodes=us&limit=1');
 d=await r.json();
 }
 if(!d||!d[0]){
