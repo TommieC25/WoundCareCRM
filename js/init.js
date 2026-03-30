@@ -20,6 +20,7 @@ let contactLogs = {};
 let currentPhysician = null;
 let currentPractice = null;
 let currentView = 'physicians';
+let _prevView = null;
 let sortBy = 'name';
 let filterTier = null;
 let currentLocationId = null;
