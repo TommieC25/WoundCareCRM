@@ -479,10 +479,22 @@ _checkAddTaskLinked();
 
 // Opens addTaskModal in edit mode for an existing task record (called from task detail modal)
 function openEditTaskModal() {
-const _sb=$('addTaskSaveBtn');if(_sb){_sb.textContent='Save Task';_sb.className='btn-primary';}
 const rec = window._openedTaskRec;
 if (!rec) return;
-// Extract task note: for old-style records with embedded [Task:], use that text; otherwise use the full notes
+// ── Full modal reset before populating ──────────────────────────────────────
+// Every field is wiped first so no state from any previous modal open can
+// bleed through — regardless of which fields the current record happens to set.
+const _sb=$('addTaskSaveBtn');if(_sb){_sb.textContent='Save Task';_sb.className='btn-primary';}
+['addTaskProviderSearch','addTaskPracticeSearch','addTaskNote','addTaskTime'].forEach(id=>{const el=$(id);if(el)el.value='';});
+['addTaskPhysicianId','addTaskLocationId','addTaskEditId','taskSelectedDate'].forEach(id=>{const el=$(id);if(el)el.value='';});
+['addTaskProviderResults','addTaskPracticeResults','addTaskUnlinkedWarning'].forEach(id=>{const el=$(id);if(el)el.style.display='none';});
+['addTaskProviderRow','addTaskPracticeRow','addTaskLocationRow'].forEach(id=>{const el=$(id);if(el)el.style.display='none';});
+const _ctx=$('addTaskContext');if(_ctx){_ctx.innerHTML='';_ctx.style.display='none';}
+const _sel=$('addTaskLocationSelect');if(_sel)_sel.innerHTML='<option value="">No specific location</option>';
+const _dp=$('taskDatePreview');if(_dp)_dp.textContent='';
+if($('addTaskAuthor'))$('addTaskAuthor').value='';
+$('addTaskModalTitle').textContent='Edit Task';
+// ── Populate from record ─────────────────────────────────────────────────────
 const tm = (rec.notes||'').match(/^\[(\d{1,2}:\d{2})\]\s*/);
 let noteText = tm ? rec.notes.replace(tm[0], '') : (rec.notes||'');
 const taskMatch = noteText.match(/\s*\|\s*\[Task:\s*(.*?)\]$/);
@@ -491,19 +503,15 @@ if($('addTaskEditId'))$('addTaskEditId').value = rec.id;
 $('addTaskNote').value = taskNote;
 $('addTaskPhysicianId').value = rec.provider_id || '';
 $('addTaskLocationId').value = rec.practice_location_id || '';
-if($('addTaskPracticeRow'))$('addTaskPracticeRow').style.display='none';
 if($('addTaskProviderRow'))$('addTaskProviderRow').style.display='block';
-if($('addTaskProviderSearch'))$('addTaskProviderSearch').value='';
-if($('addTaskProviderResults'))$('addTaskProviderResults').style.display='none';
-if(rec.provider_id){selectAddTaskProvider(rec.provider_id);if(rec.practice_location_id&&$('addTaskLocationSelect')){$('addTaskLocationSelect').value=rec.practice_location_id;$('addTaskLocationId').value=rec.practice_location_id;const ctx=$('addTaskContext');if(ctx){ctx.innerHTML=_buildTaskContext(rec.provider_id,rec.practice_location_id);}}}
-else{const ctx=$('addTaskContext');if(ctx){ctx.innerHTML=_buildTaskContext(null,rec.practice_location_id);ctx.style.display=rec.practice_location_id?'block':'none';}if($('addTaskLocationRow'))$('addTaskLocationRow').style.display='none';}
-$('addTaskModalTitle').textContent = 'Edit Task';
-if ($('addTaskAuthor')) $('addTaskAuthor').value = rec.author || '';
-if ($('addTaskTime')) $('addTaskTime').value = tm ? tm[1] : '';
+if(rec.provider_id){selectAddTaskProvider(rec.provider_id);if(rec.practice_location_id&&$('addTaskLocationSelect')){$('addTaskLocationSelect').value=rec.practice_location_id;$('addTaskLocationId').value=rec.practice_location_id;if(_ctx){_ctx.innerHTML=_buildTaskContext(rec.provider_id,rec.practice_location_id);_ctx.style.display='block';}}}
+else{if(_ctx){_ctx.innerHTML=_buildTaskContext(null,rec.practice_location_id);_ctx.style.display=rec.practice_location_id?'block':'none';}}
+if($('addTaskAuthor'))$('addTaskAuthor').value=rec.author||'';
+if($('addTaskTime'))$('addTaskTime').value=tm?tm[1]:'';
 populateReminderDateButtons('task');
-if (rec.reminder_date) selectReminderDate(rec.reminder_date, '', 'task');
+if(rec.reminder_date)selectReminderDate(rec.reminder_date,'','task');
 $('addTaskModal').classList.add('active');
-setTimeout(() => $('addTaskNote').focus(), 100);
+setTimeout(()=>$('addTaskNote').focus(),100);
 }
 
 function closeAddTaskModal() { closeModal('addTaskModal'); }
