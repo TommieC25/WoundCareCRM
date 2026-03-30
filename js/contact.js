@@ -325,7 +325,7 @@ showToast(isTask?'Task updated':'Note updated','success');
 closeContactModal();
 $('contactForm').onsubmit=function(ev){saveContact(ev);return false;};
 if(reminderOn){const provId=_editLog.provider_id||null;const locId=_editLog.practice_location_id||null;setTimeout(()=>openAddTaskModal(provId,locId),400);}
-loadAllData().then(async()=>{if(currentPractice){renderPracticeProfile();await loadPracticeActivity(currentPractice.id);}}).catch(()=>{});
+if(currentPractice)loadPracticeActivity(currentPractice.id).then(()=>renderPracticeProfile()).catch(()=>{});
 });
 return false;
 };

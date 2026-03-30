@@ -2,8 +2,10 @@
 
 // --- Realtime ---
 function setupRealtimeSubscription() {
+let _reloadTimer=null;
+function _debouncedReload(){clearTimeout(_reloadTimer);_reloadTimer=setTimeout(()=>loadAllData(),500);}
 ['providers','practices','practice_locations','provider_location_assignments'].forEach(t =>
-db.channel(t+'-ch').on('postgres_changes',{event:'*',schema:'public',table:t},()=>loadAllData()).subscribe());
+db.channel(t+'-ch').on('postgres_changes',{event:'*',schema:'public',table:t},_debouncedReload).subscribe());
 db.channel('contact-logs-ch')
 .on('postgres_changes',{event:'*',schema:'public',table:'contact_logs'},(payload)=>{
 const pid=payload.new?.provider_id||payload.old?.provider_id;
