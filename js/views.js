@@ -494,7 +494,7 @@ $('mainContent').innerHTML='<div style="position:relative;height:calc(100vh - 2r
 if(territoryMap){territoryMap.remove();territoryMap=null;}
 _mapBuiltMarkers=[];
 territoryMap=L.map('mapContainer').setView([25.76,-80.19],11);
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{attribution:'OpenStreetMap',maxZoom:18}).addTo(territoryMap);
+L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',{attribution:'©OpenStreetMap contributors ©CARTO',maxZoom:19}).addTo(territoryMap);
 territoryMap.on('locationerror',()=>showToast('Location access denied or unavailable','error'));
 const version=getMapDataVersion();
 if(!search&&territoryMapCache&&territoryMapCache.version===version){
