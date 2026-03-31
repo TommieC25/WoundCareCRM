@@ -661,6 +661,7 @@ Add Follow-Up Task after saving
 <label>Due Date</label>
 <div id="taskDateButtons" style="display:flex;flex-wrap:wrap;gap:0.3rem;margin-bottom:0.3rem;"></div>
 <div id="taskDatePreview" style="font-size:0.8rem;color:#92400e;font-weight:600;min-height:1.2em;"></div>
+<input type="date" id="taskCustomDate" oninput="if(this.value)selectReminderDate(this.value,'','task')" style="margin-top:0.4rem;width:100%;padding:0.5rem 0.6rem;font-size:0.9rem;border:1px solid #d1d5db;border-radius:6px;font-family:inherit;box-sizing:border-box;color:#333;">
 <input type="hidden" id="taskSelectedDate" value="">
 </div>
 <div style="margin-bottom:1rem;">

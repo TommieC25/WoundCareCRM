@@ -50,6 +50,8 @@ buttons.push({ label: 'Open', date: '2099-12-31' });
 container.innerHTML = buttons.map(b =>
   `<button type="button" class="reminder-date-btn" data-prefix="${prefix}" onclick="selectReminderDate('${b.date}','${b.label}','${prefix}')" data-date="${b.date}" style="padding:0.3rem 0.55rem;font-size:0.78rem;border:1px solid #fcd34d;border-radius:6px;background:#fffbeb;color:#92400e;cursor:pointer;white-space:nowrap;transition:background 0.1s;touch-action:manipulation;-webkit-tap-highlight-color:transparent;">${b.label}</button>`
 ).join('');
+const customInp = $(prefix + 'CustomDate');
+if (customInp) customInp.min = today;
 // Default: tomorrow
 selectReminderDate(buttons[1].date, buttons[1].label, prefix);
 }
@@ -62,6 +64,8 @@ if (prev) {
   if (dateStr === '2099-12-31') { prev.textContent = 'Open — no due date, will appear in Open Tasks'; }
   else { const d = new Date(dateStr + 'T12:00:00'); prev.textContent = d.toLocaleDateString('en-US',{weekday:'long',month:'short',day:'numeric'}); }
 }
+const customInp = $(prefix + 'CustomDate');
+if (customInp) customInp.value = (dateStr && dateStr !== '2099-12-31') ? dateStr : '';
 document.querySelectorAll(`.reminder-date-btn[data-prefix="${prefix}"]`).forEach(btn => {
   const sel = btn.dataset.date === dateStr;
   btn.style.background = sel ? '#f59e0b' : '#fffbeb';
