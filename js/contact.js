@@ -486,7 +486,7 @@ if (!rec) return;
 // bleed through — regardless of which fields the current record happens to set.
 const _sb=$('addTaskSaveBtn');if(_sb){_sb.textContent='Save Task';_sb.className='btn-primary';}
 ['addTaskProviderSearch','addTaskPracticeSearch','addTaskNote','addTaskTime'].forEach(id=>{const el=$(id);if(el)el.value='';});
-['addTaskPhysicianId','addTaskLocationId','addTaskEditId','taskSelectedDate'].forEach(id=>{const el=$(id);if(el)el.value='';});
+['addTaskPhysicianId','addTaskLocationId','addTaskEditId','taskSelectedDate','taskCustomDate'].forEach(id=>{const el=$(id);if(el)el.value='';});;
 ['addTaskProviderResults','addTaskPracticeResults','addTaskUnlinkedWarning'].forEach(id=>{const el=$(id);if(el)el.style.display='none';});
 ['addTaskProviderRow','addTaskPracticeRow','addTaskLocationRow'].forEach(id=>{const el=$(id);if(el)el.style.display='none';});
 const _ctx=$('addTaskContext');if(_ctx){_ctx.innerHTML='';_ctx.style.display='none';}
