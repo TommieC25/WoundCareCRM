@@ -662,8 +662,10 @@ document.addEventListener('click', function(e) {
 }
 
 function _doTelIntercept(a) {
-  const providerId = a.dataset.providerId || (currentPhysician ? currentPhysician.id : null) || null;
   const locId = a.dataset.locId || null;
+  // Never inherit currentPhysician for a location/office phone (data-loc-id present).
+  // Only fall back to currentPhysician for provider personal numbers (no loc association).
+  const providerId = a.dataset.providerId || (!locId && currentPhysician ? currentPhysician.id : null) || null;
   const phone = (a.getAttribute('href') || '').replace('tel:','');
   let displayName = '';
   if (providerId) {
