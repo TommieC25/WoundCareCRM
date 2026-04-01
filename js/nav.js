@@ -463,7 +463,7 @@ html += `<div class="contact-entry" style="cursor:pointer;border-left-color:#dc2
 <button onclick="event.stopPropagation();completeReminder('${r.id}')" title="Mark complete" style="background:none;border:2px solid #dc2626;color:#dc2626;border-radius:50%;width:22px;height:22px;min-width:22px;cursor:pointer;font-size:0.75rem;display:flex;align-items:center;justify-content:center;margin-top:0.15rem;flex-shrink:0;">✓</button>
 <div style="flex:1;">
 <div style="font-weight:600;color:#dc2626;font-size:0.9rem;">${physName}${phoneLink}${emailLink}</div>
-<div style="font-size:0.75rem;color:#dc2626;font-weight:600;">Due: ${r.reminder_date} (OVERDUE)</div>
+<div style="font-size:0.75rem;color:#dc2626;font-weight:600;">Due: ${r.reminder_date} (OVERDUE) ${r.author ? '<span style="font-size:0.7rem;font-weight:700;padding:0.1rem 0.45rem;border-radius:10px;background:' + (r.author==='Tom' ? '#dbeafe' : '#f3e8ff') + ';color:' + (r.author==='Tom' ? '#1d4ed8' : '#7e22ce') + ';">' + r.author + '</span>' : ''}</div>
 ${taskNote?`<div style="font-size:0.8rem;font-weight:600;color:#92400e;background:#fef3c7;padding:0.15rem 0.4rem;border-radius:4px;margin-top:0.2rem;">📋 ${taskNote}</div>`:''}
 <div style="font-size:0.8rem;color:#666;margin-top:0.2rem;">${preview}</div>
 </div>
@@ -492,7 +492,7 @@ html += `<div class="contact-entry" style="cursor:pointer;border-left-color:#f59
 <div style="font-weight:600;color:#0a4d3c;font-size:0.9rem;">${physName}${phoneLink}${emailLink}</div>
 ${taskNote?`<div style="font-size:0.8rem;font-weight:600;color:#92400e;background:#fef3c7;padding:0.15rem 0.4rem;border-radius:4px;margin-top:0.2rem;">📋 ${taskNote}</div>`:''}
 <div style="font-size:0.8rem;color:#666;margin-top:0.2rem;">${preview}</div>
-<div style="font-size:0.7rem;color:#999;margin-top:0.25rem;">Note from ${r.contact_date}${r.author ? ' by ' + r.author : ''}</div>
+${r.author ? '<div style="margin-top:0.2rem;"><span style="font-size:0.7rem;font-weight:700;padding:0.1rem 0.45rem;border-radius:10px;background:' + (r.author==='Tom' ? '#dbeafe' : '#f3e8ff') + ';color:' + (r.author==='Tom' ? '#1d4ed8' : '#7e22ce') + ';">' + r.author + '</span></div>' : ''}
 </div>
 </div>`;
 });
@@ -514,6 +514,7 @@ html += `<div class="contact-entry" style="cursor:pointer;border-left-color:#f59
 <div style="font-weight:600;color:#0a4d3c;font-size:0.9rem;">${physName}${phoneLink}${emailLink}</div>
 ${taskNote?`<div style="font-size:0.8rem;font-weight:600;color:#92400e;background:#fef3c7;padding:0.15rem 0.4rem;border-radius:4px;margin-top:0.2rem;">📋 ${taskNote}</div>`:''}
 <div style="font-size:0.8rem;color:#666;margin-top:0.2rem;">${preview}</div>
+${r.author ? '<div style="margin-top:0.2rem;"><span style="font-size:0.7rem;font-weight:700;padding:0.1rem 0.45rem;border-radius:10px;background:' + (r.author==='Tom' ? '#dbeafe' : '#f3e8ff') + ';color:' + (r.author==='Tom' ? '#1d4ed8' : '#7e22ce') + ';">' + r.author + '</span></div>' : ''}
 </div></div>`;
 });
 html += '</div>';
