@@ -332,6 +332,7 @@ return`<div class="contact-entry" style="border-left:4px solid #0a4d3c;cursor:po
 // --- Tasks view ---
 async function renderTasksView(){
 $('physicianCount').textContent='Tasks & Reminders';
+$('physicianList').innerHTML='';
 const today = localDate();
 try {
 const{data:allReminders,error}=await db.from('contact_logs').select('*').not('reminder_date','is',null).order('reminder_date',{ascending:true});
