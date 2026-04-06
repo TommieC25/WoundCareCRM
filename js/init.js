@@ -46,8 +46,8 @@ if (_goto.get('goto') === 'practice' && _goto.get('id')) {
   setView('physicians');
   viewPhysician(_goto.get('id'));
 } else {
-  activitySubTab = 'history'; // start on combined history view
-  setView('activity'); // default landing: Activity → History tab
+  activitySubTab = 'tasks'; // default landing: Tasks view
+  setView('activity');
 }
 // iOS body scroll lock — prevents background scroll when any modal is open
 // On iOS Safari (especially standalone/Home Screen), position:fixed modals
