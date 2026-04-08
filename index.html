@@ -57,6 +57,7 @@ Append New Records from CSV <input type="file" accept=".csv" onchange="importCSV
 <button style="background:#0ea5e9;color:white;border:none;padding:0.6rem 1rem;border-radius:6px;font-size:0.85rem;cursor:pointer;width:100%;font-weight:600;" onclick="openExportModal()">Export Data</button>
 <h4 style="margin-top:1rem;color:#f97316;">Analytics</h4>
 <button style="background:#f97316;color:white;border:none;padding:0.6rem 1rem;border-radius:6px;font-size:0.85rem;cursor:pointer;width:100%;font-weight:600;" onclick="setView('dashboard')">Territory Dashboard</button>
+<button style="background:#dc2626;color:white;border:none;padding:0.6rem 1rem;border-radius:6px;font-size:0.85rem;cursor:pointer;width:100%;font-weight:600;margin-top:0.4rem;" onclick="openTargetReview()">🎯 Target Review</button>
 <h4 style="margin-top:1rem;color:#10b981;">Google Sheet Sync</h4>
 <button style="background:#10b981;color:white;border:none;padding:0.6rem 1rem;border-radius:6px;font-size:0.85rem;cursor:pointer;width:100%;font-weight:600;margin-bottom:0.4rem;" onclick="syncGoogleSheet()">Sync to Google Sheet Now</button>
 <div id="syncSheetStatus" style="font-size:0.75rem;color:#aaa;min-height:1rem;margin-bottom:0.35rem;"></div>
@@ -680,6 +681,24 @@ Add Follow-Up Task after saving
 </div>
 </div>
 </div>
+<!-- Target Review modal -->
+<div class="modal" id="targetReviewModal">
+<div class="modal-content" style="max-width:640px;max-height:95vh;display:flex;flex-direction:column;">
+<div class="modal-header" style="background:#0a4d3c;color:white;border-radius:16px 16px 0 0;flex-shrink:0;">
+<div><h2 style="color:white;font-size:1.25rem;">🎯 Target Review</h2><div id="targetReviewStats" style="font-size:0.78rem;color:rgba(255,255,255,0.75);margin-top:0.2rem;"></div></div>
+<button class="close-btn" style="color:white;" onclick="closeModal('targetReviewModal')">×</button>
+</div>
+<div style="background:#f8f8f8;padding:0.6rem 1rem;border-bottom:1px solid #e5e5e5;flex-shrink:0;display:flex;gap:0.4rem;align-items:center;flex-wrap:wrap;">
+<span style="font-size:0.75rem;font-weight:700;color:#666;margin-right:0.2rem;">SHOW:</span>
+<button id="trFilterAll" onclick="setTargetFilter('all')" style="padding:0.3rem 0.7rem;border:none;border-radius:6px;font-size:0.78rem;font-weight:700;cursor:pointer;background:#0a4d3c;color:white;">All</button>
+<button id="trFilterYes" onclick="setTargetFilter('yes')" style="padding:0.3rem 0.7rem;border:none;border-radius:6px;font-size:0.78rem;font-weight:700;cursor:pointer;background:#e5e5e5;color:#555;">✓ Targets</button>
+<button id="trFilterNo" onclick="setTargetFilter('no')" style="padding:0.3rem 0.7rem;border:none;border-radius:6px;font-size:0.78rem;font-weight:700;cursor:pointer;background:#e5e5e5;color:#555;">✗ Not Targets</button>
+<span style="margin-left:auto;font-size:0.75rem;font-weight:700;color:#666;">GROUP BY TIER</span>
+</div>
+<div id="targetReviewList" style="overflow-y:auto;flex:1;-webkit-overflow-scrolling:touch;padding:0.5rem 0;"></div>
+</div>
+</div>
+
 <!-- Call log banner — non-blocking floating bar, stays visible while browsing CRM during a call -->
 <div id="callLogBanner" style="display:none;position:fixed;bottom:calc(env(safe-area-inset-bottom,0px) + 0.6rem);left:0.75rem;right:0.75rem;z-index:95;background:#0a4d3c;color:white;border-radius:14px;padding:0.75rem 1rem;align-items:center;gap:0.75rem;box-shadow:0 4px 20px rgba(0,0,0,0.35);">
 <span style="flex:1;font-size:0.9rem;line-height:1.3;">📞 Log call: <strong id="callLogBannerName"></strong></span>
