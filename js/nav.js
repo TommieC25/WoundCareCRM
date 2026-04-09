@@ -143,24 +143,15 @@ $('sort' + sort.charAt(0).toUpperCase() + sort.slice(1)).classList.add('active')
 renderList();
 }
 function setFilterTier(tier) {
-filterTier = tier;
+// Tap the active tier again to deselect it
+filterTier = (filterTier === tier) ? null : tier;
 document.querySelectorAll('#tierFilterControls .sort-btn').forEach(btn => btn.classList.remove('active'));
-if (tier) $('filterT' + tier).classList.add('active');
-$('filterAll').classList.toggle('active', !tier && !filterTarget);
+if (filterTier) $('filterT' + filterTier).classList.add('active');
 renderList();
 }
 function toggleFilterTarget() {
 filterTarget = !filterTarget;
 $('filterTarget').classList.toggle('active', filterTarget);
-$('filterAll').classList.toggle('active', !filterTier && !filterTarget);
-renderList();
-}
-function clearAllFilters() {
-filterTier = null;
-filterTarget = false;
-document.querySelectorAll('#tierFilterControls .sort-btn').forEach(btn => btn.classList.remove('active'));
-$('filterTarget').classList.remove('active');
-$('filterAll').classList.add('active');
 renderList();
 }
 
