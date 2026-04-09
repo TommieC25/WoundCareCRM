@@ -23,6 +23,7 @@ let currentView = 'physicians';
 let _prevView = null;
 let sortBy = 'name';
 let filterTier = null;
+let filterTarget = false;
 let currentLocationId = null;
 let editMode = false;
 let editingContactId = null;
