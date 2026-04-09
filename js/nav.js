@@ -138,15 +138,29 @@ renderEmptyState();
 
 function setSortBy(sort) {
 sortBy = sort;
-['Name','City','Zip','Tier'].forEach(s => $('sort'+s).classList.remove('active'));
+['Name','City','Zip'].forEach(s => $('sort'+s).classList.remove('active'));
 $('sort' + sort.charAt(0).toUpperCase() + sort.slice(1)).classList.add('active');
 renderList();
 }
 function setFilterTier(tier) {
 filterTier = tier;
 document.querySelectorAll('#tierFilterControls .sort-btn').forEach(btn => btn.classList.remove('active'));
-$('filterAll').classList.toggle('active', !tier);
 if (tier) $('filterT' + tier).classList.add('active');
+$('filterAll').classList.toggle('active', !tier && !filterTarget);
+renderList();
+}
+function toggleFilterTarget() {
+filterTarget = !filterTarget;
+$('filterTarget').classList.toggle('active', filterTarget);
+$('filterAll').classList.toggle('active', !filterTier && !filterTarget);
+renderList();
+}
+function clearAllFilters() {
+filterTier = null;
+filterTarget = false;
+document.querySelectorAll('#tierFilterControls .sort-btn').forEach(btn => btn.classList.remove('active'));
+$('filterTarget').classList.remove('active');
+$('filterAll').classList.add('active');
 renderList();
 }
 
@@ -312,6 +326,7 @@ function normPriority(val) {
 // --- Filter / list rendering ---
 function getFilteredPhysicians(search) {
 let base = filterTier ? physicians.filter(p => normPriority(p.priority) === filterTier) : physicians;
+if (filterTarget) base = base.filter(p => !!p.is_target);
 if (!search) return base;
 return base.filter(p => {
 const np = normPriority(p.priority);
