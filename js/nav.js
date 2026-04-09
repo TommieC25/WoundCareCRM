@@ -376,6 +376,7 @@ list.innerHTML = sorted.map(p => {
 const assignments = physicianAssignments[p.id] || [];
 const primaryAssign = assignments.find(a => a.is_primary) || assignments[0];
 const pLoc = primaryAssign?.practice_locations || (primaryAssign ? practiceLocations.find(l => l.id === primaryAssign.practice_location_id) : null) || {};
+const cityDisplay = pLoc.city || '';
 const zipDisplay = pLoc.zip || '';
 const locBadgeText = sortBy === 'zip'
   ? (zipDisplay && cityDisplay ? `${cityDisplay} ${zipDisplay}` : zipDisplay || cityDisplay)
