@@ -377,7 +377,9 @@ const assignments = physicianAssignments[p.id] || [];
 const primaryAssign = assignments.find(a => a.is_primary) || assignments[0];
 const pLoc = primaryAssign?.practice_locations || (primaryAssign ? practiceLocations.find(l => l.id === primaryAssign.practice_location_id) : null) || {};
 const zipDisplay = pLoc.zip || '';
-const locBadgeText = sortBy === 'zip' ? (zipDisplay || cityDisplay) : cityDisplay;
+const locBadgeText = sortBy === 'zip'
+  ? (zipDisplay && cityDisplay ? `${cityDisplay} ${zipDisplay}` : zipDisplay || cityDisplay)
+  : cityDisplay;
 const practiceName = pLoc.practices?.name || getPracticeName(pLoc.practice_id) || p.practice_name || '';
 const locationCount = assignments.length;
 const tierStyles={'1':'background:#ef4444;color:white','2':'background:#f97316;color:white','3':'background:#3b82f6;color:white','4':'background:#8b5cf6;color:white','5':'background:#64748b;color:white'};
