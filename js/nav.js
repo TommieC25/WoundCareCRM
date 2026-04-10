@@ -461,7 +461,7 @@ const overdue = datedR2.filter(r => r.reminder_date < today);
 const upcoming = datedR2.filter(r => r.reminder_date >= today);
 let html = '';
 if (overdue.length > 0) {
-html += `<div style="margin-bottom:1rem;"><div style="font-size:0.75rem;font-weight:700;color:#dc2626;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:0.5rem;padding-bottom:0.25rem;border-bottom:2px solid #fca5a5;">⚠️ Overdue (${overdue.length})</div>`;
+html += `<div style="margin-bottom:1rem;"><div style="font-size:0.75rem;font-weight:700;color:#dc2626;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:0.5rem;padding-bottom:0.25rem;border-bottom:2px solid #fca5a5;">▼ ⚠️ Overdue (${overdue.length})</div>`;
 overdue.forEach(r => {
 const phys = r.provider_id ? physicians.find(p => p.id === r.provider_id) : null;
 const physName = phys ? fmtName(phys) : (r.practice_location_id ? getLocationLabel(r.practice_location_id) : 'General Reminder');
@@ -488,7 +488,7 @@ Object.entries(byDate).forEach(([date, dayReminders]) => {
 const d = new Date(date + 'T12:00:00');
 const label = d.toLocaleDateString('en-US', {weekday:'short', month:'short', day:'numeric'});
 const isToday = date === today;
-html += `<div style="margin-bottom:0.75rem;"><div style="font-size:0.75rem;font-weight:700;color:#92400e;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:0.5rem;padding-bottom:0.25rem;border-bottom:2px solid #fcd34d;">${isToday ? '📅 TODAY — ' : ''}${label}</div>`;
+html += `<div style="margin-bottom:0.75rem;"><div style="font-size:0.75rem;font-weight:700;color:#92400e;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:0.5rem;padding-bottom:0.25rem;border-bottom:2px solid #fcd34d;">▼ ${isToday ? '📅 TODAY — ' : ''}${label}</div>`;
 dayReminders.forEach(r => {
 const phys = r.provider_id ? physicians.find(p => p.id === r.provider_id) : null;
 const physName = phys ? fmtName(phys) : (r.practice_location_id ? getLocationLabel(r.practice_location_id) : 'General Reminder');
@@ -510,7 +510,7 @@ html += '</div>';
 });
 }
 if (openReminders.length > 0) {
-html += `<div style="margin-bottom:0.5rem;"><div style="font-size:0.75rem;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:0.5rem;padding-bottom:0.25rem;border-bottom:2px solid #d1d5db;">📌 Open (${openReminders.length})</div>`;
+html += `<div style="margin-bottom:0.5rem;"><div style="font-size:0.75rem;font-weight:700;color:#6b7280;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:0.5rem;padding-bottom:0.25rem;border-bottom:2px solid #d1d5db;">▼ 📌 Open (${openReminders.length})</div>`;
 openReminders.forEach(r => {
 const phys = r.provider_id ? physicians.find(p => p.id === r.provider_id) : null;
 const physName = phys ? fmtName(phys) : (r.practice_location_id ? getLocationLabel(r.practice_location_id) : 'General Reminder');
