@@ -4,6 +4,9 @@ const SUPABASE_URL = 'https://xhdjywibdjzbczfjmctp.supabase.co';
 // View: https://docs.google.com/spreadsheets/d/1zcVCVIciyScC3IcclfuBy4T4ogdcNSBVlxn6ZmYeiG0/edit?gid=150527751
 // CSV: https://docs.google.com/spreadsheets/d/e/2PACX-1vSgKpcd74ISyaPdczn444-3z14Cmy7hObV3h5zY73q0lswJxlPeWIgaSGntQ1HKQUduefWDAz07rAwd/pub?gid=150527751&single=true&output=csv
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhoZGp5d2liZGp6YmN6ZmptY3RwIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njk3NzE4MTYsImV4cCI6MjA4NTM0NzgxNn0.vHAfeYTVbu2Isu5AoFONvzrtJ2sS3YwF00QRe3LNrbU';
+// Anthropic API key for card/screenshot scanning (Claude vision)
+// Get your key at: https://console.anthropic.com/settings/keys
+const ANTHROPIC_API_KEY = 'YOUR_ANTHROPIC_KEY_HERE';
 const { createClient } = window.supabase;
 const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const $=id=>document.getElementById(id);
