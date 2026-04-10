@@ -2,8 +2,10 @@
 
 // --- Realtime ---
 function setupRealtimeSubscription() {
+let _reloadTimer=null;
+function _debouncedReload(){clearTimeout(_reloadTimer);_reloadTimer=setTimeout(()=>loadAllData(),500);}
 ['providers','practices','practice_locations','provider_location_assignments'].forEach(t =>
-db.channel(t+'-ch').on('postgres_changes',{event:'*',schema:'public',table:t},()=>loadAllData()).subscribe());
+db.channel(t+'-ch').on('postgres_changes',{event:'*',schema:'public',table:t},_debouncedReload).subscribe());
 db.channel('contact-logs-ch')
 .on('postgres_changes',{event:'*',schema:'public',table:'contact_logs'},(payload)=>{
 const pid=payload.new?.provider_id||payload.old?.provider_id;
@@ -48,6 +50,8 @@ buttons.push({ label: 'Open', date: '2099-12-31' });
 container.innerHTML = buttons.map(b =>
   `<button type="button" class="reminder-date-btn" data-prefix="${prefix}" onclick="selectReminderDate('${b.date}','${b.label}','${prefix}')" data-date="${b.date}" style="padding:0.3rem 0.55rem;font-size:0.78rem;border:1px solid #fcd34d;border-radius:6px;background:#fffbeb;color:#92400e;cursor:pointer;white-space:nowrap;transition:background 0.1s;touch-action:manipulation;-webkit-tap-highlight-color:transparent;">${b.label}</button>`
 ).join('');
+const customInp = $(prefix + 'CustomDate');
+if (customInp) customInp.min = today;
 // Default: tomorrow
 selectReminderDate(buttons[1].date, buttons[1].label, prefix);
 }
@@ -60,6 +64,8 @@ if (prev) {
   if (dateStr === '2099-12-31') { prev.textContent = 'Open — no due date, will appear in Open Tasks'; }
   else { const d = new Date(dateStr + 'T12:00:00'); prev.textContent = d.toLocaleDateString('en-US',{weekday:'long',month:'short',day:'numeric'}); }
 }
+const customInp = $(prefix + 'CustomDate');
+if (customInp) customInp.value = (dateStr && dateStr !== '2099-12-31') ? dateStr : '';
 document.querySelectorAll(`.reminder-date-btn[data-prefix="${prefix}"]`).forEach(btn => {
   const sel = btn.dataset.date === dateStr;
   btn.style.background = sel ? '#f59e0b' : '#fffbeb';
@@ -72,6 +78,7 @@ document.querySelectorAll(`.reminder-date-btn[data-prefix="${prefix}"]`).forEach
 function setView(view) {
 // 'tasks' is now a sub-tab of 'activity'; route it there
 if(view==='tasks'){activitySubTab='tasks';view='activity';}
+_prevView = currentView;
 currentView = view;
 $('tabPhysicians').classList.toggle('active', view === 'physicians');
 $('tabPractices').classList.toggle('active', view === 'practices');
@@ -131,15 +138,20 @@ renderEmptyState();
 
 function setSortBy(sort) {
 sortBy = sort;
-['Name','City','Zip','Tier'].forEach(s => $('sort'+s).classList.remove('active'));
+['Name','City','Zip'].forEach(s => $('sort'+s).classList.remove('active'));
 $('sort' + sort.charAt(0).toUpperCase() + sort.slice(1)).classList.add('active');
 renderList();
 }
 function setFilterTier(tier) {
-filterTier = tier;
+// Tap the active tier again to deselect it
+filterTier = (filterTier === tier) ? null : tier;
 document.querySelectorAll('#tierFilterControls .sort-btn').forEach(btn => btn.classList.remove('active'));
-$('filterAll').classList.toggle('active', !tier);
-if (tier) $('filterT' + tier).classList.add('active');
+if (filterTier) $('filterT' + filterTier).classList.add('active');
+renderList();
+}
+function toggleFilterTarget() {
+filterTarget = !filterTarget;
+$('filterTarget').classList.toggle('active', filterTarget);
 renderList();
 }
 
@@ -305,6 +317,7 @@ function normPriority(val) {
 // --- Filter / list rendering ---
 function getFilteredPhysicians(search) {
 let base = filterTier ? physicians.filter(p => normPriority(p.priority) === filterTier) : physicians;
+if (filterTarget) base = base.filter(p => !!p.is_target);
 if (!search) return base;
 return base.filter(p => {
 const np = normPriority(p.priority);
@@ -364,6 +377,10 @@ const assignments = physicianAssignments[p.id] || [];
 const primaryAssign = assignments.find(a => a.is_primary) || assignments[0];
 const pLoc = primaryAssign?.practice_locations || (primaryAssign ? practiceLocations.find(l => l.id === primaryAssign.practice_location_id) : null) || {};
 const cityDisplay = pLoc.city || '';
+const zipDisplay = pLoc.zip || '';
+const locBadgeText = sortBy === 'zip'
+  ? (zipDisplay && cityDisplay ? `${cityDisplay} ${zipDisplay}` : zipDisplay || cityDisplay)
+  : cityDisplay;
 const practiceName = pLoc.practices?.name || getPracticeName(pLoc.practice_id) || p.practice_name || '';
 const locationCount = assignments.length;
 const tierStyles={'1':'background:#ef4444;color:white','2':'background:#f97316;color:white','3':'background:#3b82f6;color:white','4':'background:#8b5cf6;color:white','5':'background:#64748b;color:white'};
@@ -378,7 +395,7 @@ onclick="viewPhysician('${p.id}')">
 <div class="practice">${practiceName}</div>
 ${tierBadge}
 ${mobileBadge}
-${!p.is_mobile && cityDisplay ? `<span class="city-badge">${cityDisplay}</span>` : ''}
+${!p.is_mobile && locBadgeText ? `<span class="city-badge">${locBadgeText}</span>` : ''}
 ${locationCount > 1 ? `<span class="city-badge">+${locationCount - 1} more</span>` : ''}
 </li>
 `}).join('');
@@ -456,7 +473,7 @@ html += `<div class="contact-entry" style="cursor:pointer;border-left-color:#dc2
 <button onclick="event.stopPropagation();completeReminder('${r.id}')" title="Mark complete" style="background:none;border:2px solid #dc2626;color:#dc2626;border-radius:50%;width:22px;height:22px;min-width:22px;cursor:pointer;font-size:0.75rem;display:flex;align-items:center;justify-content:center;margin-top:0.15rem;flex-shrink:0;">✓</button>
 <div style="flex:1;">
 <div style="font-weight:600;color:#dc2626;font-size:0.9rem;">${physName}${phoneLink}${emailLink}</div>
-<div style="font-size:0.75rem;color:#dc2626;font-weight:600;">Due: ${r.reminder_date} (OVERDUE)</div>
+<div style="font-size:0.75rem;color:#dc2626;font-weight:600;">Due: ${r.reminder_date} (OVERDUE) ${r.author ? '<span style="font-size:0.7rem;font-weight:700;padding:0.1rem 0.45rem;border-radius:10px;background:' + (r.author==='Tom' ? '#dbeafe' : '#f3e8ff') + ';color:' + (r.author==='Tom' ? '#1d4ed8' : '#7e22ce') + ';">' + r.author + '</span>' : ''}</div>
 ${taskNote?`<div style="font-size:0.8rem;font-weight:600;color:#92400e;background:#fef3c7;padding:0.15rem 0.4rem;border-radius:4px;margin-top:0.2rem;">📋 ${taskNote}</div>`:''}
 <div style="font-size:0.8rem;color:#666;margin-top:0.2rem;">${preview}</div>
 </div>
@@ -485,7 +502,7 @@ html += `<div class="contact-entry" style="cursor:pointer;border-left-color:#f59
 <div style="font-weight:600;color:#0a4d3c;font-size:0.9rem;">${physName}${phoneLink}${emailLink}</div>
 ${taskNote?`<div style="font-size:0.8rem;font-weight:600;color:#92400e;background:#fef3c7;padding:0.15rem 0.4rem;border-radius:4px;margin-top:0.2rem;">📋 ${taskNote}</div>`:''}
 <div style="font-size:0.8rem;color:#666;margin-top:0.2rem;">${preview}</div>
-<div style="font-size:0.7rem;color:#999;margin-top:0.25rem;">Note from ${r.contact_date}${r.author ? ' by ' + r.author : ''}</div>
+${r.author ? '<div style="margin-top:0.2rem;"><span style="font-size:0.7rem;font-weight:700;padding:0.1rem 0.45rem;border-radius:10px;background:' + (r.author==='Tom' ? '#dbeafe' : '#f3e8ff') + ';color:' + (r.author==='Tom' ? '#1d4ed8' : '#7e22ce') + ';">' + r.author + '</span></div>' : ''}
 </div>
 </div>`;
 });
@@ -507,6 +524,7 @@ html += `<div class="contact-entry" style="cursor:pointer;border-left-color:#f59
 <div style="font-weight:600;color:#0a4d3c;font-size:0.9rem;">${physName}${phoneLink}${emailLink}</div>
 ${taskNote?`<div style="font-size:0.8rem;font-weight:600;color:#92400e;background:#fef3c7;padding:0.15rem 0.4rem;border-radius:4px;margin-top:0.2rem;">📋 ${taskNote}</div>`:''}
 <div style="font-size:0.8rem;color:#666;margin-top:0.2rem;">${preview}</div>
+${r.author ? '<div style="margin-top:0.2rem;"><span style="font-size:0.7rem;font-weight:700;padding:0.1rem 0.45rem;border-radius:10px;background:' + (r.author==='Tom' ? '#dbeafe' : '#f3e8ff') + ';color:' + (r.author==='Tom' ? '#1d4ed8' : '#7e22ce') + ';">' + r.author + '</span></div>' : ''}
 </div></div>`;
 });
 html += '</div>';

@@ -153,8 +153,9 @@ if(ae)throw ae;
 }
 }
 physicians.push(newP);physicians.sort((a,b)=>a.last_name.localeCompare(b.last_name));showToast('Provider added','success');
+await refreshAssignments(newP.id);
 }
-await loadAllData();renderList();setTimeout(()=>closePhysicianModal(),500);
+renderList();saveCrmCache();setTimeout(()=>closePhysicianModal(),500);
 });
 }
 async function deletePhysician() {
@@ -288,9 +289,7 @@ const addr=$('practiceAddress').value,city=$('practiceCity').value,zip=$('practi
 const pEmail=$('practiceEmail').value||null;
 if(addr||city){const locData={practice_id:newPract.id,label:'Main Office',address:addr||null,city:city||null,zip:zip||null,phone:ph||null,fax:fx||null,practice_email:pEmail};const{error:le}=await db.from('practice_locations').insert(locData);if(le)console.error('Location insert error:',le);}
 showToast('Practice added','success');}
-await loadAllData();if(currentPractice){currentPractice=practices.find(p=>p.id===currentPractice.id);renderPracticeProfile();}
-if(currentPhysician){renderProfile();}
-setTimeout(()=>closePracticeModal(),500);
+closePracticeModal();saveCrmCache();if(currentPractice){currentPractice=practices.find(p=>p.id===currentPractice.id);renderPracticeProfile();}if(currentPhysician){renderProfile();}loadAllData().catch(()=>{});
 });
 }
 async function deletePractice() {
@@ -305,7 +304,11 @@ const{error:e1}=await db.from('provider_location_assignments').delete().in('prac
 const{error:e2}=await db.from('practice_locations').delete().eq('practice_id',pid);if(e2)throw e2;
 }
 const{error:e3}=await db.from('practices').delete().eq('id',pid);if(e3)throw e3;
-practices=practices.filter(p=>p.id!==pid);currentPractice=null;await loadAllData();renderList();renderEmptyState();
+practices=practices.filter(p=>p.id!==pid);
+const _delLocIds=practiceLocations.filter(l=>l.practice_id===pid).map(l=>l.id);
+practiceLocations=practiceLocations.filter(l=>l.practice_id!==pid);
+_delLocIds.forEach(lid=>{Object.keys(physicianAssignments).forEach(k=>{physicianAssignments[k]=physicianAssignments[k].filter(a=>a.practice_location_id!==lid);});});
+currentPractice=null;saveCrmCache();renderList();renderEmptyState();
 showToast('Deleted','success');updateSyncIndicators('synced');
 }catch(e){console.error('Delete error:',e);showToast('Error: '+e.message,'error');updateSyncIndicators('error');}
 }
@@ -416,7 +419,7 @@ if(!editingLocationId){const missing=[];if(!data.address){missing.push('Address'
 await withSave('locationSaveBtn','Save Location',async()=>{
 if(editingLocationId){const{error}=await db.from('practice_locations').update(data).eq('id',editingLocationId);if(error)throw error;showToast('Location updated','success');
 }else{const{error}=await db.from('practice_locations').insert(data);if(error)throw error;showToast('Location added','success');}
-await loadAllData();if(currentPractice)renderPracticeProfile();if(currentPhysician)renderProfile();setTimeout(()=>closeLocationModal(),500);
+closeLocationModal();saveCrmCache();if(currentPractice)renderPracticeProfile();if(currentPhysician)renderProfile();loadAllData().catch(()=>{});
 });
 }
 async function deleteLocation(locationId) {
@@ -425,7 +428,9 @@ try{
 updateSyncIndicators('syncing');
 const{error:e1}=await db.from('provider_location_assignments').delete().eq('practice_location_id',locationId);if(e1)throw e1;
 const{error:e2}=await db.from('practice_locations').delete().eq('id',locationId);if(e2)throw e2;
-await loadAllData();if(currentPractice)renderPracticeProfile();
+practiceLocations=practiceLocations.filter(l=>l.id!==locationId);
+Object.keys(physicianAssignments).forEach(k=>{physicianAssignments[k]=physicianAssignments[k].filter(a=>a.practice_location_id!==locationId);});
+saveCrmCache();if(currentPractice)renderPracticeProfile();
 showToast('Deleted','success');updateSyncIndicators('synced');
 }catch(e){console.error('Delete error:',e);showToast('Error: '+e.message,'error');updateSyncIndicators('error');}
 }
@@ -485,7 +490,7 @@ const { error } = await db
 .insert(assignments);
 if (error) throw error;
 }
-await loadAllData();
+await refreshAssignments(currentPhysician.id);
 renderProfile();
 closeAssignLocationModal();
 showToast('Location assignments updated', 'success');
@@ -509,7 +514,8 @@ if (le) throw le;
 const {error:ae} = await db.from('provider_location_assignments').insert({provider_id:currentPhysician.id,practice_location_id:newLoc.id,is_primary:false});
 if (ae) throw ae;
 ['quickPracticeName','quickPracticeAddr','quickPracticeCity','quickPracticeZip','quickPracticePhone','quickPracticeEmail','quickAddressBlock'].forEach(id=>{const el=$(id);if(el)el.value='';});
-await loadAllData();
+practices.push(newPract);newLoc.practices={name:newPract.name};practiceLocations.push(newLoc);
+await refreshAssignments(currentPhysician.id);
 renderProfile();
 closeAssignLocationModal();
 showToast(`${name} created and assigned`, 'success');
@@ -521,7 +527,7 @@ updateSyncIndicators('error');
 }
 }
 async function removeAssignment(assignmentId) {
-await dbDel('provider_location_assignments',assignmentId,'Remove this location assignment?',async()=>{await loadAllData();renderProfile();});
+await dbDel('provider_location_assignments',assignmentId,'Remove this location assignment?',async()=>{if(currentPhysician&&physicianAssignments[currentPhysician.id]){physicianAssignments[currentPhysician.id]=physicianAssignments[currentPhysician.id].filter(a=>a.id!==assignmentId);}saveCrmCache();renderProfile();});
 }
 async function setPrimaryLocation(assignmentId) {
 if (!currentPhysician) return;
@@ -533,7 +539,8 @@ try {
   // Set primary on the chosen one
   const {error:e2} = await db.from('provider_location_assignments').update({is_primary:true}).eq('id',assignmentId);
   if (e2) throw e2;
-  await loadAllData();
+  if(physicianAssignments[currentPhysician.id]){physicianAssignments[currentPhysician.id].forEach(a=>{a.is_primary=(a.id===assignmentId);});}
+  saveCrmCache();
   renderProfile();
   showToast('Primary location updated', 'success');
   updateSyncIndicators('synced');
@@ -605,7 +612,8 @@ const {data:newPhys,error} = await db.from('providers').insert(data).select().si
 if (error) throw error;
 const {error:assignErr} = await db.from('provider_location_assignments').insert({provider_id:newPhys.id,practice_location_id:locId,is_primary:true});
 if (assignErr) throw assignErr;
-await loadAllData();
+physicians.push(newPhys);physicians.sort((a,b)=>a.last_name.localeCompare(b.last_name));
+await refreshAssignments(newPhys.id);
 $('quickPhysFirst').value = '';
 $('quickPhysLast').value = '';
 $('quickPhysDegree').value = '';
@@ -656,7 +664,8 @@ if (error) throw error;
 for (const physId of unselectedPhysIds) {
 await db.from('provider_location_assignments').delete().eq('provider_id',physId).eq('practice_location_id',locId);
 }
-await loadAllData();
+const _affectedPhysIds=[...new Set([...selectedPhysIds,...unselectedPhysIds])];
+await Promise.all(_affectedPhysIds.map(pid=>refreshAssignments(pid)));
 renderPracticeProfile();
 closeAssignPhysicianModal();
 showToast('Providers assigned', 'success');

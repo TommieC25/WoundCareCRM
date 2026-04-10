@@ -12,6 +12,7 @@ return loc?.practice_id;
 const associatedPractices = practices.filter(pr => practiceIds.includes(pr.id));
 $('mainContent').innerHTML = `
 <div class="profile-header">
+${_prevView==='map'?'<button onclick="setView(\'map\')" style="margin-bottom:0.5rem;background:none;border:1px solid #0a4d3c;color:#0a4d3c;border-radius:6px;padding:0.3rem 0.7rem;font-size:0.8rem;cursor:pointer;">← Back to Map</button>':''}
 <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:0.5rem;flex-wrap:wrap;">
 <div class="profile-name" style="flex:1;">${fmtName(p)}</div>
 <div style="display:flex;gap:0.5rem;flex-shrink:0;flex-wrap:wrap;">
@@ -26,7 +27,7 @@ ${associatedPractices.length > 0 ? associatedPractices.map(pr => `<span style="c
 <div class="profile-meta">
 ${isStaffSpecialty(p.specialty)
   ? `${p.title?mi('Role',p.title):mi('Role','Office Staff')}${p.email?`<div class="meta-item" style="grid-column:1/-1"><div class="meta-label">Email</div><div class="meta-value" style="word-break:break-all;"><a href="mailto:${p.email}" style="color:#0a4d3c;">${p.email}</a></div></div>`:''}<div class="meta-item"><div class="meta-label">Type</div><div class="meta-value" style="color:#7c3aed;font-weight:600;">Staff Contact</div></div>`
-  : `<div class="meta-item"><div class="meta-label">Priority Tier</div><div class="meta-value"><select onchange="quickSavePriority(this.value)" style="font-size:0.85rem;font-weight:700;padding:0.2rem 0.4rem;border:2px solid #0a4d3c;border-radius:6px;color:#0a4d3c;background:white;width:auto;cursor:pointer;">${['','1','2','3','4','5'].map(v=>v===''?`<option value="" ${!normPriority(p.priority)?'selected':''}>— set tier —</option>`:`<option value="${v}" ${normPriority(p.priority)===v?'selected':''}>P${v}</option>`).join('')}</select></div></div>${mi('Specialty',p.specialty||'Not set')}${mi('Degree',p.degree||'—')}${p.title?mi('Title',p.title):''}${p.email?`<div class="meta-item" style="grid-column:1/-1"><div class="meta-label">Email</div><div class="meta-value" style="word-break:break-all;"><a href="mailto:${p.email}" style="color:#0a4d3c;">${p.email}</a></div></div>`:''}${p.mobile_phone?`<div class="meta-item"><div class="meta-label">Mobile</div><div class="meta-value"><a href="tel:${p.mobile_phone}" style="color:#0a4d3c;">${fmtPhone(p.mobile_phone)}</a></div></div>`:''}${mi('Academic Connection',p.academic_connection||p.um_connection||'None')}${mi('Projected Volume',p.proj_vol||p.mohs_volume||'Unknown')}`}
+  : `<div class="meta-item"><div class="meta-label">Priority Tier</div><div class="meta-value"><select onchange="quickSavePriority(this.value)" style="font-size:0.85rem;font-weight:700;padding:0.2rem 0.4rem;border:2px solid #0a4d3c;border-radius:6px;color:#0a4d3c;background:white;width:auto;cursor:pointer;">${['','1','2','3','4','5'].map(v=>v===''?`<option value="" ${!normPriority(p.priority)?'selected':''}>— set tier —</option>`:`<option value="${v}" ${normPriority(p.priority)===v?'selected':''}>P${v}</option>`).join('')}</select></div></div>${mi('Specialty',p.specialty||'Not set')}${mi('Degree',p.degree||'—')}${p.title?mi('Title',p.title):''}${p.email?`<div class="meta-item" style="grid-column:1/-1"><div class="meta-label">Email</div><div class="meta-value" style="word-break:break-all;"><a href="mailto:${p.email}" style="color:#0a4d3c;">${p.email}</a></div></div>`:''}${p.mobile_phone?`<div class="meta-item"><div class="meta-label">Mobile</div><div class="meta-value"><a href="tel:${p.mobile_phone}" data-provider-id="${p.id}" style="color:#0a4d3c;">${fmtPhone(p.mobile_phone)}</a></div></div>`:''}${mi('Academic Connection',p.academic_connection||p.um_connection||'None')}${mi('Projected Volume',p.proj_vol||p.mohs_volume||'Unknown')}`}
 <div class="meta-item"><span class="meta-label">Advanced Solution</span><label style="display:inline-flex;align-items:center;gap:0.4rem;cursor:pointer;padding:0.25rem 0.6rem;border-radius:6px;background:${p.advanced_solution?'#f97316':'#e5e5e5'};color:${p.advanced_solution?'white':'#666'};font-size:0.8rem;font-weight:700;transition:all 0.2s;" onclick="toggleAdvancedSolution(event)"><input type="checkbox" ${p.advanced_solution?'checked':''} style="width:16px;height:16px;min-width:16px;" readonly>${p.advanced_solution?'YES':'NO'}</label></div>
 <div class="meta-item"><span class="meta-label">Sales Target</span><label style="display:inline-flex;align-items:center;gap:0.4rem;cursor:pointer;padding:0.25rem 0.6rem;border-radius:6px;background:${p.is_target?'#dc2626':'#e5e5e5'};color:${p.is_target?'white':'#666'};font-size:0.8rem;font-weight:700;transition:all 0.2s;" onclick="toggleTarget(event)"><input type="checkbox" ${p.is_target?'checked':''} style="width:16px;height:16px;min-width:16px;" readonly>${p.is_target?'YES':'NO'}</label></div>
 ${p.is_mobile?`<div class="meta-item" style="grid-column:1/-1"><span class="meta-label">Practice Type</span><span style="display:inline-block;background:#ede9fe;color:#6d28d9;font-weight:700;font-size:0.82rem;padding:0.2rem 0.6rem;border-radius:6px;">🏠 Mobile / Home Health — no fixed office</span></div>`:''}
@@ -122,6 +123,7 @@ return loc && loc.practice_id === p.id;
 });
 $('mainContent').innerHTML = `
 <div class="profile-header">
+${_prevView==='map'?'<button onclick="setView(\'map\')" style="margin-bottom:0.5rem;background:none;border:1px solid #0a4d3c;color:#0a4d3c;border-radius:6px;padding:0.3rem 0.7rem;font-size:0.8rem;cursor:pointer;">← Back to Map</button>':''}
 <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:0.5rem;flex-wrap:wrap;">
 <div class="profile-name" style="flex:1;">${p.name}</div>
 <div style="display:flex;gap:0.5rem;flex-shrink:0;flex-wrap:wrap;">
@@ -226,7 +228,7 @@ ${mi('Providers', locPhysicians.length)}${mi('City', loc.city || '—')}${mi('Zi
 </div>
 </div>
 <div class="contact-grid">
-${ci('📍','Address',locAddr(loc))}${ci('📞','Phone',loc.phone?locPhone(loc.phone):'')}${ci('📠','Fax',loc.fax?fmtPhone(loc.fax):'')}${ci('✉️','Email',loc.practice_email?`<a href="mailto:${loc.practice_email}">${loc.practice_email}</a>`:'')}${ci('🕐','Office Hours',loc.office_hours||'')}${ci('👥','Office Staff',loc.office_staff||'')}${ci('👤','Receptionist',loc.receptionist_name||'')}${ci('📅','Best Days',loc.best_days||'')}${ci('📝','General Info',loc.notes||'')}
+${ci('📍','Address',locAddr(loc))}${ci('📞','Phone',loc.phone?locPhone(loc.phone,loc.id):'')}${ci('📠','Fax',loc.fax?fmtPhone(loc.fax):'')}${ci('✉️','Email',loc.practice_email?`<a href="mailto:${loc.practice_email}">${loc.practice_email}</a>`:'')}${ci('🕐','Office Hours',loc.office_hours||'')}${ci('👥','Office Staff',loc.office_staff||'')}${ci('👤','Receptionist',loc.receptionist_name||'')}${ci('📅','Best Days',loc.best_days||'')}${ci('📝','General Info',loc.notes||'')}
 ${!loc.phone&&!loc.practice_email&&!loc.office_hours&&!loc.office_staff&&!loc.receptionist_name&&!loc.best_days&&!loc.fax&&!loc.notes?'<div class="empty-notice">No details recorded. Use Edit to add details.</div>':''}
 </div>
 </div>
@@ -409,12 +411,10 @@ if (error) throw error;
 await Promise.all(physIds.map(pid => db.from('providers').update({last_contact:dateVal}).eq('id',pid)));
 const label = physIds.length > 0 ? `Call logged for ${physIds.length} physician${physIds.length!==1?'s':''}` : 'Location note logged';
 showToast(label, 'success');
-await loadAllData();
-renderPracticeProfile();
-await loadPracticeActivity(currentPractice.id);
-// If follow-up task requested, open separate task modal after closing activity modal
 const taskPhysId = physIds.length > 0 ? physIds[0] : null;
-setTimeout(() => { closeContactModal(); $('contactForm').onsubmit = function(ev) { saveContact(ev); return false; }; const pr = $('practicePhysSelectRow'); if (pr) pr.style.display = 'none'; if (reminderOn) openAddTaskModal(taskPhysId, locVal); }, 500);
+closeContactModal();$('contactForm').onsubmit=function(ev){saveContact(ev);return false;};const _psr=$('practicePhysSelectRow');if(_psr)_psr.style.display='none';if(reminderOn)openAddTaskModal(taskPhysId,locVal);
+physIds.forEach(pid=>{const p=physicians.find(ph=>ph.id===pid);if(p)p.last_contact=dateVal;});saveCrmCache();
+renderPracticeProfile();loadPracticeActivity(currentPractice.id);
 });
 }
 
@@ -476,14 +476,9 @@ if (error) throw error;
 await Promise.all(physIds.map(pid => db.from('providers').update({ last_contact: dateVal }).eq('id', pid)));
 const label = physIds.length > 0 ? `Note logged for ${physIds.length} physician${physIds.length !== 1 ? 's' : ''}` : 'Location note logged';
 showToast(label, 'success');
-await loadAllData();
-const updatedLoc = practiceLocations.find(l => l.id === locId);
-if (updatedLoc) {
-currentPractice = practices.find(p => p.id === updatedLoc.practice_id);
-renderLocationProfile(updatedLoc);
-}
-// If follow-up task requested, open separate task modal after closing activity modal
 const taskPhysId = physIds.length > 0 ? physIds[0] : null;
-setTimeout(() => { closeContactModal(); $('contactForm').onsubmit = function(ev) { saveContact(ev); return false; }; const pr = $('practicePhysSelectRow'); if (pr) pr.style.display = 'none'; if (reminderOn) openAddTaskModal(taskPhysId, locId); }, 500);
+closeContactModal();$('contactForm').onsubmit=function(ev){saveContact(ev);return false;};const _psr2=$('practicePhysSelectRow');if(_psr2)_psr2.style.display='none';if(reminderOn)openAddTaskModal(taskPhysId,locId);
+physIds.forEach(pid=>{const p=physicians.find(ph=>ph.id===pid);if(p)p.last_contact=dateVal;});saveCrmCache();
+const _updLoc=practiceLocations.find(l=>l.id===locId);if(_updLoc){currentPractice=practices.find(p=>p.id===_updLoc.practice_id);renderLocationProfile(_updLoc);}
 });
 }

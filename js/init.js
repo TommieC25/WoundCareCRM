@@ -7,7 +7,7 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 const { createClient } = window.supabase;
 const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 const $=id=>document.getElementById(id);
-async function withSave(btnId,label,fn){const btn=$(btnId);if(btn.classList.contains('saving'))return;btn.textContent='Saving...';btn.classList.add('saving');try{updateSyncIndicators('syncing');await fn();btn.textContent='Saved!';btn.classList.remove('saving');btn.classList.add('saved');updateSyncIndicators('synced');}catch(e){console.error('Save error:',e);showToast('Error: '+e.message,'error');btn.textContent=label;btn.classList.remove('saving');updateSyncIndicators('error');throw e;}}
+async function withSave(btnId,label,fn){const btn=$(btnId);if(btn.classList.contains('saving')){showToast('Save in progress…','error');return;}btn.textContent='Saving...';btn.classList.add('saving');const _reset=()=>{btn.textContent=label;btn.classList.remove('saving');updateSyncIndicators('error');};const _timeout=setTimeout(()=>{if(btn.classList.contains('saving')){_reset();showToast('Save timed out — check connection','error');}},12000);try{updateSyncIndicators('syncing');await fn();clearTimeout(_timeout);btn.textContent='Saved!';btn.classList.remove('saving');btn.classList.add('saved');updateSyncIndicators('synced');}catch(e){clearTimeout(_timeout);console.error('Save error:',e);showToast('Error: '+e.message,'error');_reset();throw e;}}
 async function dbDel(table,id,msg,after){if(!confirm(msg))return;try{updateSyncIndicators('syncing');const{error}=await db.from(table).delete().eq('id',id);if(error)throw error;await after();showToast('Deleted','success');updateSyncIndicators('synced');}catch(e){console.error('Delete error:',e);showToast('Error: '+e.message,'error');updateSyncIndicators('error');}}
 function setFields(map){for(const[id,val]of Object.entries(map))$(id).value=val;}
 
@@ -20,8 +20,10 @@ let contactLogs = {};
 let currentPhysician = null;
 let currentPractice = null;
 let currentView = 'physicians';
+let _prevView = null;
 let sortBy = 'name';
 let filterTier = null;
+let filterTarget = false;
 let currentLocationId = null;
 let editMode = false;
 let editingContactId = null;
@@ -45,8 +47,8 @@ if (_goto.get('goto') === 'practice' && _goto.get('id')) {
   setView('physicians');
   viewPhysician(_goto.get('id'));
 } else {
-  activitySubTab = 'history'; // start on combined history view
-  setView('activity'); // default landing: Activity → History tab
+  setView('physicians'); // HCP list in sidebar
+  renderEmptyState();    // tasks/reminders in main content
 }
 // iOS body scroll lock — prevents background scroll when any modal is open
 // On iOS Safari (especially standalone/Home Screen), position:fixed modals

@@ -1,6 +1,6 @@
 // === js/contact.js === Contact modal, note editing, reminder completion, admin panel toggle
 
-function prefixNote(prefix){const ta=$('contactNotes');if(!ta.value.startsWith('Call: ')&&!ta.value.startsWith('Visit: ')){ta.value=prefix+ta.value;}else{ta.value=ta.value.replace(/^(Call|Visit): /,prefix);}ta.focus();const row=$('alsoAttendedRow');if(row){row.style.display=(prefix==='Visit: ')?'block':'none';if(prefix!=='Visit: '){const det=$('alsoAttendedDetails');if(det)det.style.display='none';const sp=$('staffPresent');if(sp)sp.value='';}}}
+function prefixNote(prefix){const ta=$('contactNotes');if(!ta.value.startsWith('Call: ')&&!ta.value.startsWith('Visit: ')&&!ta.value.startsWith('Email: ')){ta.value=prefix+ta.value;}else{ta.value=ta.value.replace(/^(Call|Visit|Email): /,prefix);}ta.focus();const row=$('alsoAttendedRow');if(row){row.style.display=(prefix==='Visit: ')?'block':'none';if(prefix!=='Visit: '){const det=$('alsoAttendedDetails');if(det)det.style.display='none';const sp=$('staffPresent');if(sp)sp.value='';}}}
 
 function openContactModal() {
 editingContactId = null;
@@ -324,9 +324,8 @@ if(error)throw error;
 showToast(isTask?'Task updated':'Note updated','success');
 closeContactModal();
 $('contactForm').onsubmit=function(ev){saveContact(ev);return false;};
-await loadAllData();
-if(currentPractice){renderPracticeProfile();await loadPracticeActivity(currentPractice.id);}
 if(reminderOn){const provId=_editLog.provider_id||null;const locId=_editLog.practice_location_id||null;setTimeout(()=>openAddTaskModal(provId,locId),400);}
+if(currentPractice)loadPracticeActivity(currentPractice.id).then(()=>renderPracticeProfile()).catch(()=>{});
 });
 return false;
 };
@@ -480,10 +479,22 @@ _checkAddTaskLinked();
 
 // Opens addTaskModal in edit mode for an existing task record (called from task detail modal)
 function openEditTaskModal() {
-const _sb=$('addTaskSaveBtn');if(_sb){_sb.textContent='Save Task';_sb.className='btn-primary';}
 const rec = window._openedTaskRec;
 if (!rec) return;
-// Extract task note: for old-style records with embedded [Task:], use that text; otherwise use the full notes
+// ── Full modal reset before populating ──────────────────────────────────────
+// Every field is wiped first so no state from any previous modal open can
+// bleed through — regardless of which fields the current record happens to set.
+const _sb=$('addTaskSaveBtn');if(_sb){_sb.textContent='Save Task';_sb.className='btn-primary';}
+['addTaskProviderSearch','addTaskPracticeSearch','addTaskNote','addTaskTime'].forEach(id=>{const el=$(id);if(el)el.value='';});
+['addTaskPhysicianId','addTaskLocationId','addTaskEditId','taskSelectedDate','taskCustomDate'].forEach(id=>{const el=$(id);if(el)el.value='';});;
+['addTaskProviderResults','addTaskPracticeResults','addTaskUnlinkedWarning'].forEach(id=>{const el=$(id);if(el)el.style.display='none';});
+['addTaskProviderRow','addTaskPracticeRow','addTaskLocationRow'].forEach(id=>{const el=$(id);if(el)el.style.display='none';});
+const _ctx=$('addTaskContext');if(_ctx){_ctx.innerHTML='';_ctx.style.display='none';}
+const _sel=$('addTaskLocationSelect');if(_sel)_sel.innerHTML='<option value="">No specific location</option>';
+const _dp=$('taskDatePreview');if(_dp)_dp.textContent='';
+if($('addTaskAuthor'))$('addTaskAuthor').value='';
+$('addTaskModalTitle').textContent='Edit Task';
+// ── Populate from record ─────────────────────────────────────────────────────
 const tm = (rec.notes||'').match(/^\[(\d{1,2}:\d{2})\]\s*/);
 let noteText = tm ? rec.notes.replace(tm[0], '') : (rec.notes||'');
 const taskMatch = noteText.match(/\s*\|\s*\[Task:\s*(.*?)\]$/);
@@ -492,17 +503,15 @@ if($('addTaskEditId'))$('addTaskEditId').value = rec.id;
 $('addTaskNote').value = taskNote;
 $('addTaskPhysicianId').value = rec.provider_id || '';
 $('addTaskLocationId').value = rec.practice_location_id || '';
-if($('addTaskPracticeRow'))$('addTaskPracticeRow').style.display='none';
 if($('addTaskProviderRow'))$('addTaskProviderRow').style.display='block';
-if(rec.provider_id){selectAddTaskProvider(rec.provider_id);if(rec.practice_location_id&&$('addTaskLocationSelect')){$('addTaskLocationSelect').value=rec.practice_location_id;$('addTaskLocationId').value=rec.practice_location_id;const ctx=$('addTaskContext');if(ctx){ctx.innerHTML=_buildTaskContext(rec.provider_id,rec.practice_location_id);}}}
-else{const ctx=$('addTaskContext');if(ctx){ctx.innerHTML=_buildTaskContext(null,rec.practice_location_id);ctx.style.display=rec.practice_location_id?'block':'none';}if($('addTaskLocationRow'))$('addTaskLocationRow').style.display='none';}
-$('addTaskModalTitle').textContent = 'Edit Task';
-if ($('addTaskAuthor')) $('addTaskAuthor').value = rec.author || '';
-if ($('addTaskTime')) $('addTaskTime').value = tm ? tm[1] : '';
+if(rec.provider_id){selectAddTaskProvider(rec.provider_id);if(rec.practice_location_id&&$('addTaskLocationSelect')){$('addTaskLocationSelect').value=rec.practice_location_id;$('addTaskLocationId').value=rec.practice_location_id;if(_ctx){_ctx.innerHTML=_buildTaskContext(rec.provider_id,rec.practice_location_id);_ctx.style.display='block';}}}
+else{if(_ctx){_ctx.innerHTML=_buildTaskContext(null,rec.practice_location_id);_ctx.style.display=rec.practice_location_id?'block':'none';}}
+if($('addTaskAuthor'))$('addTaskAuthor').value=rec.author||'';
+if($('addTaskTime'))$('addTaskTime').value=tm?tm[1]:'';
 populateReminderDateButtons('task');
-if (rec.reminder_date) selectReminderDate(rec.reminder_date, '', 'task');
+if(rec.reminder_date)selectReminderDate(rec.reminder_date,'','task');
 $('addTaskModal').classList.add('active');
-setTimeout(() => $('addTaskNote').focus(), 100);
+setTimeout(()=>$('addTaskNote').focus(),100);
 }
 
 function closeAddTaskModal() { closeModal('addTaskModal'); }
@@ -541,8 +550,8 @@ if (editId) {
 }
 showToast(editId ? 'Task updated' : 'Task saved', 'success');
 closeAddTaskModal();
-if (physicianId && currentPhysician && currentPhysician.id === physicianId) { await loadContactLogs(physicianId); renderProfile(); }
-if (currentView === 'activity') renderActivityTabView();
+if (currentView === 'activity') renderTasksView();
+if (physicianId && currentPhysician && currentPhysician.id === physicianId) { loadContactLogs(physicianId).then(()=>renderProfile()).catch(()=>{}); }
 if (!editId && _newRec && date && date !== '2099-12-31') {
 const _p=physicianId?physicians.find(p=>p.id===physicianId):null,_l=locationId?practiceLocations.find(l=>l.id===locationId):null,_pr=_l?practices.find(p=>p.id===_l.practice_id):null;
 const _taskTime=($('addTaskTime')||{}).value||'';
@@ -653,8 +662,10 @@ document.addEventListener('click', function(e) {
 }
 
 function _doTelIntercept(a) {
-  const providerId = a.dataset.providerId || (currentPhysician ? currentPhysician.id : null) || null;
   const locId = a.dataset.locId || null;
+  // Never inherit currentPhysician for a location/office phone (data-loc-id present).
+  // Only fall back to currentPhysician for provider personal numbers (no loc association).
+  const providerId = a.dataset.providerId || (!locId && currentPhysician ? currentPhysician.id : null) || null;
   const phone = (a.getAttribute('href') || '').replace('tel:','');
   let displayName = '';
   if (providerId) {
