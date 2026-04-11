@@ -593,37 +593,33 @@ function _clearPendingCall() {
 }
 
 function initCallLogInterceptor() {
-// Restore any pending call saved before this page load (iOS killed/reloaded the tab)
+// Restore any active call session saved before this page load (iOS killed/reloaded the tab)
 try {
-  const saved = localStorage.getItem('_crmPendingCall');
+  const saved = localStorage.getItem('_crmCallSession');
   if (saved) {
     const ctx = JSON.parse(saved);
     const age = Date.now() - ctx.ts;
     if (age >= 500 && age <= 3600000) {
-      _pendingCall = ctx;
-      setTimeout(() => _showCallLogPrompt(ctx), 300);
+      _callSession = ctx;
+      setTimeout(() => _openCallSessionPanel(ctx), 300);
     } else {
-      localStorage.removeItem('_crmPendingCall');
+      localStorage.removeItem('_crmCallSession');
     }
   }
 } catch(e) {}
 
-// Recovery: on any touch that is NOT on a tel: link, check for a pending call.
-// Skipping tel: links is critical — if the user is tapping a phone number to
-// start a new call, we must not show the modal (it blocks the call from placing).
-// This fires on first tap back in the app after a call ends.
+// Recovery: on first touch back in the app after being in Phone, re-show session panel.
 document.addEventListener('touchstart', function(e) {
-  if (e.target.closest('a[href^="tel:"]')) return; // new call starting — skip
+  if (e.target.closest('button[data-call-btn]')) return; // new call starting — skip
   try {
-    const saved = localStorage.getItem('_crmPendingCall');
+    const saved = localStorage.getItem('_crmCallSession');
     if (!saved) return;
     const ctx = JSON.parse(saved);
     const age = Date.now() - ctx.ts;
     if (age >= 500 && age <= 3600000) {
-      if (!_pendingCall) _pendingCall = ctx;
-      _showCallLogPrompt(ctx);
+      if (!_callSession) { _callSession = ctx; _openCallSessionPanel(ctx); }
     } else if (age > 3600000) {
-      localStorage.removeItem('_crmPendingCall');
+      localStorage.removeItem('_crmCallSession');
     }
   } catch(e) {}
 }, { passive: true });
@@ -681,8 +677,7 @@ function _doTelIntercept(a) {
   }
   if (!displayName && currentPractice) displayName = currentPractice.name || '';
   if (!displayName) displayName = fmtPhone(phone) || phone;
-  _savePendingCall({ providerId, locId, phone, displayName, ts: Date.now() });
-  showToast('📞 Call saved — green bar will appear when you return', 'success');
+  startCallSession(phone, displayName, providerId, locId);
 }
 
 function _showCallLogPrompt(ctx) {
@@ -730,3 +725,91 @@ if (ctx.providerId) {
   setTimeout(() => { prefixNote('Call: '); }, 60);
 }
 }
+
+// --- Call session panel ---
+let _callSession = null;
+let _callTimer = null;
+let _callTimerStart = 0;
+
+function startCallSession(phone, name, providerId, locId) {
+  providerId = providerId || null;
+  locId = locId || null;
+  if (!name) {
+    if (providerId) { const phys = physicians.find(p => p.id === providerId); if (phys) name = fmtName(phys); }
+    if (!name && locId) { const loc = practiceLocations.find(l => l.id === locId); if (loc) { const prac = practices.find(p => p.id === loc.practice_id); name = prac?.name || loc.label || ''; } }
+    if (!name && currentPhysician) name = fmtName(currentPhysician);
+    if (!name && currentPractice) name = currentPractice.name || '';
+    if (!name) name = fmtPhone(phone) || phone;
+  }
+  _callSession = { phone, name, providerId, locId, ts: Date.now(), notes: '' };
+  try { localStorage.setItem('_crmCallSession', JSON.stringify(_callSession)); } catch(e) {}
+  _openCallSessionPanel(_callSession);
+}
+
+function _openCallSessionPanel(ctx) {
+  const nameEl = $('callSessionName'); if (nameEl) nameEl.textContent = ctx.name || fmtPhone(ctx.phone) || ctx.phone;
+  const practiceEl = $('callSessionPractice');
+  if (practiceEl) {
+    let pracLine = '';
+    if (ctx.locId) { const loc = practiceLocations.find(l => l.id === ctx.locId); if (loc) { const prac = practices.find(p => p.id === loc.practice_id); pracLine = [prac?.name, (loc.label && loc.label !== loc.city ? loc.label : null), loc.city].filter(Boolean).join(' — '); } }
+    else if (ctx.providerId) { const asgn = (physicianAssignments[ctx.providerId] || [])[0]; if (asgn) { const loc = practiceLocations.find(l => l.id === asgn.practice_location_id); if (loc) { const prac = practices.find(p => p.id === loc.practice_id); pracLine = prac?.name || loc.label || ''; } } }
+    practiceEl.textContent = pracLine;
+  }
+  const phoneEl = $('callSessionPhone'); if (phoneEl) phoneEl.textContent = fmtPhone(ctx.phone) || ctx.phone;
+  const dialBtn = $('callSessionDialBtn'); if (dialBtn) dialBtn.textContent = `📞 Dial ${fmtPhone(ctx.phone) || ctx.phone}`;
+  const notesEl = $('callSessionNotes'); if (notesEl) notesEl.value = ctx.notes || '';
+  const panel = $('callSessionPanel'); if (panel) panel.style.display = 'flex';
+  _stopCallTimer();
+  _callTimerStart = ctx.ts;
+  const timerEl = $('callSessionTimer');
+  function _tick() { if (!timerEl) return; const sec = Math.floor((Date.now() - _callTimerStart) / 1000); timerEl.textContent = Math.floor(sec/60) + ':' + String(sec%60).padStart(2,'0'); }
+  _tick();
+  _callTimer = setInterval(_tick, 1000);
+}
+
+function _dialCallSessionNumber() {
+  if (!_callSession) return;
+  const notesEl = $('callSessionNotes'); if (notesEl) _callSession.notes = notesEl.value;
+  try { localStorage.setItem('_crmCallSession', JSON.stringify(_callSession)); } catch(e) {}
+  window.location.href = 'tel:' + (_callSession.phone || '').replace(/\D/g, '');
+}
+
+function endCallSession() {
+  if (!_callSession) return;
+  const ctx = _callSession;
+  const notesEl = $('callSessionNotes');
+  const notes = notesEl ? notesEl.value.trim() : '';
+  _stopCallTimer();
+  const panel = $('callSessionPanel'); if (panel) panel.style.display = 'none';
+  _callSession = null;
+  try { localStorage.removeItem('_crmCallSession'); } catch(e) {}
+  if (ctx.providerId) {
+    currentPhysician = physicians.find(p => p.id === ctx.providerId) || null;
+    currentPractice = null;
+    openContactModal();
+    setTimeout(() => {
+      const ta = $('contactNotes'); if (ta) ta.value = notes ? 'Call: ' + notes : ''; else prefixNote('Call: ');
+      if (ctx.locId) { const sel = $('contactLocation'); if (sel) { const opt = Array.from(sel.options).find(o => o.value === ctx.locId); if (opt) sel.value = ctx.locId; } }
+      const lastAuthor = localStorage.getItem('lastCallLogAuthor'); if (lastAuthor) $('authorName').value = lastAuthor;
+    }, 100);
+  } else if (ctx.locId) {
+    openLocationContactModal(ctx.locId);
+    setTimeout(() => {
+      const ta = $('contactNotes'); if (ta) ta.value = notes ? 'Call: ' + notes : ''; else prefixNote('Call: ');
+      const lastAuthor = localStorage.getItem('lastCallLogAuthor'); if (lastAuthor) $('authorName').value = lastAuthor;
+    }, 60);
+  } else {
+    currentPhysician = null;
+    openContactModal();
+    setTimeout(() => { const ta = $('contactNotes'); if (ta && notes) ta.value = 'Call: ' + notes; else prefixNote('Call: '); }, 60);
+  }
+}
+
+function cancelCallSession() {
+  _stopCallTimer();
+  const panel = $('callSessionPanel'); if (panel) panel.style.display = 'none';
+  _callSession = null;
+  try { localStorage.removeItem('_crmCallSession'); } catch(e) {}
+}
+
+function _stopCallTimer() { if (_callTimer) { clearInterval(_callTimer); _callTimer = null; } }

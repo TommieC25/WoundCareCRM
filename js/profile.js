@@ -44,7 +44,7 @@ ${mi('Last Contact',p.last_contact||'Never')}${mi('Locations',assignments.length
 </div>
 <div class="contact-grid">
 ${ci('✉️',isStaffSpecialty(p.specialty)?'Email':'Provider Email',p.email?`<a href="mailto:${p.email}">${p.email}</a>`:'')}
-${ci('📱','Mobile Phone',p.mobile_phone?`<a href="tel:${p.mobile_phone}" data-provider-id="${p.id}">${fmtPhone(p.mobile_phone)}</a>`:'')}
+${ci('📱','Mobile Phone',p.mobile_phone?`<button data-call-btn onclick="startCallSession('${p.mobile_phone.replace(/\D/g,'')}','','${p.id}',null)" style="background:none;border:none;color:#0a4d3c;cursor:pointer;font-size:inherit;padding:0;font-family:inherit;text-decoration:underline;">${fmtPhone(p.mobile_phone)}</button>`:'')}
 ${ci('📝','General Notes',p.general_notes)}
 ${!p.email&&!p.mobile_phone&&!p.general_notes?'<div class="empty-notice">Click Edit to add email, mobile, and notes</div>':''}
 </div>
