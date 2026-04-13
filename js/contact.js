@@ -256,12 +256,39 @@ await dbDel('contact_logs',logId,'Delete this note?',async()=>{if(!currentPhysic
 async function completeReminder(logId) {
 try {
 updateSyncIndicators('syncing');
+const origDate = ((window._taskDetailLogs || {})[logId] || {}).reminder_date || null;
 const {error} = await db.from('contact_logs').update({reminder_date: '2000-01-01'}).eq('id', logId);
 if (error) throw error;
-showToast('Task completed ✓', 'success');
 updateSyncIndicators('synced');
+_showCompleteToastWithUndo(logId, origDate);
 if (!currentPhysician && !currentPractice && !(currentView === 'activity' && activitySubTab === 'tasks')) { renderEmptyState(); }
 } catch(e) { showToast('Error: ' + e.message, 'error'); updateSyncIndicators('error'); }
+}
+
+function _showCompleteToastWithUndo(logId, origDate) {
+const container = $('toastContainer');
+const toast = document.createElement('div');
+toast.className = 'toast success';
+toast.style.cssText = 'display:flex;align-items:center;justify-content:space-between;gap:0.5rem;';
+const msg = document.createElement('span'); msg.textContent = 'Task completed ✓'; toast.appendChild(msg);
+if (origDate && origDate !== '2000-01-01') {
+  const undoBtn = document.createElement('button');
+  undoBtn.textContent = 'Undo';
+  undoBtn.style.cssText = 'background:rgba(255,255,255,0.3);border:none;color:white;font-size:0.85rem;font-weight:700;cursor:pointer;padding:0.2rem 0.6rem;border-radius:4px;flex-shrink:0;-webkit-tap-highlight-color:transparent;';
+  undoBtn.onclick = async () => {
+    toast.remove();
+    try {
+      updateSyncIndicators('syncing');
+      await db.from('contact_logs').update({reminder_date: origDate}).eq('id', logId);
+      updateSyncIndicators('synced');
+      showToast('Task restored', 'success');
+      if (!currentPhysician && !currentPractice) renderEmptyState();
+    } catch(e) { showToast('Undo failed: ' + e.message, 'error'); updateSyncIndicators('error'); }
+  };
+  toast.appendChild(undoBtn);
+}
+container.appendChild(toast);
+setTimeout(() => { if (toast.parentNode) toast.remove(); }, 8000);
 }
 
 async function editNoteFromActivity(logId, physicianId) {
