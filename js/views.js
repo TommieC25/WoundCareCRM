@@ -407,10 +407,11 @@ $('mainContent').innerHTML=html;
 async function completeReminderInPlace(logId, cardId, reloadFn) {
 try {
 updateSyncIndicators('syncing');
+const origDate = ((window._taskDetailLogs || {})[logId] || {}).reminder_date || null;
 const {error} = await db.from('contact_logs').update({reminder_date:'2000-01-01'}).eq('id',logId);
 if(error)throw error;
-showToast('Task marked complete ✓','success');
 updateSyncIndicators('synced');
+_showCompleteToastWithUndo(logId, origDate);
 // Update the card visually in place
 const card=document.getElementById(cardId);
 if(card){
