@@ -177,7 +177,17 @@ If `cat /root/.github_pat` returns nothing, the PAT was lost when the container 
 2. Tell Tom: "Code is pushed to `claude/<branch>`. PAT is missing from this container — please run: `echo 'ghp_YOURTOKEN' > /root/.github_pat` and I'll complete the PR/merge."
 3. Tom provides the token → run steps 3-4 above immediately.
 
-### Queued Tasks for Next Session (updated 2026-03-12)
+### Latest Session Summary (2026-11-04)
+**Done this session:**
+- PR #311 / #313: Standing Session Rules + Marivex business context added to this file
+- PR #312: **Travis archive** — `isArchivedLog(l)` in `js/data.js` (author contains "travis" and not "tom"). Archived entries are excluded from Tasks, Home reminders/recent, History and Activity lists; viewable read-only in the new **📁 ARCHIVE** sub-tab (`renderArchiveView()` in `js/views.js`); shown on profiles/locations as grey read-only cards (`renderArchivedEntry()` in `js/nav.js`). Author/rep pickers removed — `authorName`/`addTaskAuthor` are hidden inputs fixed to "Tom". No DB data modified. Script cache-bust bumped to `?v=20261104`.
+- DB snapshot: ~396 Tom entries, ~63 Travis-only entries (9 were open tasks, now archived), 3 joint entries (treated as Tom's).
+
+**Scope rule (Tom, 2026-11-04):** This chat/session is for **CRM build only**. Business/operational questions (OMEZA compensation, pricing, Justin, reimbursement) belong in Tom's separate operations chat — don't drift into them here. CRM changes may still be driven by how Tom needs to document activity.
+
+**Pending / ideas:** None requested. Possible follow-ups if Tom asks: remaining "Advanced Solution" references in `google-apps-script/FieldRoutingSync.gs` (TH and AS? columns) are out of date.
+
+### Older Backlog (from 2026-03 — Tom considers these stale; only pick up if he asks)
 
 #### 0. PRIORITY — Finish DB cleanup after bad NPI import (session 2026-03-02)
 A bulk import of NPI CSV data created phantom locations for every provider. Cleanup tools are built:
