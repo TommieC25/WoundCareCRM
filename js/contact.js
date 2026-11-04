@@ -6,7 +6,7 @@ function openContactModal() {
 editingContactId = null;
 $('contactForm').reset();
 $('contactModalTitle').textContent = 'Add Contact Note';
-$('authorName').value = localStorage.getItem('lastCallLogAuthor') || '';
+$('authorName').value = 'Tom';
 $('contactSaveBtn').textContent = 'Save Note';
 $('contactSaveBtn').className = 'btn-primary';
 setToday();
@@ -164,7 +164,7 @@ if(!_savePhysician){
     showToast('Please select a provider or practice','error');return;
   }
 }
-const dateVal=$('contactDate').value,authorVal=$('authorName').value;
+const dateVal=$('contactDate').value,authorVal=$('authorName').value||'Tom';
 const nv=($('contactNotes').value||'').trim();
 if(!dateVal){showToast('Please enter a date','error');return;}
 if(!authorVal){const _a=$('authorName');_a.style.border='2px solid #dc2626';_a.style.borderRadius='6px';setTimeout(()=>{_a.style.border='';},2500);_a.scrollIntoView({behavior:'smooth',block:'center'});showToast('Select your name','error');return;}
@@ -548,7 +548,7 @@ const note = ($('addTaskNote').value || '').trim();
 if (!note) { showToast('Please enter a task note', 'error'); return; }
 const date = $('taskSelectedDate').value;
 if (!date) { showToast('Please select a due date', 'error'); return; }
-const authorVal = ($('addTaskAuthor')?.value || '').trim();
+const authorVal = ($('addTaskAuthor')?.value || '').trim() || 'Tom';
 if (!authorVal) { const _a=$('addTaskAuthor');if(_a){_a.style.border='2px solid #dc2626';_a.style.borderRadius='8px';setTimeout(()=>{_a.style.border='';},2500);_a.scrollIntoView({behavior:'smooth',block:'center'});}showToast('Select your rep name — Tom or Travis','error');return; }
 const editId = ($('addTaskEditId')?.value) || null;
 const physicianId = $('addTaskPhysicianId').value || null;
@@ -735,16 +735,14 @@ if (ctx.providerId) {
       const sel = $('contactLocation');
       if (sel) { const opt = Array.from(sel.options).find(o => o.value === ctx.locId); if (opt) sel.value = ctx.locId; }
     }
-    const lastAuthor = localStorage.getItem('lastCallLogAuthor');
-    if (lastAuthor) $('authorName').value = lastAuthor;
+    $('authorName').value = 'Tom';
   }, 60);
 } else if (ctx.locId) {
   // Practice/location call — open location modal (pre-fills location + provider checklist)
   openLocationContactModal(ctx.locId);
   setTimeout(() => {
     prefixNote('Call: ');
-    const lastAuthor = localStorage.getItem('lastCallLogAuthor');
-    if (lastAuthor) $('authorName').value = lastAuthor;
+    $('authorName').value = 'Tom';
   }, 60);
 } else {
   currentPhysician = null;
@@ -817,13 +815,13 @@ function endCallSession() {
     setTimeout(() => {
       const ta = $('contactNotes'); if (ta) ta.value = notes ? 'Call: ' + notes : ''; else prefixNote('Call: ');
       if (ctx.locId) { const sel = $('contactLocation'); if (sel) { const opt = Array.from(sel.options).find(o => o.value === ctx.locId); if (opt) sel.value = ctx.locId; } }
-      const lastAuthor = localStorage.getItem('lastCallLogAuthor'); if (lastAuthor) $('authorName').value = lastAuthor;
+      $('authorName').value = 'Tom';
     }, 100);
   } else if (ctx.locId) {
     openLocationContactModal(ctx.locId);
     setTimeout(() => {
       const ta = $('contactNotes'); if (ta) ta.value = notes ? 'Call: ' + notes : ''; else prefixNote('Call: ');
-      const lastAuthor = localStorage.getItem('lastCallLogAuthor'); if (lastAuthor) $('authorName').value = lastAuthor;
+      $('authorName').value = 'Tom';
     }, 60);
   } else {
     currentPhysician = null;

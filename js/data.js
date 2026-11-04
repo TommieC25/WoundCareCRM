@@ -1,5 +1,9 @@
 // === js/data.js === Data loading, migrations, contact log fetching
 function isStaffSpecialty(s){return s==='Staff'||s==='Administrative Staff';}
+// Archived = entries logged solely by Travis (former partner). Kept for reference only: read-only,
+// excluded from Tasks/Home/History/Activity lists, viewable in the ARCHIVE tab and on profiles.
+// Joint entries ("Tom & Travis") are treated as Tom's.
+function isArchivedLog(l){const a=((l&&l.author)||'').toLowerCase();return a.includes('travis')&&!a.includes('tom');}
 
 // --- Local cache helpers ---
 const _CRM_CACHE_KEY='crmCache_v1';

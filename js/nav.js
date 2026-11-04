@@ -222,7 +222,8 @@ function locDetails(loc){return ld(loc.address,'📍',locAddr(loc))+locPhones(lo
 function mi(label,val){return `<div class="meta-item"><div class="meta-label">${label}</div><div class="meta-value">${val}</div></div>`}
 function parseNoteTime(notes){const tm=(notes||'').match(/^\[(\d{1,2}:\d{2}(?:\s*[APap][Mm])?)\]\s*/);return tm?{time:' '+tm[1],text:notes.replace(tm[0],'')}:{time:'',text:notes||''};}
 function parseTaskRecord(notes){const tm=(notes||'').match(/^\[(\d{1,2}:\d{2}(?:\s*[APap][Mm])?)\]\s*/);let dn=tm?notes.replace(tm[0],''):(notes||'');const txm=dn.match(/\s*\|\s*\[Task:\s*(.*?)\]$/);const taskNote=txm?txm[1].trim():'';if(txm)dn=dn.slice(0,txm.index).trim();return{noteTime:tm?tm[1]:'',displayNotes:dn,taskNote};}
-function renderLogEntry(e,opts={}){const{time,text}=parseNoteTime(e.notes);const preview=opts.full?text:(text.length>120?text.substring(0,120)+'...':text);
+function renderArchivedEntry(e,opts={}){const{time,text}=parseNoteTime(e.notes);const d=e.contact_date?new Date(e.contact_date+'T12:00:00').toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'}):'';const locCtx=e.practice_location_id?getLocationContext(e.practice_location_id):'';const physPart=opts.physName?(locCtx?' | ':'')+opts.physName:'';const taskTag=e.reminder_date?`<span style="font-size:0.7rem;padding:0.1rem 0.45rem;background:#e5e7eb;color:#4b5563;border-radius:4px;margin-left:0.4rem;">${e.reminder_date==='2000-01-01'?'Task ✓ done':'Task (archived)'}</span>`:'';const clickAttr=opts.onClick?` onclick="${opts.onClick}"`:'';return `<div class="contact-entry" style="border-left:4px solid #9ca3af;background:#f3f4f6;${opts.onClick?'cursor:pointer;':''}"${clickAttr}><div class="contact-entry-header"><div><span class="contact-entry-date" style="color:#6b7280;">${d}${time?' · '+time.trim():''}</span><span style="font-size:0.7rem;font-weight:700;padding:0.1rem 0.45rem;background:#d1d5db;color:#374151;border-radius:10px;margin-left:0.4rem;">📁 Archive · Travis</span>${taskTag}${(locCtx||physPart)?`<div style="font-size:0.78rem;color:#6b7280;margin-top:0.1rem;">${locCtx}${physPart}</div>`:''}</div></div><div class="contact-entry-notes" style="color:#4b5563;">${text}</div></div>`;}
+function renderLogEntry(e,opts={}){if(isArchivedLog(e))return renderArchivedEntry(e,opts);const{time,text}=parseNoteTime(e.notes);const preview=opts.full?text:(text.length>120?text.substring(0,120)+'...':text);
 const fmtCD=(ds)=>{if(!ds)return'';const d=new Date(ds+'T12:00:00');return d.toLocaleDateString('en-US',{month:'short',day:'numeric'});};
 const headerLine1=`${fmtCD(e.contact_date)}${time?' · '+time.trim():''}${e.author?' — '+e.author:''}`;
 const locCtx=e.practice_location_id?getLocationContext(e.practice_location_id):'';
@@ -236,6 +237,7 @@ const today=localDate();const _isDone=e.reminder_date==='2000-01-01';const _isOD
 return `<div class="contact-entry"${divStyle?` style="${divStyle}"`:''}${clickAttr}><div class="contact-entry-header"><div><span class="contact-entry-date">${headerLine1}</span>${reminderLine}${headerLine2}</div>${actions}</div><div class="contact-entry-notes">${preview}</div></div>`;}
 // Renders a single entry in the provider profile log — handles both tasks (colored bars) and plain notes
 function renderProfileEntry(e) {
+if (isArchivedLog(e)) return renderArchivedEntry(e);
 if (!e.reminder_date) {
 // Plain activity note — use standard renderer
 return renderLogEntry(e,{editable:true,showTimestamp:true,full:true});
@@ -448,10 +450,12 @@ ${mi('Providers',physicians.length)}${mi('Practices',practices.length)}${mi('Loc
 `;
 try {
 const today = localDate();
-const [{data:reminders,error:remErr},{data:recentLogs,error:actErr}] = await Promise.all([
+const [{data:_remAll,error:remErr},{data:_recentAll,error:actErr}] = await Promise.all([
   db.from('contact_logs').select('*').not('reminder_date','is',null).neq('reminder_date','2000-01-01').order('reminder_date',{ascending:true}),
-  db.from('contact_logs').select('*').order('created_at',{ascending:false}).limit(15),
+  db.from('contact_logs').select('*').order('created_at',{ascending:false}).limit(40),
 ]);
+const reminders = _remAll ? _remAll.filter(r => !isArchivedLog(r)) : _remAll;
+const recentLogs = _recentAll ? _recentAll.filter(r => !isArchivedLog(r)).slice(0,15) : _recentAll;
 if (reminders) { if (!window._taskDetailLogs) window._taskDetailLogs = {}; reminders.forEach(r => window._taskDetailLogs[r.id] = r); }
 const rc = $('remindersContent');
 if (remErr) { rc.innerHTML = '<div class="empty-notice">Could not load reminders</div>'; }
