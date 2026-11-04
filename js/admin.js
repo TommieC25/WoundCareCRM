@@ -226,9 +226,8 @@ const rank = p?.priority || '';
 const vol = p?.proj_vol || p?.mohs_volume || '';
 const county = l?.city ? guessCounty(l.city) : '';
 const notes = p?.general_notes || '';
-const asVal = p?.advanced_solution ? 'Y' : '';
 const targetVal = p?.is_target ? 'Y' : '';
-return ['','' ,asVal,targetVal,rank,firstName,lastName,firstLast,degree,status,p?.specialty||'',practiceName,l?.address||'',l?.city||'',l?.zip||'',fmtPhone(l?.phone),vol,county,notes];
+return ['','' ,targetVal,rank,firstName,lastName,firstLast,degree,status,p?.specialty||'',practiceName,l?.address||'',l?.city||'',l?.zip||'',fmtPhone(l?.phone),vol,county,notes];
 }
 function guessCounty(city) {
 if (!city) return '';
