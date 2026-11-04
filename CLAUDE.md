@@ -131,6 +131,7 @@ When writing SQL to be copy-pasted into the Supabase SQL editor on iOS (Safari):
 ### Standing Session Rules (apply automatically — Tom should NEVER have to repeat these)
 - **Repo**: All work happens in `TommieC25/WoundCareCRM` only. Never create a new repo. Never touch any other repo (e.g., the Sailing repo). The session/chat name (e.g., "Marivex") is just a label — it does not mean a different project.
 - **Startup**: Do NOT require a startup script from Tom. Silently run `git log --oneline -5` to orient, then go straight to whatever Tom asked. If Tom's first message is a task, just do it. If it's only a greeting, reply in 1–2 lines and wait.
+- **Business context (as of 2026-11-04)**: Tom now operates independently as **MARIVEX MEDICAL LLC**. The Advanced Solution distributor relationship and the partnership with Travis are dissolved. **Anything mentioning "Advanced Solution" is automatically out of date** — ignore it as a source. Travis's CRM entries are archived (read-only, `isArchivedLog()` in data.js, 📁 ARCHIVE tab). The Drive folder "Shared with Travis" was trashed 2026-11-04 at Tom's direction.
 - **End of every session**: Update the "Queued Tasks" handoff notes below to reflect what was done and what's pending, commit, push, and merge — without being asked.
 
 ### Git Environment — FULLY WORKING (updated 2026-02-24, confirmed working through PR #66)
