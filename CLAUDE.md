@@ -128,6 +128,11 @@ When writing SQL to be copy-pasted into the Supabase SQL editor on iOS (Safari):
 
 **READ THIS FIRST on every new session / conversation compaction.**
 
+### Standing Session Rules (apply automatically — Tom should NEVER have to repeat these)
+- **Repo**: All work happens in `TommieC25/WoundCareCRM` only. Never create a new repo. Never touch any other repo (e.g., the Sailing repo). The session/chat name (e.g., "Marivex") is just a label — it does not mean a different project.
+- **Startup**: Do NOT require a startup script from Tom. Silently run `git log --oneline -5` to orient, then go straight to whatever Tom asked. If Tom's first message is a task, just do it. If it's only a greeting, reply in 1–2 lines and wait.
+- **End of every session**: Update the "Queued Tasks" handoff notes below to reflect what was done and what's pending, commit, push, and merge — without being asked.
+
 ### Git Environment — FULLY WORKING (updated 2026-02-24, confirmed working through PR #66)
 1. **Push access**: ONLY `claude/*` branches work via git. The remote is pre-configured as `http://local_proxy@127.0.0.1:61985/git/TommieC25/WoundCareCRM` — git push works with no extra setup.
 2. **`gh` CLI**: NOT installed (command not found). Do not attempt any `gh` commands.
