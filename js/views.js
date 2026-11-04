@@ -15,9 +15,9 @@ const fmtD = ds => { if(!ds)return''; const d=new Date(ds+'T12:00:00'); return d
 
 // --- Activity sub-tab navigation HTML helper ---
 function _activityTabsHtml() {
-const tabs = [{id:'history',label:'HISTORY'},{id:'activity',label:'ACTIVITY'},{id:'tasks',label:'TASKS'}];
+const tabs = [{id:'history',label:'HISTORY'},{id:'activity',label:'ACTIVITY'},{id:'tasks',label:'TASKS'},{id:'archive',label:'📁 ARCHIVE'}];
 const esc = _activitySearchTerm.replace(/"/g,'&quot;');
-return `<div style="display:flex;gap:0.5rem;margin-bottom:0.75rem;padding-bottom:0.75rem;border-bottom:2px solid #f0f0f0;">`+tabs.map(t=>`<button onclick="switchActivityTab('${t.id}')" style="padding:0.45rem 0.9rem;border:none;border-radius:6px;font-size:0.78rem;font-weight:700;cursor:pointer;letter-spacing:0.5px;transition:all 0.15s;-webkit-tap-highlight-color:transparent;${activitySubTab===t.id?'background:#0a4d3c;color:white;':'background:#e5e7eb;color:#374151;'}">${t.label}</button>`).join('')+`</div><div style="margin-bottom:1rem;position:relative;display:flex;align-items:center;"><span style="position:absolute;left:0.65rem;font-size:0.95rem;pointer-events:none;">🔍</span><input type="search" id="activitySearchInput" value="${esc}" oninput="activitySearch(this.value)" onchange="activitySearch(this.value)" onsearch="activitySearch(this.value)" placeholder="Search by name, practice, city, notes…" style="width:100%;padding:0.5rem 2rem 0.5rem 2.1rem;border:1px solid #d1d5db;border-radius:8px;font-size:0.9rem;font-family:inherit;background:#fff;" autocapitalize="none" autocorrect="off" spellcheck="false">${_activitySearchTerm?`<button onclick="activitySearch('')" style="position:absolute;right:0.6rem;background:none;border:none;font-size:1.2rem;cursor:pointer;color:#999;line-height:1;padding:0;">×</button>`:''}</div><div style="display:flex;align-items:center;gap:0.5rem;margin-bottom:0.75rem;"><span style="font-size:0.8rem;color:#666;font-weight:600;white-space:nowrap;">By:</span><select onchange="setActivityAuthorFilter(this.value)" style="padding:0.35rem 0.6rem;border:1px solid #d1d5db;border-radius:7px;font-size:0.85rem;font-family:inherit;background:#fff;cursor:pointer;"><option value=""${!_activityAuthorFilter?' selected':''}>All</option><option value="Tom"${_activityAuthorFilter==='Tom'?' selected':''}>Tom</option></select></div>`;
+return `<div style="display:flex;gap:0.5rem;margin-bottom:0.75rem;padding-bottom:0.75rem;border-bottom:2px solid #f0f0f0;">`+tabs.map(t=>`<button onclick="switchActivityTab('${t.id}')" style="padding:0.45rem 0.9rem;border:none;border-radius:6px;font-size:0.78rem;font-weight:700;cursor:pointer;letter-spacing:0.5px;transition:all 0.15s;-webkit-tap-highlight-color:transparent;${activitySubTab===t.id?'background:#0a4d3c;color:white;':'background:#e5e7eb;color:#374151;'}">${t.label}</button>`).join('')+`</div><div style="margin-bottom:1rem;position:relative;display:flex;align-items:center;"><span style="position:absolute;left:0.65rem;font-size:0.95rem;pointer-events:none;">🔍</span><input type="search" id="activitySearchInput" value="${esc}" oninput="activitySearch(this.value)" onchange="activitySearch(this.value)" onsearch="activitySearch(this.value)" placeholder="Search by name, practice, city, notes…" style="width:100%;padding:0.5rem 2rem 0.5rem 2.1rem;border:1px solid #d1d5db;border-radius:8px;font-size:0.9rem;font-family:inherit;background:#fff;" autocapitalize="none" autocorrect="off" spellcheck="false">${_activitySearchTerm?`<button onclick="activitySearch('')" style="position:absolute;right:0.6rem;background:none;border:none;font-size:1.2rem;cursor:pointer;color:#999;line-height:1;padding:0;">×</button>`:''}</div>`;
 }
 
 // --- Activity tab switcher (called from sub-tab buttons) ---
@@ -30,6 +30,7 @@ _activitySearchTerm = (val||'').trim().toLowerCase();
 let p;
 if(activitySubTab==='history') p=renderHistoryView();
 else if(activitySubTab==='activity') p=renderActivityView();
+else if(activitySubTab==='archive') p=renderArchiveView();
 else p=renderTasksView();
 Promise.resolve(p).then(()=>{const inp=document.getElementById('activitySearchInput');if(inp){inp.focus();inp.setSelectionRange(inp.value.length,inp.value.length);}});
 };
@@ -258,7 +259,26 @@ return `<div class="contact-entry" id="tlog-${r.id}" style="border-left:4px soli
 async function renderActivityTabView(){
 if(activitySubTab==='tasks') await renderTasksView();
 else if(activitySubTab==='activity') await renderActivityView();
+else if(activitySubTab==='archive') await renderArchiveView();
 else await renderHistoryView();
+}
+
+// --- Archive view: Travis's historical entries, read-only, for reference only ---
+async function renderArchiveView(){
+try{
+const{data:allLogs,error}=await db.from('contact_logs').select('*').ilike('author','%travis%').order('contact_date',{ascending:false}).order('created_at',{ascending:false});
+if(error)throw error;
+const archived=(allLogs||[]).filter(isArchivedLog);
+const physMap={};physicians.forEach(p=>physMap[p.id]=p);
+const search=_activitySearchTerm;
+const filtered=search?archived.filter(l=>{const p=physMap[l.provider_id]||{};const nm=((p.first_name||'')+' '+(p.last_name||'')).toLowerCase();const loc=l.practice_location_id?getLocationLabel(l.practice_location_id).toLowerCase():'';return(l.notes||'').toLowerCase().includes(search)||nm.includes(search)||loc.includes(search)||(l.contact_date||'').includes(search);}):archived;
+$('physicianList').innerHTML='';
+$('physicianCount').textContent=filtered.length+' archived entries';
+let html=_activityTabsHtml()+`<div class="section"><div class="section-header"><h3>📁 Archive — Travis</h3><div style="font-size:0.8rem;color:#666;">${filtered.length} of ${archived.length} entries${search?' matching "'+search+'"':''}</div></div><div style="font-size:0.8rem;color:#6b7280;background:#f3f4f6;border-radius:6px;padding:0.5rem 0.75rem;margin-bottom:0.75rem;">Reference only. These entries are read-only and are not part of your Tasks, History, or Activity lists.</div>`;
+html+=filtered.length===0?'<div class="empty-notice">No archived entries.</div>':'<div class="contact-entries">'+filtered.map(e=>{const p=e.provider_id?physMap[e.provider_id]:null;return renderArchivedEntry(e,{physName:p?fmtName(p):null,onClick:p?`viewPhysician('${p.id}')`:(e.practice_location_id?`viewLocation('${e.practice_location_id}')`:undefined)});}).join('')+'</div>';
+html+='</div>';
+$('mainContent').innerHTML=html;
+}catch(e){console.error('Archive view error:',e);$('mainContent').innerHTML=_activityTabsHtml()+'<div class="empty-notice">Error loading archive.</div>';}
 }
 
 // --- History view: combined activities + tasks, reverse chronological ---
@@ -271,7 +291,7 @@ const today=localDate();
 const search=_activitySearchTerm||$('searchInput').value.trim().toLowerCase();
 const _hLocMap={};practiceLocations.forEach(l=>_hLocMap[l.id]=l);const _hPracMap={};practices.forEach(p=>_hPracMap[p.id]=p);
 let filtered=search?allLogs.filter(l=>{const p=physMap[l.provider_id]||{};const fullName=((p.first_name||'')+' '+(p.last_name||'')).trim();const loc=l.practice_location_id?_hLocMap[l.practice_location_id]:null;const pracName=loc?(_hPracMap[(loc.practice_id||'')]||{}).name||'':'';return(l.notes||'').toLowerCase().includes(search)||(l.author||'').toLowerCase().includes(search)||(l.contact_date||'').includes(search)||fullName.toLowerCase().includes(search)||(loc&&(loc.city||'').toLowerCase().includes(search))||(loc&&(loc.address||'').toLowerCase().includes(search))||(loc&&(loc.label||'').toLowerCase().includes(search))||pracName.toLowerCase().includes(search);}):allLogs;
-if(_activityAuthorFilter)filtered=filtered.filter(l=>(l.author||'').toLowerCase()===_activityAuthorFilter.toLowerCase());
+filtered=filtered.filter(l=>!isArchivedLog(l));
 // Update sidebar
 $('physicianList').innerHTML=filtered.length===0?'<li class="loading">No entries found</li>':filtered.map(l=>{const p=l.provider_id?physMap[l.provider_id]:null;const isTask=l.reminder_date&&l.reminder_date!==null;const nameDisplay=p?`${p.first_name||''} ${p.last_name||''}`.trim():(l.practice_location_id?getLocationLabel(l.practice_location_id):'General Reminder');let notes=l.notes||'';const tm=notes.match(/^\[(\d{1,2}:\d{2})\]\s*/);if(tm)notes=notes.slice(tm[0].length);const taskMatch=notes.match(/\s*\|\s*\[Task:\s*(.*?)\]$/);if(taskMatch)notes=notes.slice(0,taskMatch.index).trim();const preview=notes.length>80?notes.slice(0,80)+'...':notes;let barColor='#0a4d3c';if(isTask){if(l.reminder_date==='2000-01-01')barColor='#10b981';else if(l.reminder_date==='2099-12-31')barColor='#f59e0b';else if(l.reminder_date<today)barColor='#dc2626';else barColor='#f59e0b';}const clickFn=l.provider_id?`viewPhysician('${l.provider_id}')`:l.practice_location_id?`viewLocation('${l.practice_location_id}')`:''
 return`<li class="physician-item" style="border-left:3px solid ${barColor};" onclick="${clickFn}"><div class="name">${nameDisplay}</div><div class="practice">${l.contact_date}${l.author?' - '+l.author:''}</div><div style="font-size:0.75rem;color:rgba(255,255,255,0.75);margin-top:0.25rem;">${preview}</div></li>`;}).join('');
@@ -304,7 +324,7 @@ const pureNotes=allLogs.filter(l=>!l.reminder_date);
 const search=_activitySearchTerm||$('searchInput').value.trim().toLowerCase();
 const _aLocMap={};practiceLocations.forEach(l=>_aLocMap[l.id]=l);const _aPracMap={};practices.forEach(p=>_aPracMap[p.id]=p);
 let filtered=search?pureNotes.filter(l=>{const p=physMap[l.provider_id]||{};const fullName=((p.first_name||'')+' '+(p.last_name||'')).trim();const loc=l.practice_location_id?_aLocMap[l.practice_location_id]:null;const pracName=loc?(_aPracMap[(loc.practice_id||'')]||{}).name||'':'';return(l.notes||'').toLowerCase().includes(search)||(l.author||'').toLowerCase().includes(search)||(l.contact_date||'').includes(search)||fullName.toLowerCase().includes(search)||(loc&&(loc.city||'').toLowerCase().includes(search))||(loc&&(loc.address||'').toLowerCase().includes(search))||(loc&&(loc.label||'').toLowerCase().includes(search))||pracName.toLowerCase().includes(search);}):pureNotes;
-if(_activityAuthorFilter)filtered=filtered.filter(l=>(l.author||'').toLowerCase()===_activityAuthorFilter.toLowerCase());
+filtered=filtered.filter(l=>!isArchivedLog(l));
 $('physicianList').innerHTML=filtered.length===0?'<li class="loading">No activity found</li>':
 filtered.map(l=>{const p=l.provider_id?physMap[l.provider_id]:null;
 let time=l.contact_time||'';let notes=l.notes||'';
@@ -336,8 +356,9 @@ $('physicianList').innerHTML='';
 const today = localDate();
 try {
 const{data:allReminders,error}=await db.from('contact_logs').select('*').not('reminder_date','is',null).order('reminder_date',{ascending:true});
-const reminders=(allReminders||[]).filter(r=>r.reminder_date!=='2000-01-01');
-const completedTasks=(allReminders||[]).filter(r=>r.reminder_date==='2000-01-01').sort((a,b)=>b.contact_date.localeCompare(a.contact_date));
+const _mine=(allReminders||[]).filter(r=>!isArchivedLog(r));
+const reminders=_mine.filter(r=>r.reminder_date!=='2000-01-01');
+const completedTasks=_mine.filter(r=>r.reminder_date==='2000-01-01').sort((a,b)=>b.contact_date.localeCompare(a.contact_date));
 if(error)throw error;
 const physMap={};physicians.forEach(p=>physMap[p.id]=p);
 _taskDetailLogs={};[...reminders,...completedTasks].forEach(r=>_taskDetailLogs[r.id]=r);
@@ -351,7 +372,6 @@ const search=_activitySearchTerm||$('searchInput').value.trim().toLowerCase();
 function _taskMatches(r){const ph=physMap[r.provider_id]||{};const fullName=((ph.first_name||'')+' '+(ph.last_name||'')).trim();const locLabel=r.practice_location_id?getLocationLabel(r.practice_location_id).toLowerCase():'';return(r.notes||'').toLowerCase().includes(search)||(r.author||'').toLowerCase().includes(search)||fullName.toLowerCase().includes(search)||(ph.first_name||'').toLowerCase().includes(search)||(ph.last_name||'').toLowerCase().includes(search)||locLabel.includes(search);}
 let filtered=search?reminders.filter(_taskMatches):reminders;
 let filteredCompleted=search?completedTasks.filter(_taskMatches):completedTasks;
-if(_activityAuthorFilter){filtered=filtered.filter(l=>(l.author||'').toLowerCase()===_activityAuthorFilter.toLowerCase());filteredCompleted=filteredCompleted.filter(l=>(l.author||'').toLowerCase()===_activityAuthorFilter.toLowerCase());}
 if(search&&filtered.length===0&&filteredCompleted.length===0){$('mainContent').innerHTML=tabsPrefix+`<div class="section"><div class="section-header"><h3>Tasks &amp; Reminders</h3>${newTaskBtn}</div><div class="empty-notice">No tasks matching "${search}".</div></div>`;return;}
 const OPEN_DATE='2099-12-31';
 const openTasks=filtered.filter(r=>r.reminder_date===OPEN_DATE);

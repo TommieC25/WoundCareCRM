@@ -387,7 +387,7 @@ const staffName = ($('officeStaffNameInput')?.value || '').trim();
 const tv = $('contactTime').value, nv = $('contactNotes').value;
 const locVal = $('contactLocation').value || null;
 const reminderOn = $('setReminder').checked;
-const dateVal = $('contactDate').value, authorVal = $('authorName').value;
+const dateVal = $('contactDate').value, authorVal = $('authorName').value || 'Tom';
 await withSave('contactSaveBtn', 'Save Note', async() => {
 const entries = [];
 const baseNote = tv ? `[${tv}] ${nv}` : nv;
@@ -457,7 +457,7 @@ $('contactModal').classList.add('active');
 async function saveLocationContact(e, locId) {
 e.preventDefault();
 const tv = $('contactTime').value, nv = $('contactNotes').value;
-const dateVal = $('contactDate').value, authorVal = $('authorName').value;
+const dateVal = $('contactDate').value, authorVal = $('authorName').value || 'Tom';
 const reminderOn = $('setReminder').checked;
 const cbs = document.querySelectorAll('.loc-phys-cb:checked');
 const physIds = [...cbs].map(cb => cb.value);
